@@ -42,6 +42,17 @@ try{
   await other.locator('.compare-card h2').first().filter({hasText:'고유'}).waitFor();
   await Promise.all([page.locator('.compare-card textarea').first().fill('메모 A'),other.locator('.compare-card textarea').first().fill('메모 B')]);
   await page.waitForFunction(()=>{const notes=JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes;return notes['studio-01']==='메모 A'&&notes['studio-02']==='메모 B';});
+  // A delayed favorite write must not replace a memo field being edited.
+  await page.evaluate(()=>{
+    const locks=navigator.locks,original=locks.request.bind(locks);
+    window.savedLockRequest=original;
+    locks.request=(name,callback)=>new Promise(resolve=>setTimeout(resolve,150)).then(()=>original(name,callback));
+  });
+  await page.locator('.compare-card .favorite').first().click();
+  await page.locator('.compare-card textarea').first().fill('관심 표시 중에도 보존할 메모');
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes['studio-01']==='관심 표시 중에도 보존할 메모');
+  assert.equal(await page.locator('.compare-card textarea').first().inputValue(),'관심 표시 중에도 보존할 메모');
+  await page.evaluate(()=>{navigator.locks.request=window.savedLockRequest;});
   console.log('PASS concurrent studio memos preserve both notes');
 
   await page.goto(base+'#/story');await page.getByRole('button',{name:'이야기 추가',exact:true}).click();

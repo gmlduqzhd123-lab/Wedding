@@ -18,6 +18,7 @@ let filter='', favoritesOnly=false;
 const guestMode=new URLSearchParams(location.search).get('view')==='guest';
 let baseRevision='', draftRevision=null, editorState=null, studiosStatus='loading', studiosError='';
 let previousHash=location.hash,pendingWrites=0;
+let redrawDirectory=()=>{};
 const editButton=(...args)=>guestMode?null:button(...args);
 
 function E(tag, attributes={}, ...children) {
@@ -237,8 +238,15 @@ function contactNode(studio,compact=false) {
 function favoriteButton(studio) {
   if(guestMode)return null;
   const pressed=Boolean(prefs.favorites?.includes(studio.id));
-  return E('button',{class:'favorite',type:'button','aria-label':`${studio.name} 관심 스튜디오 ${pressed?'해제':'등록'}`,'aria-pressed':String(pressed),onclick:async()=>{
-    const set=new Set(prefs.favorites||[]);set.has(studio.id)?set.delete(studio.id):set.add(studio.id);if(await savePrefs({...prefs,favorites:[...set]}))render();
+  return E('button',{class:'favorite',type:'button','data-studio-id':studio.id,'aria-label':`${studio.name} 관심 스튜디오 ${pressed?'해제':'등록'}`,'aria-pressed':String(pressed),onclick:async()=>{
+    const set=new Set(prefs.favorites||[]);set.has(studio.id)?set.delete(studio.id):set.add(studio.id);
+    if(await savePrefs({...prefs,favorites:[...set]})){
+      const selected=prefs.favorites.includes(studio.id);
+      for(const target of document.querySelectorAll('.favorite'))if(target.dataset.studioId===studio.id){
+        target.setAttribute('aria-pressed',String(selected));target.setAttribute('aria-label',`${studio.name} 관심 스튜디오 ${selected?'해제':'등록'}`);target.textContent=selected?'♥':'♡';
+      }
+      redrawDirectory();
+    }
   }},pressed?'♥':'♡');
 }
 function compareCard(studio) {
@@ -268,7 +276,7 @@ function studioDirectory() {
     count.textContent=`${filtered.length}곳`;
     results.replaceChildren(...(filtered.length?filtered.map(studio=>E('article',{class:'studio-tile'},image(studio.images[0].src,`${studio.name} 대표 샘플`),E('div',{class:'tile-body'},E('h3',{},studio.name),E('p',{class:'style'},studio.style),contactNode(studio,true),E('div',{class:'tile-actions'},button('비교 A',()=>selectStudio('left',studio.id),'button quiet'),button('비교 B',()=>selectStudio('right',studio.id),'button quiet'),favoriteButton(studio))))):[E('p',{class:'no-results'},'조건에 맞는 스튜디오가 없습니다.')]));
   };
-  search.addEventListener('input',()=>{filter=search.value;draw();});checked.addEventListener('change',()=>{favoritesOnly=checked.checked;draw();});draw();
+  search.addEventListener('input',()=>{filter=search.value;draw();});checked.addEventListener('change',()=>{favoritesOnly=checked.checked;draw();});redrawDirectory=draw;draw();
   return E('section',{class:'studio-directory'},E('div',{class:'section-heading'},E('div',{},E('h2',{},'전체 스튜디오 둘러보기'),E('p',{},'샘플 폴더에 포함된 30개 항목을 비교할 수 있어요.')),count),
     E('div',{class:'directory-controls'},search,guestMode?null:E('label',{class:'check-label'},checked,'관심 스튜디오만 보기')),results);
 }

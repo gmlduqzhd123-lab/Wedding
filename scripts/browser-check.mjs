@@ -57,6 +57,7 @@ try {
   await page.getByRole('button',{name:'예식 정보 편집',exact:true}).click();
   await page.getByLabel('첫 번째 이름',{exact:true}).fill('저장 실패 검증');
   await page.getByRole('button',{name:'초안에 저장',exact:true}).click();
+  await page.waitForFunction(()=>!document.querySelector('#dialog-actions [type="submit"]').disabled&&!document.querySelector('#dialog-notice').hidden);
   assert.equal((await storage(draftKey)).invitation.partner1,'브라우저 검증');
   assert(await page.locator('dialog').evaluate(node=>node.open));
   await page.keyboard.press('Escape');
@@ -174,6 +175,7 @@ try {
   assert.equal(unexpected.length,0,unexpected.join('\n'));
   console.log('PASS mobile routes, public reset, zero browser errors');
 } catch(error) {
+  console.error('Saved preferences:',await storage(prefsKey));
   console.error('Browser state:',await page.locator('body').innerText());
   console.error('Browser errors:',errors);
   throw error;
