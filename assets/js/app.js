@@ -263,7 +263,7 @@ function tripComparison() {
   if(guestMode)return null;
   const items=(prefs.tripCompare||[]).map(id=>content.honeymoon.find(item=>item.id===id)).filter(Boolean);
   if(!items.length)return null;
-  const fields=[['나라·지역',item=>item.country||'미정'],['일정',item=>[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'],['예상 총예산',item=>item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`],['좋은 점',item=>item.pros||'미기재'],['고민할 점',item=>item.cons||'미기재']];
+  const fields=[['나라·지역',item=>item.country||'미정'],['한국 출발·도착',item=>[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'],['2인 계획예산',item=>item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`],['좋은 점',item=>item.pros||'미기재'],['고민할 점',item=>item.cons||'미기재']];
   return E('section',{class:'trip-comparison'},E('h2',{},'여행 후보 나란히 비교'),E('p',{class:'small muted'},'관심·비교·최종 선택은 이 기기에 저장됩니다.'),
     E('div',{class:'table-scroll'},E('table',{class:'travel-comparison'},E('thead',{},E('tr',{},E('th',{scope:'col'},'비교 항목'),items.map(item=>E('th',{scope:'col'},item.title)))),
       E('tbody',{},fields.map(([label,value])=>E('tr',{},E('th',{scope:'row'},label),items.map(item=>E('td',{},value(item)))))))));
@@ -275,10 +275,11 @@ function renderAlbums() {
     empty('우리의 사진을 담을 첫 앨범','사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
 function renderHoneymoon() {
-  return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),tripComparison(),
+  return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
+    E('p',{class:'form-note honeymoon-note'},'두 사람의 계획용 예산입니다. 실제 견적·예약 가능 금액은 별도 확인해 주세요. 여행 날짜는 한국 출발일과 한국 도착일 기준이며, 현지 숙박 수와 출발일은 항공편에 따라 조정합니다.'),tripComparison(),
     content.honeymoon.length?E('section',{class:'travel-grid'},content.honeymoon.map(item=>E('article',{class:'travel-card'},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),
-      E('dl',{},E('dt',{},'여행 일정'),E('dd',{},[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'),E('dt',{},'예상 예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),
-      item.body?E('p',{class:'record-body'},item.body):null,externalLink('참고 자료 ↗',item.url),tripControls(item),recordActions('honeymoon',item)))):
+      E('dl',{},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),
+      item.body?E('details',{class:'travel-details'},E('summary',{},'일정·숙박·비용 상세'),E('p',{class:'record-body'},item.body)):null,externalLink('참고 자료 ↗',item.url),tripControls(item),recordActions('honeymoon',item)))):
     empty('어디로 떠나고 싶나요?','아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.','여행 후보 남기기',()=>openEditor('honeymoon'))];
 }
 function contactNode(studio,compact=false) {
@@ -378,7 +379,7 @@ function renderStudios() {
 function render() {
   const route=currentRoute();
   const renderers={home:renderHome,invitation:renderInvitation,story:renderStories,albums:renderAlbums,studios:renderStudios,honeymoon:renderHoneymoon};
-  main.replaceChildren(...renderers[route]());main.setAttribute('aria-busy','false');
+  main.replaceChildren(...renderers[route]().filter(node=>node!==null&&node!==undefined&&node!==false));main.setAttribute('aria-busy','false');
   for(const anchor of document.querySelectorAll('[data-route]')) {
     if(anchor.dataset.route===route)anchor.setAttribute('aria-current','page');else anchor.removeAttribute('aria-current');
   }
@@ -401,7 +402,7 @@ const fieldSpecs={
   invitation:[['partner1','첫 번째 이름'],['partner2','두 번째 이름'],['date','예식 날짜','date'],['time','예식 시간','time'],['venue','예식장·홀 이름'],['address','주소'],['mapUrl','지도 링크','url'],['message','초대 인사','textarea']],
   stories:[['title','이야기 제목'],['date','기억할 날짜','date'],['body','우리의 이야기','textarea'],['image','사진 주소 (선택)']],
   albums:[['title','앨범 이름'],['date','촬영 날짜','date'],['body','앨범 소개','textarea'],['urls','사진 주소 (한 줄에 하나씩)','textarea']],
-  honeymoon:[['title','여행지'],['country','나라·지역'],['startDate','출발일','date'],['endDate','도착일','date'],['budget','두 사람의 예상 총예산 (원)','number'],['pros','마음에 드는 점','textarea'],['cons','고민할 점','textarea'],['body','일정·상담 메모','textarea'],['url','참고 링크','url']]
+  honeymoon:[['title','여행지'],['country','나라·지역'],['startDate','한국 출발일','date'],['endDate','한국 도착일','date'],['budget','두 사람의 계획예산 (원)','number'],['pros','마음에 드는 점','textarea'],['cons','고민할 점','textarea'],['body','일정·상담 메모','textarea'],['url','참고 링크','url']]
 };
 async function shrinkPhoto(file) {
   if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('JPG, PNG, WEBP 사진을 선택해 주세요.');

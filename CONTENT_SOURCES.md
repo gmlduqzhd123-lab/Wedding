@@ -1,0 +1,27 @@
+# Wedding 콘텐츠 근거
+
+## 예식 정보
+
+- 사용자가 이 채팅에서 제공한 내용: 2027년 5월 8일 오후 1시, 순천아모르웨딩컨벤션 1층.
+- 이름·상세 주소·지도 링크는 제공되지 않아 기존 빈 상태를 유지한다.
+
+## 신혼여행
+
+사용자 제공 `Honeymoon_2027_PRD.md`(자료 기준일 2026-11-04)를 기존 Wedding 신혼여행 메뉴의 콘텐츠 자료로 사용했다. 별도 저장소 생성·프레임워크 전환·새 여행 앱 전체 구현을 요청한 것으로 해석하지 않는다.
+
+- 한국 출발 2027-05-09 / 한국 도착 목표 2027-05-17 / 성인 2명 / 총예산 상한 1,000만 원.
+- 발리 750만 원, 오아후 950만 원, 로마·피렌체 900만 원, 바르셀로나·마요르카 940만 원, 몰디브 950만 원은 모두 제공 자료의 계획 배분이다. 시장 견적·최저가·재고를 조사한 금액이 아니다.
+- 인천·일반석·객실 1실은 초기 비교 가정이며 예약 확정이 아니다. 개인 쇼핑은 기본 제외다.
+- 숙박 배분은 항공편 미확인 상태의 가안이다. 한국 날짜 범위를 현지 8박 9일로 바꾸지 않았다. 구체적인 편명·현지 출발일·호텔·객실 가격은 생성하지 않았다.
+- 경험·숙박 선택 문구는 제공된 여행 흐름을 풀어 쓴 편집 제안이다. 영업시간·입장료·예약 가능성을 확인한 추천이 아니다.
+- 몰디브 패키지의 식사·리조트 왕복 이동은 포함시키려는 계획이며 실제 포함 조건은 미확인이다.
+
+다음 공식 원문은 2026-11-04 다시 열어 기후 경향 문구의 범위를 확인했다. 일별 예보나 2027년 운항·입국 요건을 검증한 자료가 아니다.
+
+| 지역 | 출처 | 사용 범위 |
+|---|---|---|
+| 발리 | [Indonesia Travel — Weather, Climate & Seasons](https://www.indonesia.travel/id/en/general-information/weather-climate-seasons) | 발리 포함 주요 지역의 통상적인 건기 4~10월과 계절 변동 |
+| 오아후 | [Go Hawaii — Hawaii in Spring](https://www.gohawaii.com/hawaii-in-spring) | 3~5월 봄철 관광 안내, 당일 해양 여건 별도 확인 |
+| 피렌체 | [Visit Tuscany — Best time to visit Tuscany](https://www.visittuscany.com/en/ideas/whats-the-best-time-of-the-year-to-visit-tuscany/) | 토스카나의 봄 산책·야외활동; 로마의 날짜별 예보로 확대하지 않음 |
+| 마요르카 | [Illes Balears Travel — Mallorca in Spring](https://www.illesbalears.travel/en/mallorca/spring) | 3~5월 야외활동; 바르셀로나 일별 날씨와 해수욕 적합성은 미확인 |
+| 몰디브 | [Maldives Meteorological Service — Climate](https://www.meteorology.gov.mv/climate) | 통상 5월 중순~11월 남서몬순 우기 |

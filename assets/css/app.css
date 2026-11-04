@@ -33,3 +33,4 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .dialog-notice button{margin:10px 8px 0 0}
 .conflict-list{display:grid;gap:12px;margin:12px 0}.conflict-list section{padding:10px;border:1px solid var(--line);border-radius:6px}.conflict-list p{white-space:pre-wrap}
 @media(max-width:680px){.editor-dialog .dialog-heading{padding:16px 20px}#editor-body{padding:18px 20px}#dialog-actions{padding:12px 20px}.dialog-notice{margin:10px 20px 0}.page-actions{flex-shrink:1}}
+.honeymoon-note{margin-bottom:26px}.travel-card dl{grid-template-columns:90px minmax(0,1fr)}.travel-details{margin:18px 0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.travel-details .record-body{font-size:13px;line-height:1.9}
