@@ -1,0 +1,106 @@
+// Optional browser regressions for pending backups, durable conflict review and rapid actions.
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+import {readFile,mkdir} from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright');
+const base=process.env.TEST_URL||'http://127.0.0.1:4173/Wedding/';
+const browser=await chromium.launch({headless:true,channel:process.env.BROWSER_CHANNEL||'chrome'});
+const errors=[];
+const create=async(context,route)=>{const page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'#/'+route);await page.locator('#main[aria-busy="false"]').waitFor();return page;};
+const save=async page=>{await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);};
+const edit=page=>page.getByRole('button',{name:'예식 정보 편집',exact:true}).click();
+const raw=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('wedding:v1:draft')));
+let page;
+try{
+  await mkdir('work/followup-qa',{recursive:true});
+  const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
+  page=await create(context,'studios');
+  await page.locator('.compare-card textarea').first().waitFor();
+  await page.evaluate(()=>{window.realRequest=navigator.locks.request.bind(navigator.locks);navigator.locks.request=(key,callback)=>new Promise(resolve=>setTimeout(resolve,800)).then(()=>window.realRequest(key,callback));});
+  await page.locator('.compare-card textarea').first().fill('백업 직전 새 메모');
+  await page.getByRole('button',{name:'내용 관리',exact:true}).click();
+  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'개인 백업 저장',exact:true}).click();
+  const download=await pending;const exported=JSON.parse(await readFile(await download.path(),'utf8'));
+  assert(Object.values(exported.preferences.notes).includes('백업 직전 새 메모'));
+  await page.getByRole('button',{name:'창 닫기',exact:true}).click();
+  const first=page.locator('.compare-card .favorite').first();
+  const before=await first.getAttribute('aria-pressed');await first.dblclick();
+  await page.waitForFunction(()=>document.querySelector('.compare-card .favorite').getAttribute('aria-busy')==='false');
+  assert.equal(await first.getAttribute('aria-pressed'),before);
+  await first.click();await page.waitForFunction(()=>document.querySelector('.compare-card .favorite').getAttribute('aria-busy')==='false');
+  assert.notEqual(await first.getAttribute('aria-pressed'),before);
+  await page.evaluate(()=>{navigator.locks.request=window.realRequest;});
+  console.log('PASS delayed memo backup contains latest data and rapid favorite clicks preserve intent');
+  await page.locator('.photo-open').first().click();
+  assert.equal(await page.locator('.viewer-controls span').innerText(),'1 / 2');await page.keyboard.press('ArrowRight');
+  assert.equal(await page.locator('.viewer-controls span').innerText(),'2 / 2');
+  await page.getByRole('button',{name:'창 닫기',exact:true}).focus();await page.keyboard.press('ArrowLeft');
+  assert.equal(await page.locator('.viewer-controls span').innerText(),'1 / 2');
+  await page.keyboard.press('Escape');
+  await page.goto(base+'#/invitation');await page.getByRole('button',{name:'예식 정보 편집',exact:true}).click();
+  await page.getByLabel('첫 번째 이름',{exact:true}).fill('키보드 입력');
+  await page.getByLabel('첫 번째 이름',{exact:true}).press('ArrowLeft');
+  assert.equal(await page.getByLabel('첫 번째 이름',{exact:true}).inputValue(),'키보드 입력');
+  page.once('dialog',d=>d.accept());await page.keyboard.press('Escape');
+  await context.close();
+  console.log('PASS photo arrows work from title and close button, then detach from editors');
+
+  const concurrent=await browser.newContext({viewport:{width:1280,height:900}});
+  const a=await create(concurrent,'invitation'),b=await create(concurrent,'invitation');page=b;
+  await edit(a);await edit(b);
+  await a.getByLabel('첫 번째 이름',{exact:true}).fill('탭 A 이름');await b.getByLabel('첫 번째 이름',{exact:true}).fill('탭 B 이름');
+  await save(a);await b.getByRole('button',{name:'초안에 저장',exact:true}).click();await b.locator('.conflict-list').waitFor();
+  assert.equal(await b.locator('#dialog-notice button').count(),2);
+  await b.getByRole('button',{name:'현재 입력으로 충돌 항목 저장',exact:true}).focus();
+  await edit(a);await a.getByLabel('첫 번째 이름',{exact:true}).fill('새로운 탭 A 이름');await a.getByLabel('예식장·홀 이름',{exact:true}).fill('추가 저장 장소');await save(a);
+  await b.waitForFunction(()=>document.querySelector('.conflict-list').textContent.includes('새로운 탭 A 이름'));
+  assert.equal(await b.locator('#dialog-notice button').count(),2);
+  assert.equal(await b.evaluate(()=>document.activeElement.textContent),'현재 입력으로 충돌 항목 저장');
+  assert.equal(await b.getByLabel('첫 번째 이름',{exact:true}).inputValue(),'탭 B 이름');
+  await b.getByRole('button',{name:'현재 입력으로 충돌 항목 저장',exact:true}).click();await b.waitForFunction(()=>!document.querySelector('dialog').open);
+  assert.equal((await raw(b)).invitation.partner1,'탭 B 이름');assert.equal((await raw(b)).invitation.venue,'추가 저장 장소');
+  console.log('PASS conflict choices persist and refresh after another tab saves again');
+
+  await b.getByRole('button',{name:'내용 관리',exact:true}).click();
+  const file=await raw(b);file.invitation.partner1='가져온 파일의 이름';
+  await edit(a);await a.getByLabel('첫 번째 이름',{exact:true}).fill('다른 탭의 최신 이름');await save(a);
+  b.once('dialog',d=>d.accept());
+  await b.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'site.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(file))});
+  await b.locator('.conflict-list').waitFor();
+  assert.equal(await b.locator('#dialog-notice button').count(),2);
+  assert.match(await b.locator('.conflict-list').innerText(),/가져온 파일의 이름/);
+  assert.match(await b.locator('.conflict-list').innerText(),/다른 탭의 최신 이름/);
+  await b.setViewportSize({width:390,height:844});await b.screenshot({path:'work/followup-qa/import-conflict-mobile.png'});
+  await b.getByRole('button',{name:'현재 입력으로 충돌 항목 저장',exact:true}).click();await b.waitForFunction(()=>!document.querySelector('dialog').open);
+  assert.equal((await raw(b)).invitation.partner1,'가져온 파일의 이름');
+  await b.getByRole('button',{name:'내용 관리',exact:true}).click();
+  file.invitation.partner1='두 번째 가져오기';
+  await edit(a);await a.getByLabel('첫 번째 이름',{exact:true}).fill('유지할 최신 이름');await save(a);
+  b.once('dialog',d=>d.accept());await b.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'site.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(file))});
+  await b.locator('.conflict-list').waitFor();await b.getByRole('button',{name:'다른 탭의 저장본 불러오기',exact:true}).click();
+  await b.waitForFunction(()=>!document.querySelector('dialog').open);
+  assert.equal((await raw(b)).invitation.partner1,'유지할 최신 이름');
+  await concurrent.close();console.log('PASS imported-file conflicts offer both resolutions without silent overwrite');
+
+  const failContext=await browser.newContext({acceptDownloads:true});const failed=await create(failContext,'studios');page=failed;
+  await failed.locator('.compare-card textarea').first().waitFor();
+  await failed.evaluate(()=>{
+    window.realRequest=navigator.locks.request.bind(navigator.locks);navigator.locks.request=(key,cb)=>new Promise(r=>setTimeout(r,800)).then(()=>window.realRequest(key,cb));
+    Storage.prototype.setItem=function(){throw new DOMException('quota','QuotaExceededError');};
+  });
+  let downloads=0;failed.on('download',()=>downloads++);
+  await failed.locator('.compare-card textarea').first().fill('저장 실패할 메모');await failed.getByRole('button',{name:'내용 관리',exact:true}).click();
+  await failed.getByRole('button',{name:'개인 백업 저장',exact:true}).click();
+  await failed.waitForFunction(()=>document.querySelector('#dialog-notice').textContent.includes('백업을 중단'));
+  assert.equal(downloads,0);await failContext.close();console.log('PASS failed pending writes abort backup instead of exporting an incomplete file');
+
+  const guestContext=await browser.newContext();const guest=await create(guestContext,'invitation');page=guest;
+  const ogUrl=await guest.locator('meta[property="og:url"]').getAttribute('content');
+  const localCanonical=base+'?view=guest';await guest.goto(localCanonical);await guest.locator('#main[aria-busy="false"]').waitFor();
+  assert.equal(await guest.locator('[aria-current="page"]').innerText(),'청첩장');
+  assert(ogUrl.endsWith('/Wedding/?view=guest'));
+  await guest.locator('[data-route="home"]').click();assert.equal(await guest.locator('[aria-current="page"]').innerText(),'홈');
+  await guestContext.close();
+  assert.deepEqual(errors,[]);console.log('PASS canonical guest URL opens invitation and explicit home navigation remains available');
+}catch(error){if(page&&!page.isClosed())console.error(await page.locator('body').innerText());throw error;}
+finally{await browser.close();}

@@ -1,6 +1,6 @@
 import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js';
 import { validatePreferences, parsePreferencesBackup } from './preferences.js';
-import { lockedMerge, StorageConflict } from './storage.js';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -18,7 +18,30 @@ let filter='', favoritesOnly=false;
 const guestMode=new URLSearchParams(location.search).get('view')==='guest';
 let baseRevision='', draftRevision=null, editorState=null, studiosStatus='loading', studiosError='';
 let previousHash=location.hash,pendingWrites=0;
-let redrawDirectory=()=>{};
+let redrawDirectory=()=>{},conflictReview=null,photoNavigation=null;
+let preferenceQueue=Promise.resolve();
+const pendingWriteTasks=new Set(),favoritePending=new Map();
+let lastWriteFailed=false;
+function trackWrite(task){
+  const completion=Promise.resolve(task).then(value=>({ok:value!==false}),error=>({ok:false,error}));
+  pendingWriteTasks.add(completion);
+  completion.then(result=>{pendingWriteTasks.delete(completion);lastWriteFailed=!result.ok;});
+  return task;
+}
+function queuePreference(action){
+  const task=preferenceQueue.then(action);
+  preferenceQueue=task.catch(()=>{});
+  return trackWrite(task);
+}
+async function finishPendingWrites(){
+  let failed=false;
+  while(pendingWriteTasks.size){
+    const results=await Promise.all([...pendingWriteTasks]);
+    failed ||= results.some(result=>!result.ok);
+  }
+  if(failed)throw new Error('대기 중인 변경을 저장하지 못해 백업을 중단했습니다. 오류를 확인하고 다시 시도해 주세요.');
+}
+
 const editButton=(...args)=>guestMode?null:button(...args);
 
 function E(tag, attributes={}, ...children) {
@@ -40,6 +63,11 @@ const linkButton=(label, href, quiet=false) => E('a',{class:'button'+(quiet?' qu
 const readStorage=key=>{try{return localStorage.getItem(key);}catch{return null;}};
 function toast(message,error=false) {
   if(dialog.open){
+    if(conflictReview){
+      const status=$('#conflict-status');
+      if(status){status.textContent=message;status.setAttribute('role',error?'alert':'status');}
+      return;
+    }
     const notice=$('#dialog-notice');notice.textContent=message;notice.hidden=false;notice.className='dialog-notice'+(error?' error':'');
     notice.setAttribute('role',error?'alert':'status');
     if(error){notice.focus();notice.scrollIntoView({block:'nearest'});}
@@ -57,7 +85,7 @@ function describeValue(value){
 function conflictDetails(error){
   return E('div',{class:'conflict-list'},error.conflicts.length?error.conflicts.map(item=>E('section',{},
     E('p',{class:'small'},conflictLabel(item.path)),E('p',{},'현재 입력: ',describeValue(item.local)),E('p',{},'다른 탭의 저장본: ',describeValue(item.remote)))):
-    E('p',{},'확인하는 동안 다른 탭의 저장 내용이 다시 변경되었습니다. 최신 내용을 다시 확인해 주세요.'));
+    E('p',{},'서로 다른 항목의 변경은 함께 보존됩니다.'));
 }
 function conflictLabel(path){
   const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',notes:'스튜디오 메모',favorites:'관심 스튜디오',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'여행',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B'};
@@ -68,21 +96,43 @@ function storageMessage(error){
   if(error.name==='SecurityError')return '브라우저의 저장 허용 설정을 확인해 주세요.';
   return error.message;
 }
-async function savePrefs(next,base=structuredClone(prefs),approvedRaw) {
+function beginConflictReview({key,base,next,saveLocal,keepSaved}){
+  const refresh=()=>{
+    try{
+      const raw=localStorage.getItem(key);
+      const remote=key===DRAFT_KEY?(raw?parseContent(raw):baseContent):validatePreferences(JSON.parse(raw||'{}'));
+      const result=mergeChanges(base,next,remote),error=new StorageConflict(result.conflicts,raw);
+      const notice=$('#dialog-notice');
+      const focusedAction=notice.contains(document.activeElement)&&document.activeElement.tagName==='BUTTON'?document.activeElement.textContent:null;
+      notice.hidden=false;notice.className='dialog-notice error';notice.setAttribute('role','alert');
+      notice.replaceChildren(E('p',{},result.conflicts.length?error.message:'최신 저장본을 확인했습니다. 현재 입력과 겹치지 않는 변경은 함께 저장합니다.'),conflictDetails(error),
+        E('div',{class:'manager-actions'},button(key===DRAFT_KEY?'다른 탭의 저장본 불러오기':'다른 탭의 저장본 유지',keepSaved,'button quiet'),
+          button('현재 입력으로 충돌 항목 저장',()=>saveLocal(raw))),E('p',{id:'conflict-status',class:'small',role:'status'},'다른 탭이 다시 저장해도 비교 내용과 선택 버튼은 유지됩니다.'));
+      if(focusedAction)[...notice.querySelectorAll('button')].find(node=>node.textContent===focusedAction)?.focus({preventScroll:true});
+    }catch(error){toast('최신 저장본을 확인하지 못했습니다. '+storageMessage(error),true);}
+  };
+  conflictReview={key,refresh};refresh();
+  $('#dialog-notice').focus();
+}
+function savePrefs(next,base=structuredClone(prefs),approvedRaw){return trackWrite(persistPrefs(next,base,approvedRaw));}
+async function persistPrefs(next,base,approvedRaw) {
   pendingWrites++;
   try {
     const result=await lockedMerge({locks:navigator.locks,storage:localStorage,key:PREF_KEY,base,next,fallback:validatePreferences({}),parse:raw=>validatePreferences(JSON.parse(raw)),validate:validatePreferences,approvedRaw});
     prefs=result.value;return true;
   }catch(error){
     if(error instanceof StorageConflict){
-      showDialog('다른 탭의 변경 확인',E('div',{},E('p',{},error.message),conflictDetails(error),E('div',{class:'manager-actions'},
-        button('다른 탭의 저장본 유지',()=>{try{prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));closeDialog();render();}catch(cause){toast(cause.message,true);}},'button quiet'),
-        button('현재 입력으로 충돌 항목 저장',async()=>{if(await savePrefs(next,base,error.remoteRaw)){closeDialog();render();toast('선택한 내용으로 저장했습니다.');}}))));
+      if(showDialog('다른 탭의 변경 확인',E('p',{},'개인 메모와 선택의 변경 내용을 확인해 주세요.'))){
+        beginConflictReview({key:PREF_KEY,base,next,
+          keepSaved:()=>{try{prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));closeDialog();render();}catch(cause){toast(cause.message,true);}},
+          saveLocal:async raw=>{if(await savePrefs(next,base,raw)){closeDialog();render();toast('선택한 내용으로 저장했습니다.');}}});
+      }
     }else toast('선택과 메모를 저장하지 못했습니다. 이전 저장본을 유지합니다. '+storageMessage(error),true);
     return false;
   }finally{pendingWrites--;}
 }
-async function setDraft(next,base=structuredClone(content),approvedRaw) {
+function setDraft(next,base=structuredClone(content),approvedRaw){return trackWrite(persistDraft(next,base,approvedRaw));}
+async function persistDraft(next,base,approvedRaw) {
   pendingWrites++;
   try {
     const result=await lockedMerge({locks:navigator.locks,storage:localStorage,key:DRAFT_KEY,base,next,fallback:baseContent,parse:parseContent,validate:validateContent,approvedRaw,
@@ -104,9 +154,9 @@ function canLeaveEditor(){
   if(editorState?.isSaving()){toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.');return false;}
   return !dirtyEditor()||confirm('저장하지 않은 입력이 있습니다. 입력을 버리고 닫을까요?');
 }
-function closeDialog(){editorState=null;dialog.close();}
+function closeDialog(){editorState=null;conflictReview=null;photoNavigation=null;dialog.close();}
 function requestClose(){if(canLeaveEditor())closeDialog();}
-function currentRoute() {const route=location.hash.replace(/^#\/?/,'').split('/')[0];return routes.includes(route)?route:'home';}
+function currentRoute() {const route=location.hash.replace(/^#\/?/,'').split('/')[0];return routes.includes(route)?route:(guestMode?'invitation':'home');}
 function pageHeader(title, description, action, eyebrow) {
   return E('div',{class:'page-header'},E('div',{},E('p',{class:'eyebrow'},eyebrow||'OUR WEDDING JOURNAL'),E('h1',{},title),E('p',{},description)),action);
 }
@@ -184,13 +234,13 @@ function openPhotos(title,photos,index=0) {
       E('div',{class:'viewer-controls'},previous,E('span',{'aria-live':'polite'},`${index+1} / ${photos.length}`),next));
   };
   draw();
-  body.addEventListener('keydown',event=>{
-    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+  const navigate=event=>{
+    if(photos.length>1&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){
       event.preventDefault();index=(index+(event.key==='ArrowLeft'?-1:1)+photos.length)%photos.length;draw();
       body.querySelector(event.key==='ArrowLeft'?'button':'button:last-child')?.focus();
     }
-  });
-  showDialog(title,body);
+  };
+  if(showDialog(title,body))photoNavigation=navigate;
 }
 function openAlbum(album) {
   if(album.images.length)openPhotos(album.title,album.images);
@@ -238,26 +288,36 @@ function contactNode(studio,compact=false) {
 function favoriteButton(studio) {
   if(guestMode)return null;
   const pressed=Boolean(prefs.favorites?.includes(studio.id));
-  return E('button',{class:'favorite',type:'button','data-studio-id':studio.id,'aria-label':`${studio.name} 관심 스튜디오 ${pressed?'해제':'등록'}`,'aria-pressed':String(pressed),onclick:async()=>{
-    const set=new Set(prefs.favorites||[]);set.has(studio.id)?set.delete(studio.id):set.add(studio.id);
-    if(await savePrefs({...prefs,favorites:[...set]})){
-      const selected=prefs.favorites.includes(studio.id);
-      for(const target of document.querySelectorAll('.favorite'))if(target.dataset.studioId===studio.id){
-        target.setAttribute('aria-pressed',String(selected));target.setAttribute('aria-label',`${studio.name} 관심 스튜디오 ${selected?'해제':'등록'}`);target.textContent=selected?'♥':'♡';
-      }
-      redrawDirectory();
-    }
+  return E('button',{class:'favorite',type:'button','data-studio-id':studio.id,'aria-label':`${studio.name} 관심 스튜디오 ${pressed?'해제':'등록'}`,'aria-pressed':String(pressed),'aria-busy':String(Boolean(favoritePending.get(studio.id))),onclick:()=>{
+    favoritePending.set(studio.id,(favoritePending.get(studio.id)||0)+1);
+    updateFavoriteButtons(studio);
+    queuePreference(async()=>{
+      try{
+        const set=new Set(prefs.favorites||[]);set.has(studio.id)?set.delete(studio.id):set.add(studio.id);
+        const saved=await savePrefs({...prefs,favorites:[...set]});
+        if(saved){updateFavoriteButtons(studio);if(favoritesOnly)redrawDirectory();}
+        return saved;
+      }finally{favoritePending.set(studio.id,favoritePending.get(studio.id)-1);updateFavoriteButtons(studio);}
+    });
   }},pressed?'♥':'♡');
+}
+function updateFavoriteButtons(studio){
+  const selected=Boolean(prefs.favorites?.includes(studio.id)),busy=Boolean(favoritePending.get(studio.id));
+  for(const target of document.querySelectorAll('.favorite'))if(target.dataset.studioId===studio.id){
+    target.setAttribute('aria-pressed',String(selected));target.setAttribute('aria-busy',String(busy));
+    target.setAttribute('aria-label',`${studio.name} 관심 스튜디오 ${selected?'해제':'등록'}${busy?' · 저장 중':''}`);target.textContent=selected?'♥':'♡';
+  }
 }
 function compareCard(studio) {
   const memo=E('textarea',{maxlength:'1000','aria-label':`${studio.name} 개인 메모`,placeholder:'마음에 든 장면이나 상담할 내용을 남겨요.'});
   memo.value=prefs.notes?.[studio.id]||'';
-  let memoQueue=Promise.resolve();
   memo.addEventListener('input',()=>{
     const value=memo.value;
-    memoQueue=memoQueue.then(async()=>{
-      if(!await savePrefs({...prefs,notes:{...(prefs.notes||{}),[studio.id]:value}}))memo.value=prefs.notes?.[studio.id]||'';
+    queuePreference(async()=>{
+      const saved=await savePrefs({...prefs,notes:{...(prefs.notes||{}),[studio.id]:value}});
+      if(!saved)memo.value=prefs.notes?.[studio.id]||'';
       else for(const other of document.querySelectorAll('.compare-card textarea'))if(other!==memo&&other.getAttribute('aria-label')===memo.getAttribute('aria-label'))other.value=value;
+      return saved;
     });
   });
   return E('article',{class:'compare-card'},E('div',{class:'card-heading'},E('div',{},E('p',{class:'record-date'},`${studio.zip}번 샘플`),E('h2',{},studio.name)),favoriteButton(studio)),
@@ -328,7 +388,7 @@ function render() {
 }
 function showDialog(title,body) {
   if(!canLeaveEditor())return false;
-  editorState=null;$('#dialog-notice').hidden=true;
+  editorState=null;conflictReview=null;photoNavigation=null;$('#dialog-notice').hidden=true;
   $('#editor-title').textContent=title;editor.replaceChildren(body);
   const actionSlot=$('#dialog-actions');actionSlot.replaceChildren();
   const actions=body.matches('form')?body.querySelector('.form-actions'):null;
@@ -410,6 +470,7 @@ function openEditor(type,item=null) {
   form.appendChild(E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),submit));
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(processing||saving)return;saving=true;submit.disabled=true;
+    let attemptedNext;
     const controlStates=[...form.querySelectorAll('input,textarea,select,button')].map(node=>[node,node.disabled]);
     for(const [node]of controlStates)node.disabled=true;
     try {
@@ -426,15 +487,16 @@ function openEditor(type,item=null) {
         const index=next[type].findIndex(value=>value.id===id);
         if(index===-1)next[type].push(record);else next[type][index]=record;
       }
+      attemptedNext=next;
       await setDraft(next,editingContent,approvedRaw);closeDialog();render();toast('이 기기에 초안을 저장했습니다.');
     }catch(error){
       toast(error.message,true);
       if(error instanceof StorageConflict){
-        const notice=$('#dialog-notice');notice.append(conflictDetails(error));
-        notice.append(button('다른 탭의 저장본 불러오기',()=>{
-          if(!confirm('현재 입력을 버리고 다른 탭의 저장본을 불러올까요?'))return;
-          try{syncDraftFromStorage();closeDialog();render();}catch(cause){toast(cause.message,true);}
-        },'button quiet'),button('현재 입력으로 충돌 항목 저장',()=>{approvedRaw=error.remoteRaw;form.requestSubmit();}));
+        beginConflictReview({key:DRAFT_KEY,base:editingContent,next:attemptedNext,
+          keepSaved:()=>{
+            if(!confirm('현재 입력을 버리고 다른 탭의 저장본을 불러올까요?'))return;
+            try{syncDraftFromStorage();closeDialog();render();}catch(cause){toast(cause.message,true);}
+          },saveLocal:raw=>{approvedRaw=raw;form.requestSubmit();}});
       }
     }finally{saving=false;submit.disabled=false;for(const [node,disabled]of controlStates)node.disabled=disabled;}
   });
@@ -447,8 +509,22 @@ function downloadJson(value,filename) {
   const blob=new Blob([raw],{type:'application/json;charset=utf-8'});
   const url=URL.createObjectURL(blob);const a=E('a',{href:url,download:filename});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-function downloadContent() { downloadJson(validateContent(content),'site.json'); }
-function downloadPrivate() { downloadJson({kind:'wedding-private-preferences',schemaVersion:1,preferences:validatePreferences(prefs)},'wedding-private-preferences.json'); }
+async function downloadSaved(key){
+  const pendingAtStart=pendingWriteTasks.size>0;
+  try{
+    if(pendingAtStart)toast('변경 내용을 저장한 뒤 최신 저장본으로 백업합니다.');
+    await finishPendingWrites();
+    if(!pendingAtStart&&lastWriteFailed&&!confirm('최근 변경의 저장에 실패했습니다. 마지막으로 저장된 내용만 백업할까요?'))return;
+    const value=await navigator.locks.request(`wedding-storage:${key}`,()=>{
+      const raw=localStorage.getItem(key);
+      return key===PREF_KEY?validatePreferences(JSON.parse(raw||'{}')):raw?parseContent(raw):validateContent(baseContent);
+    });
+    if(key===PREF_KEY){prefs=value;downloadJson({kind:'wedding-private-preferences',schemaVersion:1,preferences:value},'wedding-private-preferences.json');}
+    else downloadJson(value,'site.json');
+  }catch(error){toast(error.message||'백업을 저장하지 못했습니다.',true);}
+}
+function downloadContent(){return downloadSaved(DRAFT_KEY);}
+function downloadPrivate(){return downloadSaved(PREF_KEY);}
 function openManager() {
   if(guestMode)return;
   const managerBase=structuredClone(content),managerRaw=readStorage(DRAFT_KEY);
@@ -470,7 +546,15 @@ function openManager() {
       if(selected.size>MAX_IMPORT_BYTES)throw new Error('콘텐츠 파일은 8MB 이하로 선택해 주세요.');
       const next=parseContent(await selected.text());
       if(!confirm('현재 기기의 초안을 선택한 파일의 내용으로 바꿀까요?'))return;
-      await setDraft(next,managerBase);closeDialog();render();toast('콘텐츠를 이 기기의 초안으로 불러왔습니다.');
+      const applyImport=async approvedRaw=>{
+        try{await setDraft(next,managerBase,approvedRaw);closeDialog();render();toast('콘텐츠를 이 기기의 초안으로 불러왔습니다.');}
+        catch(error){
+          if(error instanceof StorageConflict)beginConflictReview({key:DRAFT_KEY,base:managerBase,next,
+            saveLocal:applyImport,keepSaved:()=>{try{syncDraftFromStorage();closeDialog();render();toast('다른 탭의 저장본을 유지했습니다.');}catch(cause){toast(cause.message,true);}}});
+          else toast(error.message,true);
+        }
+      };
+      await applyImport();
     }catch(error){toast(error.message,true);}finally{file.value='';}
   });
   showDialog('내용 관리',E('div',{},E('p',{class:'form-note'},'공개본은 저장소의 콘텐츠입니다. 여기서 편집한 내용은 이 기기에만 저장되며 자동으로 공개되지 않습니다.'),
@@ -497,6 +581,7 @@ function syncDraftFromStorage(){
 }
 $('#close-dialog').addEventListener('click',requestClose);
 dialog.addEventListener('cancel',event=>{event.preventDefault();requestClose();});
+dialog.addEventListener('keydown',event=>photoNavigation?.(event));
 $('#manage-content').addEventListener('click',()=>content&&openManager());
 $('#manage-draft').addEventListener('click',()=>content&&openManager());
 document.addEventListener('click',event=>{
@@ -505,7 +590,7 @@ document.addEventListener('click',event=>{
     if(!canLeaveEditor()){event.preventDefault();event.stopImmediatePropagation();}else closeDialog();
   }
 },true);
-window.addEventListener('beforeunload',event=>{if(dirtyEditor()||pendingWrites){event.preventDefault();event.returnValue='';}});
+window.addEventListener('beforeunload',event=>{if(dirtyEditor()||pendingWrites||pendingWriteTasks.size){event.preventDefault();event.returnValue='';}});
 window.addEventListener('hashchange',()=>{
   if(!content||location.hash==='#main')return;
   if(!canLeaveEditor()){history.replaceState(null,'',location.pathname+location.search+previousHash);return;}
@@ -513,6 +598,7 @@ window.addEventListener('hashchange',()=>{
 });
 window.addEventListener('storage',event=>{
   if(guestMode||!content||![DRAFT_KEY,PREF_KEY,null].includes(event.key))return;
+  if(conflictReview&&dialog.open){if(event.key===conflictReview.key||event.key===null)conflictReview.refresh();return;}
   if(dialog.open||document.activeElement?.matches('textarea')){
     toast('다른 탭의 저장 내용이 변경되었습니다. 현재 입력은 유지하며 저장할 때 변경 내용을 확인합니다.');return;
   }
