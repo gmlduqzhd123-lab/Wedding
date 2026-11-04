@@ -328,7 +328,7 @@ function travelSection(item,key,title,...children){
 }
 function travelDetails(item){
   const plan=item.plan;
-  if(!plan)return item.body?E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'일정·숙박·비용 상세'),E('p',{class:'record-body'},item.body),externalLink('직접 입력한 참고 링크 ↗',item.url)):null;
+  if(!plan)return item.body||item.url?E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'직접 작성한 메모·참고 링크'),item.body?E('p',{class:'record-body'},item.body):null,externalLink('직접 입력한 참고 링크 ↗',item.url)):null;
   const state=budgetSummary(item);
   const costRows=Object.entries(COST_LABELS).map(([key,label])=>[label,won(plan.costs[key])]);
   costRows.push(['입력된 배분 소계',state.known===null?'입력된 배분 없음':won(state.known)],['2인 계획 총액',won(item.budget)],['항목 미배분',state.unallocated===null?'판단 보류':state.unallocated>=0?won(state.unallocated):`배분 초과 ${won(-state.unallocated)}`]);
@@ -742,7 +742,13 @@ $('#manage-content').addEventListener('click',()=>content&&openManager());
 $('#manage-draft').addEventListener('click',()=>content&&openManager());
 document.addEventListener('click',event=>{
   const anchor=event.target.closest('a[href]');
-  if(anchor&&dirtyEditor()){
+  if(anchor?.matches('.skip-link[href="#main"]')){
+    event.preventDefault();
+    if(!dialog.open){main.focus({preventScroll:true});main.scrollIntoView({block:'start',behavior:'instant'});}
+    return;
+  }
+  const opensElsewhere=event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||anchor?.target.toLowerCase()==='_blank';
+  if(anchor&&dirtyEditor()&&!opensElsewhere&&!anchor.hasAttribute('download')){
     if(!canLeaveEditor()){event.preventDefault();event.stopImmediatePropagation();}else closeDialog();
   }
 },true);
