@@ -29,6 +29,10 @@ export function parsePreferencesBackup(raw) {
   if (input?.kind !== 'wedding-private-preferences' || input.schemaVersion !== 1) throw new Error('이 앱의 개인 메모·선택 백업 파일을 선택해 주세요.');
   return validatePreferences(input.preferences);
 }
+export function pruneTripPreferences(input,trips){
+  const valid=validatePreferences(input),ids=new Set(trips.map(trip=>trip.id));
+  return validatePreferences({...valid,tripCompare:valid.tripCompare.filter(id=>ids.has(id)),tripFavorites:valid.tripFavorites.filter(id=>ids.has(id)),tripSelected:ids.has(valid.tripSelected)?valid.tripSelected:''});
+}
 // Persist before committing UI state. Callers keep their current state on failure.
 export function persistPreferences(storage, key, next) {
   const valid = validatePreferences(next);

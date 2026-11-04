@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan} from './travel.js?v=structured-travel-2';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan} from './travel.js?v=travel-integrity-3';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -67,7 +67,7 @@ function validatePlan(plan,tripDates){
   const dateBasis={startDate:date(basis.startDate),endDate:date(basis.endDate)};
   if(dateBasis.startDate&&dateBasis.endDate&&dateBasis.startDate>dateBasis.endDate)throw new Error('가안 기준 날짜의 순서를 확인해 주세요.');
   return {version:1,costs,stays,dateBasis,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
-    climate:string(plan.climate),climateMonth:plan.climateMonth,sourceTitle:string(plan.sourceTitle,500),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
+    climate:string(plan.climate),climateMonth:plan.climateMonth,sourceTitle:string(plan.sourceTitle,500),sourceUrl:link(plan.sourceUrl??''),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
     ...(plan.legacyText===undefined?{}:{legacyText:string(plan.legacyText)})};
 }
 export function validateContent(input) {

@@ -1,7 +1,7 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=structured-travel-2';
-import { validatePreferences, parsePreferencesBackup } from './preferences.js';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-integrity-3';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=structured-travel-2';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=travel-integrity-3';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -214,7 +214,15 @@ function recordActions(type,item) {
   if(guestMode)return null;
   return E('div',{class:'record-actions'},button('수정',()=>openEditor(type,item),'text-button'),button('삭제',async()=>{
     if(!confirm(`‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`))return;
-    try{const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();toast('초안에서 삭제했습니다.');}catch(error){toast(error.message,true);}
+    try{
+      const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();
+      const cleaned=type!=='honeymoon'||await queuePreference(async()=>{
+        const nextPrefs=pruneTripPreferences(prefs,content.honeymoon);
+        if(JSON.stringify(nextPrefs)===JSON.stringify(prefs))return true;
+        const saved=await savePrefs(nextPrefs);if(saved)updateTripChoices();return saved;
+      });
+      if(cleaned)toast('초안에서 삭제했습니다.');
+    }catch(error){toast(error.message,true);}
   },'text-button'));
 }
 function renderStories() {
@@ -290,12 +298,12 @@ function tripStayStatus(item){
 function tripControls(item) {
   if(guestMode)return null;
   const toggle=key=>queuePreference(async()=>{
-    let next;
-    if(key==='tripSelected')next={...prefs,tripSelected:prefs.tripSelected===item.id?'':item.id};
+    const active=pruneTripPreferences(prefs,content.honeymoon);let next;
+    if(key==='tripSelected')next={...active,tripSelected:active.tripSelected===item.id?'':item.id};
     else{
-      const selected=new Set(prefs[key]||[]);selected.has(item.id)?selected.delete(item.id):selected.add(item.id);
+      const selected=new Set(active[key]||[]);selected.has(item.id)?selected.delete(item.id):selected.add(item.id);
       if(key==='tripCompare'&&selected.size>2){toast('비교할 여행지는 두 곳까지 선택해 주세요.',true);return true;}
-      next={...prefs,[key]:[...selected]};
+      next={...active,[key]:[...selected]};
     }
     const saved=await savePrefs(next);if(saved)updateTripChoices();return saved;
   });
@@ -335,12 +343,13 @@ function travelDetails(item){
     travelSection(item,'costs','비용 배분·예비비',E('dl',{class:'cost-breakdown'},costRows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),tripBudgetStatus(item),
       E('p',{},plan.budgetNotes),E('p',{},'기타 여행비는 교통·식비·활동·보험·통신·준비 비용 등의 통합 배분입니다. 개인 쇼핑은 기본 제외이며 실제 견적·예약 가능 가격은 확인하지 않았습니다.')),
     travelSection(item,'experiences','경험 제안',E('p',{},plan.experiences||'아직 입력한 제안이 없습니다.')),
-    travelSection(item,'climate',`${plan.climateMonth}월 기후 경향·공식 출처`,E('p',{},plan.climate||'아직 입력한 기후 안내가 없습니다.'),
+    travelSection(item,'climate',`${plan.climateMonth}월 기후 경향·출처`,E('p',{},plan.climate||'아직 입력한 기후 안내가 없습니다.'),
       changedMonth?E('p',{class:'form-note'},`기후 안내는 ${plan.climateMonth}월 기준입니다. 수정한 여행 월에 맞는 안내를 다시 확인해 주세요.`):null,
-      E('p',{class:'small muted'},`${plan.sourceTitle||'출처 미입력'}${plan.checkedOn?' · 확인일 '+plan.checkedOn:''}`),externalLink(plan.sourceTitle?'기후 공식 안내 ↗':'직접 입력한 참고 링크 ↗',item.url)),
+      E('p',{class:'small muted'},`${plan.sourceTitle||'출처 미입력'}${plan.checkedOn?' · 자료 확인일 '+plan.checkedOn:''}`),externalLink('기후 공식 안내 ↗',plan.sourceUrl||''),
+      plan.sourceTitle&&!plan.sourceUrl?E('p',{class:'small muted'},'기후 출처 링크 미입력 · 직접 입력한 참고 링크와는 별도로 관리합니다.'):null),
     travelSection(item,'sources','계획 자료·확인 범위',E('p',{},plan.sourceTitle?'초기 계획 배분과 숙박 구성은 사용자 제공 Honeymoon_2027_PRD.md(2026-11-04)를 바탕으로 정리했습니다. 수정한 날짜·금액은 현재 입력값이며 실제 예약이나 견적으로 확인된 상태가 아닙니다.':'직접 입력한 여행 계획입니다. 금액·일정·출처의 확인 상태를 별도로 검토해 주세요.'),
       plan.sourceTitle?externalLink('계획 자료와 적용 범위 ↗','https://github.com/gmlduqzhd123-lab/Wedding/blob/main/CONTENT_SOURCES.md'):null),
-    item.body?travelSection(item,'memo','직접 작성한 메모',E('p',{class:'record-body'},item.body),E('p',{class:'small muted'},'자유 메모의 문장은 날짜·금액 변경 시 자동 수정되지 않습니다.')):null);
+    item.body||item.url?travelSection(item,'memo','직접 작성한 메모·참고 링크',item.body?E('p',{class:'record-body'},item.body):null,externalLink('직접 입력한 참고 링크 ↗',item.url),E('p',{class:'small muted'},'직접 입력한 참고 링크는 기후 공식 출처와 별개입니다. 자유 메모의 문장은 날짜·금액 변경 시 자동 수정되지 않습니다.')):null);
 }
 function renderAlbums() {
   return [pageHeader('오래 간직할 우리의 순간','사진을 앨범으로 모으고, 그날의 이야기를 함께 남겨요.',editButton('앨범 추가',()=>openEditor('albums')),'PHOTO ALBUM'),
@@ -558,6 +567,8 @@ function openEditor(type,item=null) {
   let editedPlan,stayFields;
   if(type==='honeymoon'){
     editedPlan=structuredClone(item?.plan||{version:1,costs:{airfare:null,lodging:null,other:null,reserve:null},stays:[],lodgingNotes:'',itinerary:'',experiences:'',transport:'',climate:'',climateMonth:5,sourceTitle:'',checkedOn:'',budgetNotes:''});
+    form.append(E('p',{class:'form-note'},'참고 링크는 직접 작성하는 메모용 주소이며 기후 공식 출처와 별도로 저장합니다.'));
+    if(editedPlan.sourceTitle)form.append(E('div',{class:'form-note'},E('p',{},`기후 자료: ${editedPlan.sourceTitle}${editedPlan.checkedOn?' · 자료 확인일 '+editedPlan.checkedOn:''}`),externalLink('기후 공식 안내 ↗',editedPlan.sourceUrl||'')));
     stayFields=stayEditor(form,fields,editedPlan);
     for(const [key,label]of [['lodgingNotes','숙박 구성 메모'],['itinerary','일정 흐름 가안'],['transport','계획상 이동']]){
       const input=E('textarea',{rows:'4',id:`plan-${key}`,maxlength:'12000'});input.value=editedPlan[key];fields[`plan_${key}`]=input;

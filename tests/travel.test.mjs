@@ -66,3 +66,33 @@ test('changed dates and implausibly short trips require review without silently 
   assert.equal(stayReview(trip).warnings.length,1);
   assert.deepEqual(parseContent(JSON.stringify({ ...validateContent(original),honeymoon:[trip]})).honeymoon[0],trip);
 });
+
+test('stay review detects overlaps including nonadjacent stays, reversed order, gaps and out-of-trip dates',()=>{
+  const trip=validateContent(original).honeymoon[0];
+  const stay=(checkIn,checkOut)=>({region:'가안',checkIn,checkOut,nights:dateSpan(checkIn,checkOut)});
+  trip.plan.stays=[stay('2027-05-09','2027-05-12'),stay('2027-05-10','2027-05-14')];
+  assert.match(stayReview(trip).message,/겹칩니다/);
+  trip.plan.stays=[stay('2027-05-10','2027-05-11'),stay('2027-05-13','2027-05-14'),stay('2027-05-10','2027-05-12')];
+  assert.match(stayReview(trip).message,/1·3/);assert.match(stayReview(trip).message,/입력 순서/);assert.match(stayReview(trip).message,/기록되지 않은/);
+  trip.plan.stays=[stay('2030-05-09','2030-05-12')];assert.match(stayReview(trip).message,/날짜·연도/);
+  trip.plan.stays=[{region:'가안',nights:3,checkIn:'2030-05-09',checkOut:''}];assert.match(stayReview(trip).message,/날짜·연도/);
+  trip.plan.stays=[stay('2027-05-08','2027-05-10'),stay('2027-05-10','2027-05-12')];
+  assert.equal(stayReview(trip).warnings.length,0,'same-day hotel transfer and one-day date-line margin are allowed');
+  trip.plan.stays=[{region:'가안',nights:3,checkIn:'2027-05-09',checkOut:''}];assert.match(stayReview(trip).message,/0\/1곳/);
+});
+
+test('official climate source and personal reference survive edits and legacy imports independently',()=>{
+  const data=structuredClone(original),trip=data.honeymoon[0],source=trip.plan.sourceUrl;
+  trip.url='https://example.com/my-note';let saved=validateContent(data).honeymoon[0];
+  assert.equal(saved.url,trip.url);assert.equal(saved.plan.sourceUrl,source);
+  delete trip.plan.sourceUrl;saved=validateContent(data).honeymoon[0];
+  assert.equal(saved.plan.sourceUrl,'');assert.equal(saved.url,trip.url,'legacy reference is never silently promoted to official');
+  trip.plan.sourceUrl='javascript:alert(1)';assert.throws(()=>validateContent(data),/링크/);
+});
+
+test('Spain has three ordered stays matching the provided round trip and preserving total nights and costs',()=>{
+  const trip=original.honeymoon.find(trip=>trip.id==='spain');
+  assert.deepEqual(trip.plan.stays.map(({region,nights})=>[region,nights]),[['바르셀로나',1],['마요르카',3],['바르셀로나',3]]);
+  assert.match(staySummary(trip),/바르셀로나 1박 → 마요르카 3박 → 바르셀로나 3박 · 총 7박/);
+  assert.equal(trip.budget,9400000);assert.equal(budgetSummary(trip).known,9400000);
+});

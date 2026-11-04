@@ -42,7 +42,7 @@ try{
   await page.getByRole('button',{name:'현재 날짜로 가안 기준 갱신',exact:true}).click();await save();
   await page.reload();await ready();await open('all');await open('stays');
   const stays=await page.locator('[data-view-key="bali:stays"]').innerText();
-  for(const value of ['검증 지역 B 3박 + 검증 지역 A 2박','2027-05-10','2027-05-12','바꾼 일정 흐름','바꾼 이동 계획','수정한 숙박 설명'])assert(stays.includes(value));
+  for(const value of ['검증 지역 B 3박 → 검증 지역 A 2박','2027-05-10','2027-05-12','바꾼 일정 흐름','바꾼 이동 계획','수정한 숙박 설명'])assert(stays.includes(value));
   assert(!await card().locator(':scope > .stay-status').innerText().then(t=>t.includes('달라졌습니다')));
   // Dynamic rows participate in dirty detection and cancellation.
   await edit();await page.getByRole('button',{name:'숙박 1 삭제',exact:true}).click();await page.getByRole('button',{name:'취소',exact:true}).click();
