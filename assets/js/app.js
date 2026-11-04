@@ -1,7 +1,7 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-integrity-3';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=stay-focus-5';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=travel-integrity-3';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=stay-focus-5';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -210,12 +210,24 @@ function renderInvitation() {
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),externalLink('오시는 길 ↗',info.mapUrl,'button quiet')):
     empty('우리의 첫 초대장을 준비해요.','두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.','예식 정보 입력',()=>openEditor('invitation'))];
 }
+function focusTrip(id){
+  if(currentRoute()!=='honeymoon'||dialog.open)return;
+  const card=[...main.querySelectorAll('[data-trip-id]')].find(node=>node.dataset.tripId===id);
+  const target=card?.querySelector('h2')||main.querySelector('.page-header .button')||main;
+  if(target.matches('h2'))target.tabIndex=-1;
+  target.focus({preventScroll:true});
+  const bounds=target.getBoundingClientRect();
+  if(bounds.top<0||bounds.bottom>innerHeight)target.scrollIntoView({block:'nearest',behavior:'instant'});
+}
 function recordActions(type,item) {
   if(guestMode)return null;
   return E('div',{class:'record-actions'},button('수정',()=>openEditor(type,item),'text-button'),button('삭제',async()=>{
     if(!confirm(`‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`))return;
     try{
+      const ids=content.honeymoon.map(trip=>trip.id),index=ids.indexOf(item.id);
+      const neighbors=[...ids.slice(index+1),...ids.slice(0,index).reverse()];
       const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();
+      if(type==='honeymoon')focusTrip(neighbors.find(id=>content.honeymoon.some(trip=>trip.id===id))||content.honeymoon[0]?.id);
       const cleaned=type!=='honeymoon'||await queuePreference(async()=>{
         const nextPrefs=pruneTripPreferences(prefs,content.honeymoon);
         if(JSON.stringify(nextPrefs)===JSON.stringify(prefs))return true;
@@ -621,14 +633,14 @@ function openEditor(type,item=null) {
   form.appendChild(E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),submit));
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(processing||saving)return;saving=true;submit.disabled=true;
-    let attemptedNext;
+    let attemptedNext,savedId;
     const controlStates=[...form.querySelectorAll('input,textarea,select,button')].map(node=>[node,node.disabled]);
     for(const [node]of controlStates)node.disabled=true;
     try {
       const next=structuredClone(editingContent);const data=Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.value.trim()]));
       if(type==='invitation')next.invitation=data;
       else {
-        const id=item?.id||crypto.randomUUID();
+        const id=item?.id||crypto.randomUUID();savedId=id;
         let record={...data,id};
         if(type==='albums') {
           const images=[...albumImages,...data.urls.split(/\r?\n/).map(src=>src.trim()).filter(Boolean)];
@@ -644,7 +656,9 @@ function openEditor(type,item=null) {
         if(index===-1)next[type].push(record);else next[type][index]=record;
       }
       attemptedNext=next;
-      await setDraft(next,editingContent,approvedRaw);closeDialog();render();toast('이 기기에 초안을 저장했습니다.');
+      await setDraft(next,editingContent,approvedRaw);closeDialog();render();
+      if(type==='honeymoon')focusTrip(savedId);
+      toast('이 기기에 초안을 저장했습니다.');
     }catch(error){
       toast(error.message,true);
       if(error instanceof StorageConflict){

@@ -27,7 +27,7 @@ export function stayReview(trip){
   if(basis&&(basis.startDate!==trip.startDate||basis.endDate!==trip.endDate))warnings.push('여행 날짜가 가안 기준과 달라졌습니다. 숙박·이동 구성을 다시 확인해 주세요.');
   const dates=stays.map(stay=>({start:calendarDay(stay.checkIn),end:calendarDay(stay.checkOut)}));
   const departure=calendarDay(trip.startDate),arrival=calendarDay(trip.endDate);
-  const outside=[],overlaps=[],reversed=[],gaps=[];
+  const outside=[],overlaps=[],reversed=[],gaps=[],lastKnown={start:null,end:null};
   for(let i=0;i<dates.length;i++){
     const current=dates[i];
     // Korean and hotel dates use different zones: allow one calendar day either side.
@@ -37,14 +37,19 @@ export function stayReview(trip){
       const previous=dates[j];
       if([previous.start,previous.end,current.start,current.end].every(day=>day!==null)&&previous.end>previous.start&&current.end>current.start&&Math.max(previous.start,current.start)<Math.min(previous.end,current.end))overlaps.push(`${j+1}·${i+1}`);
     }
+    for(const key of ['start','end']){
+      if(current[key]===null)continue;
+      const prior=lastKnown[key],pair=prior===null?'':`${prior+1}→${i+1}`;
+      if(prior!==null&&current[key]<dates[prior][key]&&!reversed.includes(pair))reversed.push(pair);
+      lastKnown[key]=i;
+    }
     const previous=dates[i-1];
-    if(previous&&previous.start!==null&&current.start!==null&&current.start<previous.start)reversed.push(`${i}→${i+1}`);
     if(previous&&previous.end!==null&&current.start!==null&&current.start>previous.end)gaps.push(`${i}→${i+1} (${current.start-previous.end}박)`);
   }
   const brief=items=>items.slice(0,5).join(', ')+(items.length>5?` 외 ${items.length-5}건`:'');
   if(outside.length)warnings.push(`숙박 ${brief(outside)}의 현지 날짜가 한국 여행 기간의 앞뒤 1일 여유 범위를 벗어납니다. 날짜·연도를 확인해 주세요.`);
   if(overlaps.length)warnings.push(`숙박 일정이 겹칩니다: ${brief(overlaps)}. 중복 숙박 여부를 확인해 주세요.`);
-  if(reversed.length)warnings.push(`숙박 입력 순서와 체크인 날짜 순서가 다릅니다: ${brief(reversed)}.`);
+  if(reversed.length)warnings.push(`숙박 입력 순서와 현지 날짜 순서가 다릅니다: ${brief(reversed)}.`);
   if(gaps.length)warnings.push(`숙박 사이에 기록되지 않은 기간이 있습니다: ${brief(gaps)}. 숙박 또는 야간 이동을 확인해 주세요.`);
   const dated=dates.filter(({start,end})=>start!==null&&end!==null&&end>start).length;
   if(span===null)warnings.push('한국 출발·도착 날짜를 모두 입력해 주세요.');

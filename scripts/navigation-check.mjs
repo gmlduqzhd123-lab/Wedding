@@ -55,5 +55,21 @@ try{
   assert.equal(await r.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);
   await r.goto(base+'?view=guest#/invitation');await ready(r);assert.match(await r.locator('.invitation-date').innerText(),/2027년 5월 8일.*13:00/);assert.match(await r.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
   assert.equal(await r.locator('.couple-names,.invitation .message,.place p').count(),0);assert.equal(await r.getByRole('link',{name:'오시는 길 ↗',exact:true}).count(),0);await c.context.close();
-  assert.deepEqual(errors,[]);console.log('PASS legacy link-only import/render/reload/export/reset, responsive layouts, confirmed invitation and blank missing fields, zero page errors');
+  console.log('PASS legacy link-only import/render/reload/export/reset, responsive layouts, confirmed invitation and blank missing fields');
+  const d=await fresh(),s=d.page;s.on('dialog',d=>d.accept());
+  const focusedId=()=>s.evaluate(()=>document.activeElement.closest('[data-trip-id]')?.dataset.tripId);
+  await card(s).getByRole('button',{name:'수정',exact:true}).click();await s.getByLabel('일정·상담 메모',{exact:true}).fill('저장 후 초점 검증');await save(s);
+  assert.equal(await focusedId(),'bali');assert.equal(await s.evaluate(()=>document.activeElement.tagName),'H2');
+  await s.keyboard.press('Tab');assert.equal(await focusedId(),'bali');
+  const remove=async id=>{await s.locator(`[data-trip-id="${id}"]`).getByRole('button',{name:'삭제',exact:true}).click();await s.locator(`[data-trip-id="${id}"]`).waitFor({state:'detached'});await s.waitForFunction(()=>document.querySelector('#toast').textContent.includes('삭제했습니다'));};
+  await remove('hawaii');assert.equal(await focusedId(),'italy','middle deletion focuses the following candidate');
+  await remove('maldives');assert.equal(await focusedId(),'spain','last deletion focuses the preceding candidate');
+  await remove('bali');assert.equal(await focusedId(),'italy');await s.keyboard.press('Tab');assert.equal(await focusedId(),'italy');
+  await remove('italy');assert.equal(await focusedId(),'spain');await remove('spain');
+  assert.equal(await s.evaluate(()=>document.activeElement.textContent),'여행지 추가');
+  await s.keyboard.press('Enter');await s.getByLabel('여행지',{exact:true}).fill('새 후보 초점 검증');await save(s);
+  assert.equal(await s.evaluate(()=>document.activeElement.textContent),'새 후보 초점 검증');
+  assert(await s.evaluate(()=>{const r=document.activeElement.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}));await s.keyboard.press('Tab');assert.equal(await focusedId(),await s.locator('[data-trip-id]').getAttribute('data-trip-id'));
+  await s.screenshot({path:'work/navigation-qa/focus-after-save.png',fullPage:true});await d.context.close();
+  assert.deepEqual(errors,[]);console.log('PASS save/add focus, next/previous/empty deletion focus and Tab continuation, zero browser errors');
 }finally{await browser.close();}

@@ -81,6 +81,20 @@ test('stay review detects overlaps including nonadjacent stays, reversed order, 
   trip.plan.stays=[{region:'가안',nights:3,checkIn:'2027-05-09',checkOut:''}];assert.match(stayReview(trip).message,/0\/1곳/);
 });
 
+test('partial stay dates retain known start/end ordering across blank rows without assuming missing nights',()=>{
+  const trip=validateContent(original).honeymoon[0];
+  const blank={region:'날짜 미정',nights:1,checkIn:'',checkOut:''};
+  trip.plan.stays=[{region:'첫 숙박',nights:2,checkIn:'2027-05-14',checkOut:'2027-05-16'},structuredClone(blank),{region:'세 번째',nights:1,checkIn:'2027-05-09',checkOut:'2027-05-10'}];
+  let review=stayReview(trip);assert.match(review.message,/입력 순서/);assert.match(review.message,/1→3/);assert.equal(review.dated,2);
+  assert(!review.message.includes('기록되지 않은 기간'),'undated intermediate stays may cover the interval');
+  trip.plan.stays=[{...blank,checkIn:'2027-05-14'},structuredClone(blank),{...blank,checkIn:'2027-05-09'}];
+  assert.match(stayReview(trip).message,/1→3/);
+  trip.plan.stays=[{...blank,checkOut:'2027-05-16'},structuredClone(blank),structuredClone(blank),{...blank,checkOut:'2027-05-10'}];
+  assert.match(stayReview(trip).message,/1→4/);
+  trip.plan.stays=[{...blank,checkIn:'2027-05-09',checkOut:'2027-05-10'},structuredClone(blank),{...blank,checkIn:'2027-05-14',checkOut:'2027-05-15'}];
+  review=stayReview(trip);assert.equal(review.warnings.length,0);assert.match(review.message,/2\/3곳/);
+});
+
 test('official climate source and personal reference survive edits and legacy imports independently',()=>{
   const data=structuredClone(original),trip=data.honeymoon[0],source=trip.plan.sourceUrl;
   trip.url='https://example.com/my-note';let saved=validateContent(data).honeymoon[0];

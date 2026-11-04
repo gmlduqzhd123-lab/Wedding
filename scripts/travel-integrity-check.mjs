@@ -34,7 +34,15 @@ try{
   await edit(p);await localDates(p,[[1,'2027-05-09','2027-05-12'],[2,'2027-05-12','2027-05-16']]);await save(p);assert(!await card(p).locator(':scope > .stay-status').evaluate(n=>n.classList.contains('warning')));
   await edit(p);await localDates(p,[[1,'2027-05-09','2027-05-12'],[2,'2027-05-10','2027-05-14']]);await p.setViewportSize({width:320,height:700});
   await p.getByLabel('숙박 지역 2',{exact:true}).scrollIntoViewIfNeeded();assert(await p.evaluate(()=>document.querySelector('#editor-body').scrollWidth<=document.querySelector('#editor-body').clientWidth));await p.screenshot({path:'work/travel-integrity-qa/editor-mobile.png'});
-  await p.getByRole('button',{name:'취소',exact:true}).click();await a.context.close();console.log('PASS overlap/range/order/gap warnings in editor, cards and comparison, warning persistence through reload/import, correction and mobile editor');
+  await p.getByRole('button',{name:'취소',exact:true}).click();
+  await edit(p);await localDates(p,[[1,'2027-05-14','2027-05-16'],[2,'','']]);
+  await p.getByRole('button',{name:'숙박 추가',exact:true}).click();await p.getByLabel('숙박 지역 3',{exact:true}).fill('세 번째 숙박');await localDates(p,[[3,'2027-05-09','2027-05-10']]);
+  assert.match(await p.locator('.editor-form > p[role="status"]').innerText(),/1→3/);await save(p);
+  assert.match(await card(p).locator(':scope > .stay-status').innerText(),/1→3/);assert.match(await p.locator('.travel-comparison').innerText(),/1→3/);
+  await p.reload();await card(p).waitFor();assert.match(await card(p).locator(':scope > .stay-status').innerText(),/1→3/);
+  const partialBackup=await download(p);await upload(p,partialBackup);assert.match(await card(p).locator(':scope > .stay-status').innerText(),/1→3/);
+  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('wedding:v1:draft')).honeymoon[0].plan.stays[1].checkIn),'');
+  await a.context.close();console.log('PASS full and partial-date stay warnings across editor/cards/comparison, reload/import and mobile layout');
 
   const b=await fresh(),q=b.page;
   for(const id of ['bali','hawaii']){await card(q,id).getByRole('button',{name:'비교 선택',exact:true}).click();await q.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).tripCompare.includes(id),id);}
