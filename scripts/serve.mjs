@@ -8,7 +8,7 @@ const port=Number(process.env.PORT||4173);
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,'http://localhost');let requested=decodeURIComponent(url.pathname);
-    if(requested==='/Wedding'||requested==='/Wedding/'){res.writeHead(302,{location:'/Wedding/index.html'}).end();return;}
+    if(requested==='/Wedding'||requested==='/Wedding/'){res.writeHead(302,{location:'/Wedding/index.html'+url.search}).end();return;}
     if(requested.startsWith('/Wedding/'))requested=requested.slice('/Wedding'.length);
     let file=path.resolve(root,'.'+requested);
     const relative=path.relative(root,file);
