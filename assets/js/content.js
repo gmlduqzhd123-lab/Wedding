@@ -1,3 +1,4 @@
+import {upgradeLegacyTrip,COST_LABELS} from './travel.js?v=structured-travel-1';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -42,6 +43,23 @@ function record(value) {
   if (!title) throw new Error('제목을 입력해 주세요.');
   return { id:value.id, title };
 }
+function validatePlan(plan){
+  if(!object(plan)||plan.version!==1||!object(plan.costs)||!Array.isArray(plan.stays)||plan.stays.length>20)throw new Error('여행 계획 형식을 확인해 주세요.');
+  const costs=Object.fromEntries(Object.keys(COST_LABELS).map(key=>{
+    const value=plan.costs[key];
+    if(value!==null&&(!Number.isSafeInteger(value)||value<0||value>1000000000000))throw new Error('비용 배분은 원 단위의 0 이상 금액으로 입력해 주세요.');
+    return [key,value];
+  }));
+  const stays=plan.stays.map(stay=>{
+    if(!object(stay)||!Number.isInteger(stay.nights)||stay.nights<1||stay.nights>365)throw new Error('숙박 가안의 박 수를 확인해 주세요.');
+    const region=string(stay.region,120).trim();if(!region)throw new Error('숙박 지역을 확인해 주세요.');
+    return {region,nights:stay.nights};
+  });
+  if(!Number.isInteger(plan.climateMonth)||plan.climateMonth<1||plan.climateMonth>12)throw new Error('기후 안내 기준 월을 확인해 주세요.');
+  return {version:1,costs,stays,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
+    climate:string(plan.climate),climateMonth:plan.climateMonth,sourceTitle:string(plan.sourceTitle,500),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
+    ...(plan.legacyText===undefined?{}:{legacyText:string(plan.legacyText)})};
+}
 export function validateContent(input) {
   if (!object(input) || input.schemaVersion !== 1 || !object(input.invitation)) throw new Error('이 앱에서 저장한 콘텐츠 파일을 선택해 주세요.');
   const source = input.invitation;
@@ -61,10 +79,11 @@ export function validateContent(input) {
       return { ...record(item), date:date(item.date), body:string(item.body), images:item.images.map(src => link(src,true)).filter(Boolean) };
     }),
     honeymoon:list(input.honeymoon, item => {
-      if (item.budget !== null && (typeof item.budget !== 'number' || !Number.isFinite(item.budget) || item.budget < 0)) throw new Error('여행 예산을 확인해 주세요.');
+      if (item.budget !== null && (!Number.isSafeInteger(item.budget) || item.budget < 0 || item.budget>1000000000000)) throw new Error('여행 예산은 원 단위의 0 이상 금액으로 입력해 주세요.');
       const startDate=date(item.startDate), endDate=date(item.endDate);
       if (startDate && endDate && startDate > endDate) throw new Error('여행 종료일은 출발일 이후로 입력해 주세요.');
-      return { ...record(item), country:string(item.country,200), startDate,endDate,budget:item.budget,pros:string(item.pros),cons:string(item.cons),body:string(item.body),url:link(item.url) };
+      const trip=upgradeLegacyTrip({ ...record(item), country:string(item.country,200), startDate,endDate,budget:item.budget,pros:string(item.pros),cons:string(item.cons),body:string(item.body),url:link(item.url),...(item.plan===undefined?{}:{plan:item.plan}) });
+      return {...trip,...(trip.plan===undefined?{}:{plan:validatePlan(trip.plan)})};
     })
   };
 }

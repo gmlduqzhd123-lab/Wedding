@@ -1,0 +1,72 @@
+// Optional browser regression check for the structured honeymoon plans and blank invitation fields.
+import assert from 'node:assert/strict';
+import {readFile,mkdir} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright');
+const base=process.env.TEST_URL||'http://127.0.0.1:4173/Wedding/';
+const browser=await chromium.launch({headless:true,channel:process.env.BROWSER_CHANNEL||'chrome'});
+const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),page=await context.newPage(),errors=[];
+page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+const card=()=>page.locator('[data-trip-id="bali"]');
+const open=async key=>{const section=page.locator(`[data-view-key="bali:${key}"]`);if(!await section.evaluate(node=>node.open))await section.locator(':scope > summary').click();};
+const save=async()=>{await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);};
+const edit=()=>card().getByRole('button',{name:'수정',exact:true}).click();
+try{
+ await page.goto(base+'?view=guest#/invitation');await page.locator('#main[aria-busy="false"]').waitFor();
+ assert.equal(await page.locator('.couple-names,.invitation .message,.invitation .place p').count(),0);
+ assert.equal(await page.getByRole('link',{name:'오시는 길 ↗',exact:true}).count(),0);
+ assert.match(await page.locator('.invitation-date').innerText(),/2027년 5월 8일.*13:00/);assert.match(await page.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
+ assert.equal(await page.locator('[aria-current="page"]').count(),1);
+ await mkdir('work/travel-qa',{recursive:true});await page.screenshot({path:'work/travel-qa/invitation-blank.png',fullPage:true});
+ console.log('PASS missing invitation fields stay blank while confirmed date/time/venue remain visible');
+ await page.goto(base+'#/honeymoon');await page.locator('[data-trip-id="maldives"]').waitFor();
+ await open('all');await open('dates');await open('costs');
+ await edit();await page.getByLabel('두 사람의 계획예산 (원)',{exact:true}).fill('8000000');
+ await page.getByLabel('한국 출발일',{exact:true}).fill('2027-05-10');await page.getByLabel('한국 도착일',{exact:true}).fill('2027-05-18');await save();
+ assert(await card().locator('.travel-details').evaluate(node=>node.open));
+ assert.match(await card().locator(':scope > .budget-status').innerText(),/2,000,000원/);
+ assert.match(await card().locator(':scope > .budget-status').innerText(),/항목 미배분 500,000원/);
+ const dates=await page.locator('[data-view-key="bali:dates"]').innerText();assert(dates.includes('2027-05-10'));assert(dates.includes('2027-05-18'));assert(!dates.includes('2027-05-17'));
+ const costs=await page.locator('[data-view-key="bali:costs"] .cost-breakdown').innerText();assert.match(costs,/2인 계획 총액\n8,000,000원/);assert.match(costs,/배분 소계\n7,500,000원/);
+ await edit();await page.getByLabel('항공 배분 (원)',{exact:true}).fill('2700000');await save();assert(!await card().locator(':scope > .budget-status').innerText().then(text=>text.includes('항목 미배분')));
+ await edit();await page.getByLabel('두 사람의 계획예산 (원)',{exact:true}).fill('11000000');await page.getByLabel('예비비 배분 (원)',{exact:true}).fill('0');await save();
+ assert.match(await card().locator(':scope > .budget-status').innerText(),/1,000,000원 초과/);assert.match(await card().locator(':scope > .budget-status').innerText(),/예비비가 0원/);
+ console.log('PASS date/total edits update all generated sections, allocation gaps, cap warnings and zero reserve');
+ const toggle=async label=>{
+   const button=card().getByRole('button',{name:label,exact:true});await button.scrollIntoViewIfNeeded();const before=await button.evaluate(node=>node.getBoundingClientRect().top);
+   await button.click();await page.waitForFunction(label=>{const buttons=[...document.querySelectorAll('[data-trip-id="bali"] .trip-controls button')];return buttons.find(node=>node.textContent===label)?.getAttribute('aria-pressed')==='true';},label);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   assert(await card().locator('.travel-details').evaluate(node=>node.open));assert(await page.locator('[data-view-key="bali:costs"]').evaluate(node=>node.open));
+   assert.equal(await page.evaluate(()=>document.activeElement.textContent),label);
+   assert(Math.abs(await button.evaluate(node=>node.getBoundingClientRect().top)-before)<4,`${label} preserves reading position`);
+ };
+ await toggle('관심 여행지');await toggle('비교 선택');await toggle('최종 선택');
+ await page.locator('[data-trip-id="maldives"]').getByRole('button',{name:'비교 선택',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('.travel-comparison thead th').length===3);
+ const rows=await page.locator('.travel-comparison tbody th').allTextContents();
+ for(const label of ['숙박 가안','항공 배분','숙박·패키지 배분','기타 여행비 배분','예비비 배분','계획상 이동','기후 유의점'])assert(rows.includes(label));
+ assert.match(await page.locator('.travel-comparison').innerText(),/총 7박 가안/);assert.match(await page.locator('.travel-comparison').innerText(),/총 6박 가안/);
+ const other=await context.newPage();await other.goto(base+'#/home');await other.locator('#main[aria-busy="false"]').waitFor();
+ await other.evaluate(()=>{const prefs=JSON.parse(localStorage.getItem('wedding:v1:preferences'));prefs.notes.review='검증';localStorage.setItem('wedding:v1:preferences',JSON.stringify(prefs));});
+ await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('다른 탭'));
+ assert(await card().locator('.travel-details').evaluate(node=>node.open));assert(await page.locator('[data-view-key="bali:costs"]').evaluate(node=>node.open));
+ console.log('PASS richer comparison, local selection and other-tab refresh preserve expanded sections and focus');
+ await open('climate');await open('sources');
+ assert.match(await page.getByRole('link',{name:'기후 공식 안내 ↗',exact:true}).first().getAttribute('href'),/indonesia.travel/);
+ assert.match(await page.getByRole('link',{name:'계획 자료와 적용 범위 ↗',exact:true}).first().getAttribute('href'),/CONTENT_SOURCES.md/);
+ for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`fits ${width}`);}
+ await page.setViewportSize({width:390,height:844});await card().scrollIntoViewIfNeeded();await page.screenshot({path:'work/travel-qa/structured-plan.png',fullPage:true});
+ const exported=page.waitForEvent('download');await page.getByRole('button',{name:'내용 관리',exact:true}).click();await page.getByRole('button',{name:'공개용 파일 저장',exact:true}).click();
+ const json=JSON.parse(await readFile(await (await exported).path(),'utf8'));assert.equal(json.honeymoon[0].plan.costs.airfare,2700000);assert.equal(json.honeymoon[0].budget,11000000);
+ console.log('PASS source labels, 320–1440px layouts and structured-plan export');
+ const legacyContext=await browser.newContext();const legacyPage=await legacyContext.newPage();legacyPage.on('pageerror',e=>errors.push(e.message));
+ await legacyPage.goto(base+'#/home');await legacyPage.locator('#main[aria-busy="false"]').waitFor();
+ const legacy=JSON.parse(await readFile(new URL('../tests/fixtures/legacy-trip.json',import.meta.url),'utf8'));const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
+ legacy.budget=8000000;legacy.startDate='2027-05-10';legacy.endDate='2027-05-18';original.honeymoon=[legacy];
+ await legacyPage.evaluate(data=>localStorage.setItem('wedding:v1:draft',JSON.stringify(data)),original);await legacyPage.goto(base+'#/honeymoon');await legacyPage.reload();await legacyPage.locator('#main[aria-busy="false"]').waitFor();
+ assert.match(await legacyPage.locator('.budget-status').first().innerText(),/2,000,000원/);
+ await legacyPage.locator('.travel-details > summary').click();await legacyPage.locator('[data-view-key="bali:dates"] > summary').click();
+ assert.match(await legacyPage.locator('[data-view-key="bali:dates"]').innerText(),/2027-05-18/);assert(!await legacyPage.locator('[data-view-key="bali:dates"]').innerText().then(text=>text.includes('2027-05-17')));
+ await legacyContext.close();assert.deepEqual(errors,[]);console.log('PASS legacy template drafts upgrade without restoring stale dates or balances');
+}catch(error){console.error(await page.locator('body').innerText());throw error;}
+finally{await browser.close();}
