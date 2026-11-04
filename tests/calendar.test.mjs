@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {invitationCalendar} from '../assets/js/calendar.js';
+import {invitationCalendar,googleCalendarUrl} from '../assets/js/calendar.js';
 const info=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8')).invitation;
 const now=new Date('2026-11-04T00:00:00Z');
 const unfold=raw=>raw.replace(/\r\n[ \t]/g,'');
@@ -27,4 +27,15 @@ test('calendar escapes injected content and folds long Korean and emoji text at 
   assert(data.includes('\\;회의\\,홀\\\\A\\nBEGIN:VEVENT'));assert(!data.includes('\u0000'));
   assert.equal(data.match(/^BEGIN:VEVENT$/gm).length,1);assert(!raw.includes('�'));
   for(const line of raw.split('\r\n'))assert(Buffer.byteLength(line,'utf8')<=75);
+});
+
+test('Google template encodes the same confirmed start and location without inventing names or a duration',()=>{
+  const url=new URL(googleCalendarUrl(info));assert.equal(url.origin,'https://calendar.google.com');assert.equal(url.pathname,'/calendar/r/eventedit');
+  assert.equal(url.searchParams.get('action'),'TEMPLATE');assert.equal(url.searchParams.get('dates'),'20270508T040000Z/20270508T040000Z');
+  for(const key of ['stz','etz'])assert.equal(url.searchParams.get(key),'Asia/Seoul');
+  assert.equal(url.searchParams.get('text'),'결혼식');assert.equal(url.searchParams.get('location'),info.venue);assert.match(url.searchParams.get('details'),/종료 시각은 미정/);
+  const custom={...info,partner1:'가&나',venue:'홀 A&B + 1층',time:'00:30'};const encoded=new URL(googleCalendarUrl(custom));
+  assert.equal(encoded.searchParams.get('text'),'가&나 결혼식');assert.equal(encoded.searchParams.get('location'),custom.venue);assert.equal(encoded.searchParams.get('dates'),'20270507T153000Z/20270507T153000Z');
+  assert(!new URL(googleCalendarUrl({...info,venue:'',address:''})).searchParams.has('location'));
+  assert.throws(()=>googleCalendarUrl({...info,time:''}),/날짜와 시간/);
 });

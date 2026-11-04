@@ -2,7 +2,7 @@ import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } 
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
 import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=stay-focus-5';
-import {invitationCalendar} from './calendar.js?v=calendar-summary-6';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=google-calendar-7';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -215,8 +215,9 @@ function renderInvitation() {
       info.message?E('p',{class:'message'},info.message):null,
       E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:''),
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
-      E('div',{class:'invitation-actions'},externalLink('오시는 길 ↗',info.mapUrl,'button quiet'),hasSchedule?button('캘린더에 일정 추가',downloadInvitationCalendar,'button quiet'):null),
-      hasSchedule?E('p',{class:'small muted calendar-note'},'일정 파일(.ics)을 받아 캘린더 앱에 등록하세요. 한국 시간 기준이며 종료 시각은 미정입니다.'):null):
+      E('div',{class:'invitation-actions'},externalLink('오시는 길 ↗',info.mapUrl,'button quiet'),hasSchedule?externalLink('Google 캘린더에 추가',googleCalendarUrl(info),'button quiet'):null,
+        hasSchedule?button('일정 파일(.ics) 다운로드',downloadInvitationCalendar,'button quiet'):null),
+      hasSchedule?E('p',{class:'small muted calendar-note'},'Google 캘린더는 로그인 후 추가 버튼을 이용하세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 한국 시간 기준이며 종료 시각은 미정이니 등록 화면에서 확인해 주세요.'):null):
     empty('우리의 첫 초대장을 준비해요.','두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.','예식 정보 입력',()=>openEditor('invitation'))];
 }
 function focusTrip(id){
