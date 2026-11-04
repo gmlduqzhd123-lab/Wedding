@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "invitation": {
+    "partner1": "",
+    "partner2": "",
+    "date": "",
+    "time": "",
+    "venue": "",
+    "address": "",
+    "mapUrl": "",
+    "message": ""
+  },
+  "stories": [],
+  "albums": [],
+  "honeymoon": []
+}

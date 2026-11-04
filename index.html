@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="청첩장, 우리의 일대기, 포토 앨범, 스튜디오와 신혼여행을 함께 모으는 결혼 기록장">
+  <meta name="theme-color" content="#f6f5f0">
+  <title>우리의 결혼 기록</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/css/app.css">
+  <script type="module" src="./assets/js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 이동</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#/home" aria-label="우리의 결혼 기록 홈">
+        <span class="brand-mark" aria-hidden="true">w.</span>
+        <span>우리의 결혼 기록<small>OUR WEDDING JOURNAL</small></span>
+      </a>
+      <nav class="main-nav" aria-label="주 메뉴">
+        <a href="#/home" data-route="home">홈</a>
+        <a href="#/invitation" data-route="invitation">청첩장</a>
+        <a href="#/story" data-route="story">우리의 일대기</a>
+        <a href="#/albums" data-route="albums">포토 앨범</a>
+        <a href="#/studios" data-route="studios">스튜디오</a>
+        <a href="#/honeymoon" data-route="honeymoon">신혼여행</a>
+      </nav>
+      <button class="button quiet manage-button" id="manage-content" type="button">내용 관리</button>
+    </div>
+  </header>
+  <div class="draft-banner" id="draft-banner" hidden>
+    <span>이 기기에 저장한 초안을 보고 있어요. 공개 사이트에는 아직 반영되지 않았습니다.</span>
+    <button class="text-button" id="manage-draft" type="button">초안 관리</button>
+  </div>
+  <main id="main" class="main" tabindex="-1" aria-busy="true">
+    <div class="loading-state">결혼 기록을 불러오고 있어요.</div>
+  </main>
+  <footer class="site-footer">
+    <span>함께 준비하고, 오래 기억할 우리의 이야기.</span>
+    <a href="https://github.com/gmlduqzhd123-lab/Wedding" target="_blank" rel="noopener noreferrer">GitHub 저장소 ↗</a>
+  </footer>
+  <dialog class="editor-dialog" id="editor-dialog" aria-labelledby="editor-title">
+    <div class="dialog-heading"><h2 id="editor-title"></h2><button class="button quiet" id="close-dialog" type="button" aria-label="창 닫기">닫기</button></div>
+    <div id="editor-body"></div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p>메뉴와 비교 기능을 사용하려면 브라우저의 JavaScript를 켜 주세요.</p></noscript>
+</body>
+</html>

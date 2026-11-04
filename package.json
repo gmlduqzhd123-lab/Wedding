@@ -1,0 +1,13 @@
+{
+  "name": "our-wedding-journal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GitHub Pages에서 운영하는 결혼 준비와 두 사람의 기록",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs && node --test",
+    "build": "node scripts/build.mjs"
+  }
+}
