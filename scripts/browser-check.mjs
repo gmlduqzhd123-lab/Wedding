@@ -31,7 +31,7 @@ try {
   await go('invitation');
   await page.getByRole('button',{name:'예식 정보 편집',exact:true}).click();
   await page.getByLabel('첫 번째 이름',{exact:true}).fill('브라우저 검증');
-  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();
+  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
   await page.reload();await ready();
   assert.equal((await storage(draftKey)).invitation.partner1,'브라우저 검증');
   assert.match(await page.locator('#draft-banner').innerText(),/이 기기에 저장한 초안/);
@@ -40,14 +40,17 @@ try {
   await go('studios');
   await page.locator('.compare-card .favorite').first().click();
   await page.locator('.compare-card textarea').first().fill('백업할 개인 메모');
+  await page.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes).includes('백업할 개인 메모'));
   const savedPrefs=await storage(prefsKey);
   await page.evaluate(()=>{window.originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('quota','QuotaExceededError');};});
   await page.locator('.compare-card .favorite').first().click();
   assert.equal(await page.locator('.compare-card .favorite').first().getAttribute('aria-pressed'),'true');
   await page.locator('.compare-card textarea').first().fill('실패할 변경');
+  await page.waitForFunction(()=>document.querySelector('.compare-card textarea').value==='백업할 개인 메모');
   assert.equal(await page.locator('.compare-card textarea').first().inputValue(),'백업할 개인 메모');
   const leftBefore=await page.getByLabel('비교할 스튜디오 A',{exact:true}).inputValue();
   await page.getByLabel('비교할 스튜디오 A',{exact:true}).selectOption('studio-01');
+  await page.waitForFunction(value=>document.querySelector('[aria-label="비교할 스튜디오 A"]').value===value,leftBefore);
   assert.equal(await page.getByLabel('비교할 스튜디오 A',{exact:true}).inputValue(),leftBefore);
   assert.deepEqual(await storage(prefsKey),savedPrefs);
   await page.locator('[data-route="invitation"]').click();
@@ -81,12 +84,12 @@ try {
   await page.getByLabel('사진 파일 추가 (선택)',{exact:true}).setInputFiles(pngs.map((data,index)=>({name:`test-${index}.png`,mimeType:'image/png',buffer:Buffer.from(data,'base64')})));
   await page.locator('.photo-edit-card').nth(1).waitFor();
   await page.locator('.photo-edit-card').nth(1).getByRole('button',{name:'대표로',exact:true}).click();
-  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();
+  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
   const firstOrder=(await storage(draftKey)).albums[0].images;
   assert.equal(firstOrder.length,2);
   await page.getByRole('button',{name:'수정',exact:true}).click();
   await page.locator('.photo-edit-card').nth(1).getByRole('button',{name:'앞으로',exact:true}).click();
-  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();
+  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
   assert.deepEqual((await storage(draftKey)).albums[0].images,[firstOrder[1],firstOrder[0]]);
   await page.getByRole('button',{name:'사진 보기',exact:true}).click();
   await page.getByRole('button',{name:'다음 사진',exact:true}).click();
@@ -97,7 +100,7 @@ try {
   assert.equal((await storage(draftKey)).albums[0].images.length,2);
   await page.getByRole('button',{name:'수정',exact:true}).click();
   await page.locator('.photo-edit-card').first().getByRole('button',{name:'사진 삭제',exact:true}).click();
-  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();
+  await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
   assert.equal((await storage(draftKey)).albums[0].images.length,1);
   console.log('PASS photo upload, cover, reorder, enlargement, deletion and cancel');
 
@@ -105,7 +108,7 @@ try {
   for(const title of ['검증 여행 A','검증 여행 B','검증 여행 C']){
     await page.getByRole('button',{name:'여행지 추가',exact:true}).click();
     await page.getByLabel('여행지',{exact:true}).fill(title);
-    await page.getByRole('button',{name:'초안에 저장',exact:true}).click();
+    await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
   }
   await page.getByRole('button',{name:'비교 선택',exact:true}).nth(0).click();
   await page.getByRole('button',{name:'비교 선택',exact:true}).nth(1).click();
@@ -114,6 +117,7 @@ try {
   assert.equal(await page.locator('.travel-comparison thead th').count(),3);
   await page.getByRole('button',{name:'관심 여행지',exact:true}).first().click();
   await page.getByRole('button',{name:'최종 선택',exact:true}).nth(1).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.trip-controls button')[5]?.getAttribute('aria-pressed')==='true');
   await page.reload();await ready();
   assert.equal(await page.getByRole('button',{name:'최종 선택',exact:true}).nth(1).getAttribute('aria-pressed'),'true');
   console.log('PASS trip comparison limit, favorites and final choice persistence');
@@ -157,6 +161,7 @@ try {
   await page.screenshot({path:fileURLToPath(new URL('../work/browser-qa/mobile.png',import.meta.url)),fullPage:true});
   await page.getByRole('button',{name:'내용 관리',exact:true}).click();
   await page.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();
+  await page.waitForFunction(()=>!document.querySelector('dialog').open);
   assert.equal(await storage(draftKey),null);assert.deepEqual(await storage(prefsKey),personalBefore);
   await page.evaluate(draft=>{localStorage.setItem('wedding:v1:draft',JSON.stringify(draft));},JSON.parse(fullPublic));
   await page.reload();await ready();

@@ -1,5 +1,6 @@
 import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js';
-import { validatePreferences, parsePreferencesBackup, persistPreferences } from './preferences.js';
+import { validatePreferences, parsePreferencesBackup } from './preferences.js';
+import { lockedMerge, StorageConflict } from './storage.js';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -15,7 +16,8 @@ const menus=[
 let baseContent, content, studios=[], prefs={}, isDraft=false, toastTimer;
 let filter='', favoritesOnly=false;
 const guestMode=new URLSearchParams(location.search).get('view')==='guest';
-let baseRevision='', draftRevision=null;
+let baseRevision='', draftRevision=null, editorState=null, studiosStatus='loading', studiosError='';
+let previousHash=location.hash,pendingWrites=0;
 const editButton=(...args)=>guestMode?null:button(...args);
 
 function E(tag, attributes={}, ...children) {
@@ -36,23 +38,73 @@ const button=(label, action, className='button') => E('button',{type:'button',cl
 const linkButton=(label, href, quiet=false) => E('a',{class:'button'+(quiet?' quiet':''),href},label);
 const readStorage=key=>{try{return localStorage.getItem(key);}catch{return null;}};
 function toast(message,error=false) {
+  if(dialog.open){
+    const notice=$('#dialog-notice');notice.textContent=message;notice.hidden=false;notice.className='dialog-notice'+(error?' error':'');
+    notice.setAttribute('role',error?'alert':'status');
+    if(error){notice.focus();notice.scrollIntoView({block:'nearest'});}
+    return;
+  }
   clearTimeout(toastTimer);
   const target=$('#toast');target.textContent=message;target.hidden=false;target.className='toast'+(error?' error':'');
   toastTimer=setTimeout(()=>target.hidden=true,error?8500:3800);
 }
-function savePrefs(next) {
-  try { prefs=persistPreferences(localStorage,PREF_KEY,next);return true; }
-  catch { toast('선택과 메모를 저장하지 못해 이전 상태를 유지합니다. 개인 백업 후 저장 공간과 브라우저 설정을 확인해 주세요.',true);return false; }
+function describeValue(value){
+  if(value===undefined)return '삭제됨';
+  const text=typeof value==='string'?value:JSON.stringify(value);
+  return text.includes('data:image/')?'사진이 포함된 내용':text.slice(0,300)||'비어 있음';
 }
-function setDraft(next) {
-  const valid=validateContent(next);
-  const raw=JSON.stringify({...valid,baseRevision:isDraft?draftRevision:baseRevision});
-  if(new TextEncoder().encode(raw).length>MAX_IMPORT_BYTES)throw new Error('초안은 8MB 이하로 저장해 주세요. 사진 수나 용량을 줄여 주세요.');
-  try { localStorage.setItem(DRAFT_KEY,raw); }
-  catch { throw new Error('이 기기의 저장 공간이 부족하거나 저장이 차단되어 있습니다. 사진 용량을 줄이거나 브라우저 설정을 확인해 주세요.'); }
-  if(!isDraft)draftRevision=baseRevision;
-  content=valid;isDraft=true;
+function conflictDetails(error){
+  return E('div',{class:'conflict-list'},error.conflicts.length?error.conflicts.map(item=>E('section',{},
+    E('p',{class:'small'},conflictLabel(item.path)),E('p',{},'현재 입력: ',describeValue(item.local)),E('p',{},'다른 탭의 저장본: ',describeValue(item.remote)))):
+    E('p',{},'확인하는 동안 다른 탭의 저장 내용이 다시 변경되었습니다. 최신 내용을 다시 확인해 주세요.'));
 }
+function conflictLabel(path){
+  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',notes:'스튜디오 메모',favorites:'관심 스튜디오',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'여행',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B'};
+  return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||studios.find(item=>item.id===key)?.name||'기록').join(' · ');
+}
+function storageMessage(error){
+  if(error.name==='QuotaExceededError')return '저장 공간이 부족합니다. 초안을 백업하고 사진 수나 용량을 줄여 주세요.';
+  if(error.name==='SecurityError')return '브라우저의 저장 허용 설정을 확인해 주세요.';
+  return error.message;
+}
+async function savePrefs(next,base=structuredClone(prefs),approvedRaw) {
+  pendingWrites++;
+  try {
+    const result=await lockedMerge({locks:navigator.locks,storage:localStorage,key:PREF_KEY,base,next,fallback:validatePreferences({}),parse:raw=>validatePreferences(JSON.parse(raw)),validate:validatePreferences,approvedRaw});
+    prefs=result.value;return true;
+  }catch(error){
+    if(error instanceof StorageConflict){
+      showDialog('다른 탭의 변경 확인',E('div',{},E('p',{},error.message),conflictDetails(error),E('div',{class:'manager-actions'},
+        button('다른 탭의 저장본 유지',()=>{try{prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));closeDialog();render();}catch(cause){toast(cause.message,true);}},'button quiet'),
+        button('현재 입력으로 충돌 항목 저장',async()=>{if(await savePrefs(next,base,error.remoteRaw)){closeDialog();render();toast('선택한 내용으로 저장했습니다.');}}))));
+    }else toast('선택과 메모를 저장하지 못했습니다. 이전 저장본을 유지합니다. '+storageMessage(error),true);
+    return false;
+  }finally{pendingWrites--;}
+}
+async function setDraft(next,base=structuredClone(content),approvedRaw) {
+  pendingWrites++;
+  try {
+    const result=await lockedMerge({locks:navigator.locks,storage:localStorage,key:DRAFT_KEY,base,next,fallback:baseContent,parse:parseContent,validate:validateContent,approvedRaw,
+      encode:valid=>{
+        const current=localStorage.getItem(DRAFT_KEY);
+        const revision=current?JSON.parse(current).baseRevision??null:baseRevision;
+        const raw=JSON.stringify({...valid,baseRevision:revision});
+        if(new TextEncoder().encode(raw).length>MAX_IMPORT_BYTES)throw new Error('초안은 8MB 이하로 저장해 주세요. 사진 수나 용량을 줄여 주세요.');
+        return raw;
+      }});
+    draftRevision=JSON.parse(result.raw).baseRevision;content=result.value;isDraft=true;
+  }catch(error){
+    if(error instanceof StorageConflict)throw error;
+    throw new Error('초안을 저장하지 못했습니다. 입력 내용은 유지됩니다. '+storageMessage(error));
+  }finally{pendingWrites--;}
+}
+function dirtyEditor(){return editorState?.isDirty()||false;}
+function canLeaveEditor(){
+  if(editorState?.isSaving()){toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.');return false;}
+  return !dirtyEditor()||confirm('저장하지 않은 입력이 있습니다. 입력을 버리고 닫을까요?');
+}
+function closeDialog(){editorState=null;dialog.close();}
+function requestClose(){if(canLeaveEditor())closeDialog();}
 function currentRoute() {const route=location.hash.replace(/^#\/?/,'').split('/')[0];return routes.includes(route)?route:'home';}
 function pageHeader(title, description, action, eyebrow) {
   return E('div',{class:'page-header'},E('div',{},E('p',{class:'eyebrow'},eyebrow||'OUR WEDDING JOURNAL'),E('h1',{},title),E('p',{},description)),action);
@@ -82,15 +134,23 @@ function renderHome() {
   const overview=E('div',{class:'overview'},
     E('div',{},E('span',{class:'small muted'},'OUR DAY'),E('strong',{},info.date?formatDate(info.date).replace(/ \S+요일$/,''):'예식 일정 준비 중')),
     E('div',{},E('span',{class:'small muted'},'OUR MEMORIES'),E('strong',{},`이야기 ${content.stories.length} · 앨범 ${content.albums.length}`)),
-    E('div',{},E('span',{class:'small muted'},'OUR CHOICES'),E('strong',{},`스튜디오 ${studios.length}곳 · 여행 ${content.honeymoon.length}곳`)));
-  const statuses={invitation:info.date?'예식 정보 등록됨':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:`${studios.length}곳 비교하기`,honeymoon:`${content.honeymoon.length}개의 여행 후보`};
+    E('div',{},E('span',{class:'small muted'},'OUR CHOICES'),E('strong',{},`${studiosStatus==='ready'?`스튜디오 ${studios.length}곳`:'스튜디오 자료 준비 중'} · 여행 ${content.honeymoon.length}곳`)));
+  const statuses={invitation:info.date?'예식 정보 등록됨':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:studiosStatus==='ready'?`${studios.length}곳 비교하기`:'자료 불러오기',honeymoon:`${content.honeymoon.length}개의 여행 후보`};
   return [hero,overview,E('section',{},E('div',{class:'section-heading'},E('div',{},E('h2',{},'함께 채워 갈 이야기'),E('p',{},'필요한 순간에 하나씩, 우리의 속도로.'))),
     E('div',{class:'menu-grid'},menus.map(([route,title,description],index)=>E('a',{class:'menu-card',href:`#/${route}`},E('span',{class:'number'},`0${index+1}`),E('h3',{},title),E('p',{},description),E('div',{class:'card-tail'},E('span',{},statuses[route]),E('span',{'aria-hidden':'true'},'↗'))))))];
+}
+async function copyInvitationLink(){
+  const url=new URL('./?view=guest#/invitation',location.href).href;
+  try{await navigator.clipboard.writeText(url);toast('공개 청첩장 링크를 복사했습니다. 기기 초안은 공유되지 않습니다.');}
+  catch{
+    const input=E('input',{type:'text',readonly:true,value:url,'aria-label':'공개 청첩장 링크'});
+    showDialog('청첩장 링크 복사',E('div',{},E('p',{},'아래 링크를 선택해 복사해 주세요. 기기 초안은 공유되지 않습니다.'),input));input.focus();input.select();
+  }
 }
 function renderInvitation() {
   const info=content.invitation;
   const hasContent=Object.values(info).some(Boolean);
-  return [pageHeader('소중한 분들을 초대합니다.','우리의 마음과 예식 안내를 한 장에 담아요.',editButton('예식 정보 편집',()=>openEditor('invitation')),'THE INVITATION'),
+  return [pageHeader('소중한 분들을 초대합니다.','우리의 마음과 예식 안내를 한 장에 담아요.',E('div',{class:'page-actions'},editButton('예식 정보 편집',()=>openEditor('invitation')),button('청첩장 링크 복사',copyInvitationLink,'button quiet')),'THE INVITATION'),
     hasContent?E('section',{class:'invitation'},E('p',{class:'eyebrow'},'WE ARE GETTING MARRIED'),E('div',{class:'invitation-title'},'With love, together.'),
       E('h2',{class:'couple-names'},info.partner1||'이름 준비 중',E('span',{},'&'),info.partner2||'이름 준비 중'),
       E('p',{class:'message'},info.message||'소중한 분들께 전할 인사를 준비하고 있습니다.'),
@@ -100,9 +160,9 @@ function renderInvitation() {
 }
 function recordActions(type,item) {
   if(guestMode)return null;
-  return E('div',{class:'record-actions'},button('수정',()=>openEditor(type,item),'text-button'),button('삭제',()=>{
+  return E('div',{class:'record-actions'},button('수정',()=>openEditor(type,item),'text-button'),button('삭제',async()=>{
     if(!confirm(`‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`))return;
-    try{const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);setDraft(next);render();toast('초안에서 삭제했습니다.');}catch(error){toast(error.message,true);}
+    try{const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();toast('초안에서 삭제했습니다.');}catch(error){toast(error.message,true);}
   },'text-button'));
 }
 function renderStories() {
@@ -137,16 +197,16 @@ function openAlbum(album) {
 }
 function tripControls(item) {
   if(guestMode)return null;
-  const toggle=(key)=>{
+  const toggle=async(key)=>{
     const selected=new Set(prefs[key]||[]);
     if(selected.has(item.id))selected.delete(item.id);else selected.add(item.id);
     if(key==='tripCompare'&&selected.size>2){toast('비교할 여행지는 두 곳까지 선택해 주세요.',true);return;}
-    if(savePrefs({...prefs,[key]:[...selected]}))render();
+    if(await savePrefs({...prefs,[key]:[...selected]}))render();
   };
   return E('div',{class:'trip-controls'},
     E('button',{type:'button',class:'button quiet','aria-pressed':String(prefs.tripFavorites?.includes(item.id)||false),onclick:()=>toggle('tripFavorites')},'관심 여행지'),
     E('button',{type:'button',class:'button quiet','aria-pressed':String(prefs.tripCompare?.includes(item.id)||false),onclick:()=>toggle('tripCompare')},'비교 선택'),
-    E('button',{type:'button',class:'button quiet','aria-pressed':String(prefs.tripSelected===item.id),onclick:()=>{if(savePrefs({...prefs,tripSelected:prefs.tripSelected===item.id?'':item.id}))render();}},'최종 선택'));
+    E('button',{type:'button',class:'button quiet','aria-pressed':String(prefs.tripSelected===item.id),onclick:async()=>{if(await savePrefs({...prefs,tripSelected:prefs.tripSelected===item.id?'':item.id}))render();}},'최종 선택'));
 }
 function tripComparison() {
   if(guestMode)return null;
@@ -177,19 +237,26 @@ function contactNode(studio,compact=false) {
 function favoriteButton(studio) {
   if(guestMode)return null;
   const pressed=Boolean(prefs.favorites?.includes(studio.id));
-  return E('button',{class:'favorite',type:'button','aria-label':`${studio.name} 관심 스튜디오 ${pressed?'해제':'등록'}`,'aria-pressed':String(pressed),onclick:()=>{
-    const set=new Set(prefs.favorites||[]);set.has(studio.id)?set.delete(studio.id):set.add(studio.id);if(savePrefs({...prefs,favorites:[...set]}))render();
+  return E('button',{class:'favorite',type:'button','aria-label':`${studio.name} 관심 스튜디오 ${pressed?'해제':'등록'}`,'aria-pressed':String(pressed),onclick:async()=>{
+    const set=new Set(prefs.favorites||[]);set.has(studio.id)?set.delete(studio.id):set.add(studio.id);if(await savePrefs({...prefs,favorites:[...set]}))render();
   }},pressed?'♥':'♡');
 }
 function compareCard(studio) {
   const memo=E('textarea',{maxlength:'1000','aria-label':`${studio.name} 개인 메모`,placeholder:'마음에 든 장면이나 상담할 내용을 남겨요.'});
   memo.value=prefs.notes?.[studio.id]||'';
-  memo.addEventListener('input',()=>{if(!savePrefs({...prefs,notes:{...(prefs.notes||{}),[studio.id]:memo.value}}))memo.value=prefs.notes?.[studio.id]||'';});
+  let memoQueue=Promise.resolve();
+  memo.addEventListener('input',()=>{
+    const value=memo.value;
+    memoQueue=memoQueue.then(async()=>{
+      if(!await savePrefs({...prefs,notes:{...(prefs.notes||{}),[studio.id]:value}}))memo.value=prefs.notes?.[studio.id]||'';
+      else for(const other of document.querySelectorAll('.compare-card textarea'))if(other!==memo&&other.getAttribute('aria-label')===memo.getAttribute('aria-label'))other.value=value;
+    });
+  });
   return E('article',{class:'compare-card'},E('div',{class:'card-heading'},E('div',{},E('p',{class:'record-date'},`${studio.zip}번 샘플`),E('h2',{},studio.name)),favoriteButton(studio)),
     E('p',{class:'small muted'},studio.style),E('div',{class:'studio-photos'},studio.images.map((im,index)=>E('button',{type:'button',class:'photo-open','aria-label':`${studio.name} 사진 ${index+1} 확대`,onclick:()=>openPhotos(studio.name,studio.images.map(value=>value.src),index)},image(im.src,`${studio.name} · ${im.file}`)))),contactNode(studio),
     !guestMode?E('label',{class:'field'},E('span',{},'우리의 메모 ',E('span',{class:'muted small'},'· 이 기기에 저장')),memo):null);
 }
-function selectStudio(side,id) {if(guestMode){prefs={...prefs,[side]:id};render();return;}if(!savePrefs({...prefs,[side]:id}))return;render();$('#studio-comparison')?.scrollIntoView({behavior:'smooth',block:'start'});}
+async function selectStudio(side,id) {if(guestMode){prefs={...prefs,[side]:id};render();return;}if(!await savePrefs({...prefs,[side]:id}))return;render();$('#studio-comparison')?.scrollIntoView({behavior:'smooth',block:'start'});}
 function studioDirectory() {
   const search=E('input',{type:'search',placeholder:'스튜디오 이름이나 사진 스타일 검색','aria-label':'스튜디오 검색'});search.value=filter;
   const checked=E('input',{type:'checkbox'});checked.checked=favoritesOnly;
@@ -205,12 +272,24 @@ function studioDirectory() {
   return E('section',{class:'studio-directory'},E('div',{class:'section-heading'},E('div',{},E('h2',{},'전체 스튜디오 둘러보기'),E('p',{},'샘플 폴더에 포함된 30개 항목을 비교할 수 있어요.')),count),
     E('div',{class:'directory-controls'},search,guestMode?null:E('label',{class:'check-label'},checked,'관심 스튜디오만 보기')),results);
 }
+async function loadStudios(){
+  studiosStatus='loading';studiosError='';
+  if(content&&currentRoute()==='studios')render();
+  try{
+    const response=await fetch('./data/studios.json');if(!response.ok)throw new Error('스튜디오 자료를 불러오지 못했습니다.');
+    const data=await response.json();
+    if(!Array.isArray(data)||!data.length||data.some(item=>!item.id||!item.contact||!Array.isArray(item.images)||!item.images.length))throw new Error('스튜디오 자료의 형식을 확인해 주세요.');
+    studios=data;studiosStatus='ready';
+  }catch(error){studiosStatus='error';studiosError=error.message;}
+  if(content&&['home','studios'].includes(currentRoute()))render();
+}
 function renderStudios() {
+  if(studiosStatus!=='ready')return [pageHeader('우리에게 맞는 사진을 찾아요.','스튜디오 자료는 다른 메뉴와 별도로 불러옵니다.'),studiosStatus==='loading'?E('p',{role:'status'},'스튜디오 자료를 불러오는 중입니다.'):empty('스튜디오 자료를 불러오지 못했어요.',studiosError,'스튜디오 다시 불러오기',loadStudios,true)];
   const first=studios.find(s=>s.id===prefs.left)||studios.find(s=>s.name==='고유·써드 믹스')||studios[0];
   const second=studios.find(s=>s.id===prefs.right)||studios.find(s=>s.name==='그리프')||studios[1];
   const selector=(side,studio,label)=>{
     const select=E('select',{'aria-label':label},studios.map(s=>E('option',{value:s.id},s.name)));select.value=studio.id;
-    select.addEventListener('change',()=>{if(guestMode){prefs={...prefs,[side]:select.value};render();}else if(savePrefs({...prefs,[side]:select.value}))render();else select.value=studio.id;});
+    select.addEventListener('change',async()=>{if(guestMode){prefs={...prefs,[side]:select.value};render();}else if(await savePrefs({...prefs,[side]:select.value}))render();else select.value=studio.id;});
     return E('label',{class:'field'},label,select);
   };
   const rows=[['사진의 장점','pros'],['취향에 따른 아쉬움','cons'],['잘 맞는 취향','fit'],['추가금·구성 표기','fee']];
@@ -240,7 +319,15 @@ function render() {
   $('#draft-banner span').textContent=draftRevision!==baseRevision?'공개본이 변경되었거나 초안의 기준 버전을 확인할 수 없습니다. 초안을 백업하고 새 공개본을 확인해 주세요.':'이 기기에 저장한 초안을 보고 있어요. 공개 사이트에는 아직 반영되지 않았습니다.';
 }
 function showDialog(title,body) {
-  $('#editor-title').textContent=title;editor.replaceChildren(body);if(!dialog.open)dialog.showModal();
+  if(!canLeaveEditor())return false;
+  editorState=null;$('#dialog-notice').hidden=true;
+  $('#editor-title').textContent=title;editor.replaceChildren(body);
+  const actionSlot=$('#dialog-actions');actionSlot.replaceChildren();
+  const actions=body.matches('form')?body.querySelector('.form-actions'):null;
+  if(actions){body.id='active-editor-form';for(const submit of actions.querySelectorAll('[type="submit"]'))submit.setAttribute('form',body.id);actionSlot.append(actions);}
+  actionSlot.hidden=!actions;
+  if(!dialog.open)dialog.showModal();
+  editor.scrollTop=0;$('#editor-title').focus();return true;
 }
 const fieldSpecs={
   invitation:[['partner1','첫 번째 이름'],['partner2','두 번째 이름'],['date','예식 날짜','date'],['time','예식 시간','time'],['venue','예식장·홀 이름'],['address','주소'],['mapUrl','지도 링크','url'],['message','초대 인사','textarea']],
@@ -260,7 +347,9 @@ async function shrinkPhoto(file) {
 function openEditor(type,item=null) {
   if(guestMode)return;
   const titles={invitation:'예식 정보 편집',stories:'우리의 이야기',albums:'포토 앨범',honeymoon:'신혼여행 후보'};
+  const editingContent=structuredClone(content);
   const values=type==='invitation'?content.invitation:(item||{});
+  let approvedRaw;
   const form=E('form',{class:'editor-form'});const fields={};
   form.appendChild(E('p',{class:'form-note'},'작성한 내용은 이 브라우저의 초안에 저장됩니다. 공개 사이트 반영은 내용 관리에서 공개용 파일을 저장한 뒤 진행해 주세요.'));
   for(const [key,label,kind='text'] of fieldSpecs[type]) {
@@ -272,16 +361,22 @@ function openEditor(type,item=null) {
     if(key==='title')input.maxLength=160;
     fields[key]=input;form.appendChild(E('label',{class:'field',for:input.id},label,input));
   }
-  let albumImages=[...(item?.images||[])], processing=false;
+  let albumImages=[...(item?.images||[])], processing=false,saving=false;
   if(type==='albums') {
     const previews=E('div',{class:'photo-editor'});
-    const draw=()=>previews.replaceChildren(...albumImages.map((src,index)=>{
-      const move=(target)=>{[albumImages[index],albumImages[target]]=[albumImages[target],albumImages[index]];draw();};
+    const draw=(focusIndex,action)=>{previews.replaceChildren(...albumImages.map((src,index)=>{
+      const move=(target)=>{[albumImages[index],albumImages[target]]=[albumImages[target],albumImages[index]];draw(target,'앞으로');};
       const previous=button('앞으로',()=>move(index-1),'button quiet');previous.disabled=index===0;
       const next=button('뒤로',()=>move(index+1),'button quiet');next.disabled=index===albumImages.length-1;
       return E('div',{class:'photo-edit-card'},image(src,`사진 ${index+1}`),E('p',{},index===0?'대표 사진':`사진 ${index+1}`),
-        E('div',{class:'photo-edit-actions'},previous,next,button('대표로',()=>{albumImages.unshift(...albumImages.splice(index,1));draw();},'button quiet'),button('사진 삭제',()=>{albumImages.splice(index,1);draw();},'button danger')));
+        E('div',{class:'photo-edit-actions'},previous,next,button('대표로',()=>{albumImages.unshift(...albumImages.splice(index,1));draw(0,'대표로');},'button quiet'),button('사진 삭제',()=>{albumImages.splice(index,1);draw(Math.min(index,albumImages.length-1),'사진 삭제');},'button danger')));
     }));
+      if(focusIndex!==undefined){
+        const card=previews.children[focusIndex];
+        const target=card&&[...card.querySelectorAll('button')].find(node=>node.textContent===action&&!node.disabled);
+        (target||card?.querySelector('button:not(:disabled)')||fields.urls).focus({preventScroll:true});
+      }
+    };
     const addUrls=()=>{
       const urls=fields.urls.value.split(/\r?\n/).map(src=>src.trim()).filter(Boolean);
       if(albumImages.length+urls.length>100)throw new Error('앨범당 사진은 100장까지 추가할 수 있습니다.');
@@ -304,11 +399,13 @@ function openEditor(type,item=null) {
     draw();
   }
   const submit=E('button',{class:'button',type:'submit'},'초안에 저장');
-  form.appendChild(E('div',{class:'form-actions'},button('취소',()=>dialog.close(),'button quiet'),submit));
+  form.appendChild(E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),submit));
   form.addEventListener('submit',async event=>{
-    event.preventDefault();if(processing)return;submit.disabled=true;
+    event.preventDefault();if(processing||saving)return;saving=true;submit.disabled=true;
+    const controlStates=[...form.querySelectorAll('input,textarea,select,button')].map(node=>[node,node.disabled]);
+    for(const [node]of controlStates)node.disabled=true;
     try {
-      const next=structuredClone(content);const data=Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.value.trim()]));
+      const next=structuredClone(editingContent);const data=Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.value.trim()]));
       if(type==='invitation')next.invitation=data;
       else {
         const id=item?.id||crypto.randomUUID();
@@ -321,10 +418,21 @@ function openEditor(type,item=null) {
         const index=next[type].findIndex(value=>value.id===id);
         if(index===-1)next[type].push(record);else next[type][index]=record;
       }
-      setDraft(next);dialog.close();render();toast('이 기기에 초안을 저장했습니다.');
-    }catch(error){toast(error.message,true);}finally{submit.disabled=false;}
+      await setDraft(next,editingContent,approvedRaw);closeDialog();render();toast('이 기기에 초안을 저장했습니다.');
+    }catch(error){
+      toast(error.message,true);
+      if(error instanceof StorageConflict){
+        const notice=$('#dialog-notice');notice.append(conflictDetails(error));
+        notice.append(button('다른 탭의 저장본 불러오기',()=>{
+          if(!confirm('현재 입력을 버리고 다른 탭의 저장본을 불러올까요?'))return;
+          try{syncDraftFromStorage();closeDialog();render();}catch(cause){toast(cause.message,true);}
+        },'button quiet'),button('현재 입력으로 충돌 항목 저장',()=>{approvedRaw=error.remoteRaw;form.requestSubmit();}));
+      }
+    }finally{saving=false;submit.disabled=false;for(const [node,disabled]of controlStates)node.disabled=disabled;}
   });
-  showDialog(titles[type],form);
+  const snapshot=()=>JSON.stringify({values:Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.value])),images:albumImages});
+  const initial=snapshot();
+  if(showDialog(titles[type],form))editorState={isDirty:()=>processing||saving||snapshot()!==initial,isSaving:()=>saving};
 }
 function downloadJson(value,filename) {
   const raw=JSON.stringify(value)+'\n';
@@ -335,6 +443,7 @@ function downloadContent() { downloadJson(validateContent(content),'site.json');
 function downloadPrivate() { downloadJson({kind:'wedding-private-preferences',schemaVersion:1,preferences:validatePreferences(prefs)},'wedding-private-preferences.json'); }
 function openManager() {
   if(guestMode)return;
+  const managerBase=structuredClone(content),managerRaw=readStorage(DRAFT_KEY);
   const personal=E('input',{type:'file',accept:'.json,application/json',class:'file-input','aria-label':'개인 메모·선택 백업 선택'});
   personal.addEventListener('change',async()=>{
     const selected=personal.files?.[0];if(!selected)return;
@@ -342,7 +451,7 @@ function openManager() {
       if(selected.size>MAX_IMPORT_BYTES)throw new Error('개인 백업은 8MB 이하로 선택해 주세요.');
       const next=parsePreferencesBackup(await selected.text());
       if(!confirm('이 기기의 스튜디오 메모와 관심·비교·여행 선택을 백업 내용으로 바꿀까요?'))return;
-      if(savePrefs(next)){dialog.close();render();toast('개인 메모와 선택을 복원했습니다.');}
+      if(await savePrefs(next)){closeDialog();render();toast('개인 메모와 선택을 복원했습니다.');}
     }catch(error){toast(error.message,true);}finally{personal.value='';}
   });
 
@@ -353,7 +462,7 @@ function openManager() {
       if(selected.size>MAX_IMPORT_BYTES)throw new Error('콘텐츠 파일은 8MB 이하로 선택해 주세요.');
       const next=parseContent(await selected.text());
       if(!confirm('현재 기기의 초안을 선택한 파일의 내용으로 바꿀까요?'))return;
-      setDraft(next);dialog.close();render();toast('콘텐츠를 이 기기의 초안으로 불러왔습니다.');
+      await setDraft(next,managerBase);closeDialog();render();toast('콘텐츠를 이 기기의 초안으로 불러왔습니다.');
     }catch(error){toast(error.message,true);}finally{file.value='';}
   });
   showDialog('내용 관리',E('div',{},E('p',{class:'form-note'},'공개본은 저장소의 콘텐츠입니다. 여기서 편집한 내용은 이 기기에만 저장되며 자동으로 공개되지 않습니다.'),
@@ -363,23 +472,53 @@ function openManager() {
     E('section',{class:'manager-section'},E('h3',{},'기본 정보'),E('p',{},'이름, 예식 일정과 장소, 청첩장 인사를 채워요.'),editButton('예식 정보 편집',()=>openEditor('invitation'),'button quiet')),
     E('section',{class:'manager-section'},E('h3',{},'공개할 내용 파일로 저장'),E('p',{},'저장한 site.json 파일을 Codex에 전달해 공개 사이트에 반영할 수 있어요. 파일에는 청첩장·일대기·앨범·신혼여행이 담기며, 스튜디오 개인 메모는 포함되지 않습니다.'),button('공개용 파일 저장',downloadContent)),
     E('section',{class:'manager-section'},E('h3',{},'이전에 저장한 내용 불러오기'),E('p',{},'이 앱에서 저장한 JSON 콘텐츠 파일을 선택해 주세요.'),file),
-    E('section',{class:'manager-section'},E('h3',{},'초안을 지우고 공개본 보기'),E('p',{},'이 기기의 콘텐츠 초안만 지웁니다. 관심 스튜디오와 개인 메모는 유지됩니다.'),button('공개본으로 돌아가기',()=>{
+    E('section',{class:'manager-section'},E('h3',{},'초안을 지우고 공개본 보기'),E('p',{},'이 기기의 콘텐츠 초안만 지웁니다. 관심 스튜디오와 개인 메모는 유지됩니다.'),button('공개본으로 돌아가기',async()=>{
       if(!confirm('이 기기의 콘텐츠 초안을 지울까요? 필요한 내용은 먼저 파일로 저장해 주세요.'))return;
-      try{localStorage.removeItem(DRAFT_KEY);content=structuredClone(baseContent);isDraft=false;draftRevision=baseRevision;dialog.close();render();toast('공개본으로 돌아왔습니다.');}catch{toast('초안을 지우지 못했습니다.',true);}
+      try{
+        await navigator.locks.request(`wedding-storage:${DRAFT_KEY}`,()=>{
+          if(localStorage.getItem(DRAFT_KEY)!==managerRaw)throw new Error('다른 탭에서 초안이 변경되었습니다. 창을 닫고 최신 내용을 확인한 뒤 다시 시도해 주세요.');
+          localStorage.removeItem(DRAFT_KEY);
+        });
+        content=structuredClone(baseContent);isDraft=false;draftRevision=baseRevision;closeDialog();render();toast('공개본으로 돌아왔습니다.');
+      }catch(error){toast(error.message||'초안을 지우지 못했습니다.',true);}
     },'button danger'))));
 }
-$('#close-dialog').addEventListener('click',()=>dialog.close());
+function syncDraftFromStorage(){
+  const saved=localStorage.getItem(DRAFT_KEY);
+  content=saved?parseContent(saved):structuredClone(baseContent);isDraft=Boolean(saved);draftRevision=saved?JSON.parse(saved).baseRevision??null:baseRevision;
+}
+$('#close-dialog').addEventListener('click',requestClose);
+dialog.addEventListener('cancel',event=>{event.preventDefault();requestClose();});
 $('#manage-content').addEventListener('click',()=>content&&openManager());
 $('#manage-draft').addEventListener('click',()=>content&&openManager());
-window.addEventListener('hashchange',()=>{if(!content||location.hash==='#main')return;dialog.close();render();window.scrollTo({top:0,behavior:'instant'});});
+document.addEventListener('click',event=>{
+  const anchor=event.target.closest('a[href]');
+  if(anchor&&dirtyEditor()){
+    if(!canLeaveEditor()){event.preventDefault();event.stopImmediatePropagation();}else closeDialog();
+  }
+},true);
+window.addEventListener('beforeunload',event=>{if(dirtyEditor()||pendingWrites){event.preventDefault();event.returnValue='';}});
+window.addEventListener('hashchange',()=>{
+  if(!content||location.hash==='#main')return;
+  if(!canLeaveEditor()){history.replaceState(null,'',location.pathname+location.search+previousHash);return;}
+  previousHash=location.hash;closeDialog();render();window.scrollTo({top:0,behavior:'instant'});
+});
+window.addEventListener('storage',event=>{
+  if(guestMode||!content||![DRAFT_KEY,PREF_KEY,null].includes(event.key))return;
+  if(dialog.open||document.activeElement?.matches('textarea')){
+    toast('다른 탭의 저장 내용이 변경되었습니다. 현재 입력은 유지하며 저장할 때 변경 내용을 확인합니다.');return;
+  }
+  try{syncDraftFromStorage();prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));render();toast('다른 탭의 저장 내용을 반영했습니다.');}
+  catch(error){toast('다른 탭의 내용을 읽지 못했습니다. 기존 화면을 유지합니다. '+error.message,true);}
+});
 
 async function init() {
   try {
-    const [siteResponse,studiosResponse]=await Promise.all([fetch('./data/site.json'),fetch('./data/studios.json')]);
-    if(!siteResponse.ok||!studiosResponse.ok)throw new Error('콘텐츠 파일을 불러오지 못했습니다.');
+    void loadStudios();
+    const siteResponse=await fetch('./data/site.json');
+    if(!siteResponse.ok)throw new Error('콘텐츠 파일을 불러오지 못했습니다.');
     baseContent=parseContent(await siteResponse.text());
-    baseRevision=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(baseContent))))).map(value=>value.toString(16).padStart(2,'0')).join('');studios=await studiosResponse.json();content=structuredClone(baseContent);
-    if(!Array.isArray(studios)||!studios.length)throw new Error('스튜디오 자료를 확인해 주세요.');
+    baseRevision=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(baseContent))))).map(value=>value.toString(16).padStart(2,'0')).join('');content=structuredClone(baseContent);
     let notice='';
     const saved=readStorage(DRAFT_KEY);
     if(saved&&!guestMode){try{content=parseContent(saved);draftRevision=JSON.parse(saved).baseRevision??null;isDraft=true;}catch{notice='저장된 초안을 읽지 못해 공개본을 표시합니다. 기존 초안은 지우지 않았습니다.';}}

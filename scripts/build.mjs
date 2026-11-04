@@ -1,7 +1,11 @@
-import { cp,mkdir,writeFile } from 'node:fs/promises';
+import { cp,mkdir,writeFile,readFile } from 'node:fs/promises';
+import { parseContent } from '../assets/js/content.js';
+import { applyShareMetadata } from '../assets/js/sharing.js';
 const root=new URL('../',import.meta.url),dist=new URL('../dist/',import.meta.url);
 await mkdir(dist,{recursive:true});
-await cp(new URL('index.html',root),new URL('index.html',dist));
+const html=await readFile(new URL('index.html',root),'utf8');
+const content=parseContent(await readFile(new URL('data/site.json',root),'utf8'));
+await writeFile(new URL('index.html',dist),applyShareMetadata(html,content));
 await cp(new URL('assets/',root),new URL('assets/',dist),{recursive:true});
 await mkdir(new URL('data/',dist),{recursive:true});
 for(const name of ['site.json','studios.json'])await cp(new URL('data/'+name,root),new URL('data/'+name,dist));
