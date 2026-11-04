@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {budgetSummary,staySummary,upgradeLegacyTrip} from '../assets/js/travel.js';
+import {budgetSummary,staySummary,upgradeLegacyTrip,dateSpan,stayReview} from '../assets/js/travel.js';
 import {validateContent,parseContent} from '../assets/js/content.js';
 import {mergeChanges} from '../assets/js/storage.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
@@ -42,4 +42,27 @@ test('independent cost edits from two tabs merge without losing either change',(
   const result=mergeChanges(base,local,remote);assert.deepEqual(result.conflicts,[]);
   assert.equal(result.value.honeymoon[0].plan.costs.airfare,2500000);assert.equal(result.value.honeymoon[0].plan.costs.reserve,800000);
   assert.match(staySummary(original.honeymoon[4]),/총 6박 가안/);
+});
+
+test('unentered allocations remain unknown while explicitly entered zero is retained',()=>{
+  const trip=structuredClone(original.honeymoon[0]);
+  for(const key of Object.keys(trip.plan.costs))trip.plan.costs[key]=null;
+  assert.equal(budgetSummary(trip).known,null);assert.equal(budgetSummary(trip).unallocated,null);
+  trip.plan.costs.airfare=0;assert.equal(budgetSummary(trip).known,0);assert.equal(budgetSummary(trip).missing.length,3);
+});
+test('hotel calendar nights handle leap years and DST independently of timezone',()=>{
+  assert.equal(dateSpan('2028-02-28','2028-03-01'),2);assert.equal(dateSpan('2027-03-13','2027-03-15'),2);
+  for(const dates of [['2027-02-30','2027-03-03'],['','2027-05-10'],['2027-05-10','2027-05-09']])assert.equal(dateSpan(...dates),null);
+  const data=structuredClone(original),stay=data.honeymoon[0].plan.stays[0];
+  stay.checkIn='2027-05-09';stay.checkOut='2027-05-12';assert.equal(validateContent(data).honeymoon[0].plan.stays[0].nights,3);
+  stay.nights=4;assert.throws(()=>validateContent(data),/박 수/);
+  stay.nights=3;stay.checkOut='2027-05-08';assert.throws(()=>validateContent(data),/체크아웃/);
+});
+test('changed dates and implausibly short trips require review without silently altering stays',()=>{
+  const trip=validateContent(original).honeymoon[0];assert.equal(stayReview(trip).warnings.length,0);
+  assert.equal(stayReview(trip).dated,0);trip.endDate='2027-05-10';
+  assert.equal(stayReview(trip).warnings.length,2);assert.equal(stayReview(trip).nights,7);
+  trip.plan.dateBasis={startDate:trip.startDate,endDate:trip.endDate};assert.equal(stayReview(trip).changed,false);
+  assert.equal(stayReview(trip).warnings.length,1);
+  assert.deepEqual(parseContent(JSON.stringify({ ...validateContent(original),honeymoon:[trip]})).honeymoon[0],trip);
 });

@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS} from './travel.js?v=structured-travel-1';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan} from './travel.js?v=structured-travel-2';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -43,7 +43,7 @@ function record(value) {
   if (!title) throw new Error('제목을 입력해 주세요.');
   return { id:value.id, title };
 }
-function validatePlan(plan){
+function validatePlan(plan,tripDates){
   if(!object(plan)||plan.version!==1||!object(plan.costs)||!Array.isArray(plan.stays)||plan.stays.length>20)throw new Error('여행 계획 형식을 확인해 주세요.');
   const costs=Object.fromEntries(Object.keys(COST_LABELS).map(key=>{
     const value=plan.costs[key];
@@ -53,10 +53,20 @@ function validatePlan(plan){
   const stays=plan.stays.map(stay=>{
     if(!object(stay)||!Number.isInteger(stay.nights)||stay.nights<1||stay.nights>365)throw new Error('숙박 가안의 박 수를 확인해 주세요.');
     const region=string(stay.region,120).trim();if(!region)throw new Error('숙박 지역을 확인해 주세요.');
-    return {region,nights:stay.nights};
+    const checkIn=date(stay.checkIn??''),checkOut=date(stay.checkOut??'');
+    if(checkIn&&checkOut){
+      const nights=dateSpan(checkIn,checkOut);
+      if(nights===null||nights<1)throw new Error('체크아웃 날짜는 체크인 날짜 이후로 입력해 주세요.');
+      if(nights!==stay.nights)throw new Error('숙박 박 수가 체크인·체크아웃 날짜와 다릅니다.');
+    }
+    return {region,nights:stay.nights,checkIn,checkOut};
   });
   if(!Number.isInteger(plan.climateMonth)||plan.climateMonth<1||plan.climateMonth>12)throw new Error('기후 안내 기준 월을 확인해 주세요.');
-  return {version:1,costs,stays,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
+  const basis=plan.dateBasis??tripDates;
+  if(!object(basis))throw new Error('가안 기준 날짜를 확인해 주세요.');
+  const dateBasis={startDate:date(basis.startDate),endDate:date(basis.endDate)};
+  if(dateBasis.startDate&&dateBasis.endDate&&dateBasis.startDate>dateBasis.endDate)throw new Error('가안 기준 날짜의 순서를 확인해 주세요.');
+  return {version:1,costs,stays,dateBasis,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
     climate:string(plan.climate),climateMonth:plan.climateMonth,sourceTitle:string(plan.sourceTitle,500),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
     ...(plan.legacyText===undefined?{}:{legacyText:string(plan.legacyText)})};
 }
@@ -83,7 +93,7 @@ export function validateContent(input) {
       const startDate=date(item.startDate), endDate=date(item.endDate);
       if (startDate && endDate && startDate > endDate) throw new Error('여행 종료일은 출발일 이후로 입력해 주세요.');
       const trip=upgradeLegacyTrip({ ...record(item), country:string(item.country,200), startDate,endDate,budget:item.budget,pros:string(item.pros),cons:string(item.cons),body:string(item.body),url:link(item.url),...(item.plan===undefined?{}:{plan:item.plan}) });
-      return {...trip,...(trip.plan===undefined?{}:{plan:validatePlan(trip.plan)})};
+      return {...trip,...(trip.plan===undefined?{}:{plan:validatePlan(trip.plan,{startDate,endDate})})};
     })
   };
 }
