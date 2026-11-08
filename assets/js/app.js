@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-review-9';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=quote-focus-10';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText} from './travel.js?v=travel-review-9';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=travel-review-9';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText} from './travel.js?v=quote-focus-10';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=quote-focus-10';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -236,10 +236,10 @@ function recordActions(type,item) {
   return E('div',{class:'record-actions'},button('수정',()=>openEditor(type,item),'text-button'),button('삭제',async()=>{
     if(!confirm(`‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`))return;
     try{
-      const ids=content.honeymoon.map(trip=>trip.id),index=ids.indexOf(item.id);
+      const ids=type==='honeymoon'?sortedTrips().map(trip=>trip.id):[],index=ids.indexOf(item.id);
       const neighbors=[...ids.slice(index+1),...ids.slice(0,index).reverse()];
       const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();
-      if(type==='honeymoon')focusTrip(neighbors.find(id=>content.honeymoon.some(trip=>trip.id===id))||content.honeymoon[0]?.id);
+      if(type==='honeymoon')focusTrip(neighbors.find(id=>content.honeymoon.some(trip=>trip.id===id))||sortedTrips()[0]?.id);
       const cleaned=type!=='honeymoon'||await queuePreference(async()=>{
         const nextPrefs=pruneTripPreferences(prefs,content.honeymoon);
         if(JSON.stringify(nextPrefs)===JSON.stringify(prefs))return true;
@@ -294,7 +294,8 @@ function tripBudgetStatus(item){
 }
 function tripQuoteStatus(item,full=false){
   const review=quoteReview(item);
-  return E('p',{class:'quote-status form-note'+(review.complete&&review.total>TRAVEL_CAP?' warning':''),role:'status'},full||review.complete?review.message:'실제 예산 충족 미확인 · '+(review.flightDates?'한국 출발·도착일 입력 일치':'한국 출발·도착 항공편 미확인'));
+  const message=full||review.complete?review.message:[review.amountMessage,'실제 예산 충족 미확인 · '+(review.flightDates?'한국 출발·도착일 입력 일치':'한국 출발·도착 항공편 미확인')].filter(Boolean).join('\n');
+  return E('p',{class:'quote-status form-note'+(review.excess>0?' warning':''),role:'status'},message);
 }
 function updateTripChoices(){
   if(currentRoute()!=='honeymoon')return;
@@ -360,9 +361,9 @@ function planReference(plan,text){
 }
 function tripQuoteDetails(item){
   const q=item.plan.quote||emptyQuote(),state=quoteReview(item),rows=Object.entries(q.costs).map(([key,value])=>[COST_LABELS[key]+' 실제 견적',won(value)]);
-  rows.push(['현재 계획의 예비비',won(item.plan.costs.reserve)],['견적 + 예비비 합계',won(state.total)],['조회일',q.checkedOn||'미입력'],['한국 출발 시각',q.departureAt.replace('T',' ')||'미입력'],['한국 도착 시각',q.arrivalAt.replace('T',' ')||'미입력']);
+  rows.push(['입력 견적 소계',won(state.known)],['현재 계획의 예비비',won(item.plan.costs.reserve)],['입력 견적 + 기입 예비비',won(state.assessed)],['확인 조건을 갖춘 합계',won(state.total)],['조회일',q.checkedOn||'미입력'],['한국 출발 시각',q.departureAt.replace('T',' ')||'미입력'],['한국 도착 시각',q.arrivalAt.replace('T',' ')||'미입력']);
   return travelSection(item,'quote','실제 견적·항공편 확인',tripQuoteStatus(item,true),E('dl',{class:'quote-breakdown'},rows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),
-    E('p',{},'성인 2명·인천·일반석·객실 1실 기준입니다. 견적과 세금·수하물·식사·이동비 포함 조건, 현재 숙박 구성과 한국 출발·도착 시각이 모두 입력되어야 상한과 비교합니다. 입력 근거 기준의 계산이며 예약·재고를 보증하지 않습니다.'),
+    E('p',{},'성인 2명·인천·일반석·객실 1실 기준입니다. 일부 견적만 입력해도 소계와 기입된 예비비를 기준으로 상한 초과를 표시합니다. 상한 이내 판정은 견적·포함 비용·현재 숙박 구성·한국 출발 및 도착 시각 등 확인 조건을 모두 갖춰야 합니다. 입력 근거 기준의 계산이며 예약·재고를 보증하지 않습니다.'),
     E('p',{},'항공 근거: '+(q.flightSource||'미입력')),E('p',{},'숙박 근거: '+(q.lodgingSource||'미입력')));
 }
 function travelDetails(item){

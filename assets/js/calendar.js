@@ -1,4 +1,4 @@
-import {validDate} from './content.js?v=travel-review-9';
+import {validDate} from './content.js?v=quote-focus-10';
 
 // RFC 5545: TEXT escaping, CRLF and UTF-8 content-line folding.
 const text=value=>String(value??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');
