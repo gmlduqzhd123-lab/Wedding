@@ -54,9 +54,10 @@ export function dateSpan(start,end){
 export function stayReview(trip){
   const stays=trip.plan?.stays||[],nights=stays.reduce((sum,stay)=>sum+stay.nights,0);
   const span=dateSpan(trip.startDate,trip.endDate),basis=trip.plan?.dateBasis;
+  const changed=Boolean(basis&&['startDate','endDate'].some(key=>calendarDay(basis[key])!==null&&basis[key]!==trip[key]));
   const warnings=[];
   if(span!==null&&nights>span+1)warnings.push(`숙박 ${nights}박 가안이 한국 달력상 ${span+1}일 범위보다 큽니다. 숙박 수와 여행 기간을 재검토해 주세요.`);
-  if(basis&&(basis.startDate!==trip.startDate||basis.endDate!==trip.endDate))warnings.push('여행 날짜가 가안 기준과 달라졌습니다. 숙박·이동 구성을 다시 확인해 주세요.');
+  if(changed)warnings.push('여행 날짜가 가안 기준과 달라졌습니다. 숙박·이동 구성을 다시 확인해 주세요.');
   const dates=stays.map(stay=>({start:calendarDay(stay.checkIn),end:calendarDay(stay.checkOut)}));
   const departure=calendarDay(trip.startDate),arrival=calendarDay(trip.endDate);
   const outside=[],overlaps=[],reversed=[],gaps=[],lastKnown={start:null,end:null};
@@ -86,7 +87,7 @@ export function stayReview(trip){
   const dated=dates.filter(({start,end})=>start!==null&&end!==null&&end>start).length;
   if(span===null)warnings.push('한국 출발·도착 날짜를 모두 입력해 주세요.');
   if(!stays.length)warnings.push('숙박 지역과 박 수를 입력해 주세요.');
-  return {warnings,nights,dated,span,changed:Boolean(basis&&(basis.startDate!==trip.startDate||basis.endDate!==trip.endDate)),
+  return {warnings,nights,dated,span,changed,
     message:warnings.length?warnings.join(' '):dated===stays.length&&stays.length?'입력한 현지 숙박 날짜의 박 수 확인 · 항공·시차 정합성은 별도 검토':`현지 숙박 날짜 ${dated}/${stays.length}곳 입력 · 미입력 숙박의 박 수는 가안입니다.`};
 }
 export function staySummary(trip){

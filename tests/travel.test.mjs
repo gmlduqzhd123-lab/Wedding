@@ -8,6 +8,20 @@ import {mergeChanges} from '../assets/js/storage.js';
 const original=JSON.parse(await readFile(new URL('fixtures/reference-plans.json',import.meta.url),'utf8'));
 const legacy=JSON.parse(await readFile(new URL('fixtures/legacy-trip.json',import.meta.url),'utf8'));
 
+test('empty and partially unknown date references do not mislabel first entry as a date change',()=>{
+  const trip={startDate:'2027-06-06',endDate:'2027-06-13',plan:{stays:[{region:'가안',nights:6}],dateBasis:{startDate:'',endDate:''}}};
+  for(const basis of [{startDate:'',endDate:''},{startDate:'2027-06-06',endDate:''},{startDate:'',endDate:'2027-06-13'}]){
+    trip.plan.dateBasis=basis;const state=stayReview(trip);assert.equal(state.changed,false);assert.equal(state.warnings.length,0);
+  }
+  trip.startDate='';trip.endDate='';trip.plan.dateBasis={startDate:'',endDate:''};const state=stayReview(trip);assert.equal(state.changed,false);assert.match(state.message,/한국 출발·도착 날짜/);
+});
+test('a previously known start or end remains a reference even when the other date is unentered',()=>{
+  const trip={startDate:'2027-06-07',endDate:'2027-06-14',plan:{stays:[{region:'가안',nights:6}],dateBasis:{startDate:'2027-06-06',endDate:''}}};
+  assert.equal(stayReview(trip).changed,true);assert.match(stayReview(trip).message,/가안 기준과 달라/);
+  trip.plan.dateBasis={startDate:'',endDate:'2027-06-13'};assert.equal(stayReview(trip).changed,true);
+  trip.startDate='';trip.endDate='';assert.equal(stayReview(trip).changed,true,'clearing a known date still requires review');
+});
+
 test('total edits compute balance and show the allocation gap instead of inventing costs',()=>{
   const trip=structuredClone(original.honeymoon[0]);trip.budget=8000000;
   const result=budgetSummary(trip);

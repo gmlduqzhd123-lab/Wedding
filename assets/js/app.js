@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=climate-empty-11';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=initial-basis-12';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=climate-empty-11';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=climate-empty-11';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=initial-basis-12';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=initial-basis-12';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -573,10 +573,11 @@ async function shrinkPhoto(file) {
 }
 function stayEditor(form,fields,plan){
   const stays=plan.stays.map(stay=>({...stay,nights:String(stay.nights),checkIn:stay.checkIn||'',checkOut:stay.checkOut||''}));
-  let basis=structuredClone(plan.dateBasis||{startDate:fields.startDate.value,endDate:fields.endDate.value});
+  let basis={startDate:plan.dateBasis?.startDate||fields.startDate.value,endDate:plan.dateBasis?.endDate||fields.endDate.value};
+  const currentBasis=()=>({startDate:basis.startDate||fields.startDate.value,endDate:basis.endDate||fields.endDate.value});
   const rows=E('div',{class:'stay-editor-rows'}),status=E('p',{class:'form-note',role:'status'});
   const read=()=>stays.map(stay=>({...stay,region:stay.region.trim(),nights:stay.nights===''?null:Number(stay.nights)}));
-  const preview=()=>{status.textContent=stayReview({startDate:fields.startDate.value,endDate:fields.endDate.value,plan:{stays:read(),dateBasis:basis}}).message;};
+  const preview=()=>{status.textContent=stayReview({startDate:fields.startDate.value,endDate:fields.endDate.value,plan:{stays:read(),dateBasis:currentBasis()}}).message;};
   const draw=(focusIndex)=>{
     rows.replaceChildren(...stays.map((stay,index)=>{
       const group=E('fieldset',{class:'stay-edit-row'},E('legend',{},`숙박 ${index+1}`));
@@ -609,7 +610,7 @@ function stayEditor(form,fields,plan){
       basis={startDate:fields.startDate.value,endDate:fields.endDate.value};preview();toast('가안 기준 날짜를 갱신했습니다. 초안에 저장해 주세요.');
     },'button quiet'));
   fields.startDate.addEventListener('input',preview);fields.endDate.addEventListener('input',preview);draw();preview();
-  return {read,basis:()=>basis};
+  return {read,basis:currentBasis};
 }
 function quoteEditor(form,fields,plan,currentTrip){
   const original=structuredClone(plan.quote||emptyQuote()),body=E('div',{class:'quote-editor-body'});

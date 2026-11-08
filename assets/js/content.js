@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=climate-empty-11';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=initial-basis-12';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
