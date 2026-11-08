@@ -1,4 +1,4 @@
-import {validDate} from './content.js?v=stay-focus-5';
+import {validDate} from './content.js?v=travel-review-9';
 
 // RFC 5545: TEXT escaping, CRLF and UTF-8 content-line folding.
 const text=value=>String(value??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');
@@ -17,7 +17,7 @@ function invitationEvent(info){
   const start=new Date(`${info.date}T${info.time}:00+09:00`);
   const names=[info.partner1,info.partner2].map(value=>(value||'').trim()).filter(Boolean).join(' & ');
   const location=[info.venue,info.address].map(value=>(value||'').trim()).filter(Boolean).join(' · ');
-  return {start:stamp(start),summary:names?names+' 결혼식':'결혼식',location,description:'한국 시간 기준의 예식 시작 일정입니다. 종료 시각은 미정입니다.'};
+  return {start:stamp(start),summary:names?names+' 결혼식':'결혼식',location,description:'한국 시간 기준의 예식 시작 일정입니다. 종료 시각은 미정입니다. 기존에 저장한 일정은 자동 수정되지 않습니다. 변경 시 기존 일정을 수정하거나 삭제 후 새 일정을 추가하고 중복 여부를 확인해 주세요.'};
 }
 export function googleCalendarUrl(info){
   const event=invitationEvent(info),url=new URL('https://calendar.google.com/calendar/r/eventedit');

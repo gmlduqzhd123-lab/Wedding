@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {validateContent,parseContent} from '../assets/js/content.js';
+import {emptyQuote,quoteBasis,quoteReview,currentBudgetText} from '../assets/js/travel.js';
+const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
+function quoted(){const trip=validateContent(original).honeymoon[0];trip.plan.quote={...emptyQuote(),costs:{airfare:2200000,lodging:3000000,other:1500000},checkedOn:'2026-11-08',flightSource:'시험용 항공 견적 근거',lodgingSource:'시험용 숙박 견적 근거',departureAt:'2027-06-06T12:00',arrivalAt:'2027-06-13T08:00',includesRequiredCosts:true,basis:quoteBasis(trip)};return trip;}
+test('unknown quote never establishes actual budget or flight dates; complete input includes reserve',()=>{
+  const trip=validateContent(original).honeymoon[0];assert.equal(quoteReview(trip).complete,false);assert.equal(quoteReview(trip).total,null);
+  const q=quoted();let review=quoteReview(q);assert.equal(review.total,7500000);assert(review.complete);assert.match(review.message,/입력 근거 기준/);
+  q.plan.quote.costs.airfare=6000000;review=quoteReview(q);assert.equal(review.total,11300000);assert.match(review.message,/상한 초과/);
+});
+test('quote dates, sources, inclusions, future check date and changed hotel conditions require review',()=>{
+  for(const edit of [t=>t.plan.quote.costs.airfare=null,t=>t.plan.quote.flightSource='',t=>t.plan.quote.lodgingSource='',t=>t.plan.quote.includesRequiredCosts=false,t=>t.plan.quote.checkedOn='2099-01-01',t=>t.plan.quote.arrivalAt='2027-06-14T08:00',t=>t.plan.quote.departureAt='2027-06-07T12:00',t=>t.startDate='2027-06-07',t=>t.country='다른 지역',t=>t.plan.stays[0].region='다른 호텔권',t=>t.plan.stays[0].nights++,t=>t.plan.stays[0].checkIn='2027-06-06',t=>t.plan.costs.reserve=null,t=>t.plan.costs.reserve=0]){
+    const trip=quoted();edit(trip);assert.equal(quoteReview(trip).complete,false);assert.equal(quoteReview(trip).total,null);
+  }
+  const trip=quoted();trip.plan.dateBasis={startDate:'2027-06-07',endDate:'2027-06-14'};trip.startDate='2027-06-07';trip.endDate='2027-06-14';assert(quoteReview(trip).stale,'updating stay warning basis never silently revalidates a quote');
+});
+test('quote/schema roundtrip preserves evidence, rejects invalid prices and instants, and supports older backups',()=>{
+  const data=validateContent(original);data.honeymoon[0]=quoted();assert.deepEqual(parseContent(JSON.stringify(data)),data);
+  for(const edit of [q=>q.costs.airfare=-1,q=>q.costs.lodging=1.1,q=>q.arrivalAt='2027-02-30T08:00',q=>q.arrivalAt='2027-06-13T25:00',q=>q.checkedOn='2027-02-30',q=>q.includesRequiredCosts='yes',q=>q.basis=null]){
+    const bad=structuredClone(data);edit(bad.honeymoon[0].plan.quote);assert.throws(()=>validateContent(bad));
+  }
+  delete data.honeymoon[0].plan.quote;delete data.honeymoon[0].plan.narrativeVersion;
+  assert.deepEqual(validateContent(data).honeymoon[0].plan.quote,emptyQuote());assert.equal(validateContent(data).honeymoon[0].plan.narrativeVersion,1);
+});
+test('public narratives contain no frozen departure/arrival amounts; generated text follows current costs and nights',()=>{
+  for(const trip of original.honeymoon){assert.equal(trip.plan.narrativeVersion,2);for(const field of ['itinerary','lodgingNotes','budgetNotes'])assert(!/6\/\d|\d+만|\d+박/.test(trip.plan[field]),trip.id+':'+field);}
+  const trip=quoted();trip.plan.costs.airfare=2700000;trip.plan.stays[0].nights=3;
+  const text=currentBudgetText(trip);assert.match(text,/항공 2,700,000원/);assert.match(text,/현재 7박/);assert(!text.includes('2,200,000원'));
+});

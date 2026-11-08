@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=june-beaches-8';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-review-9';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=stay-focus-5';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=google-calendar-7';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText} from './travel.js?v=travel-review-9';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=travel-review-9';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -17,6 +17,7 @@ const menus=[
 ];
 let baseContent, content, studios=[], prefs={}, isDraft=false, toastTimer;
 let filter='', favoritesOnly=false;
+let tripSort='recommended',overviewExpanded=false;
 const guestMode=new URLSearchParams(location.search).get('view')==='guest';
 let baseRevision='', draftRevision=null, editorState=null, studiosStatus='loading', studiosError='';
 let previousHash=location.hash,pendingWrites=0;
@@ -217,7 +218,8 @@ function renderInvitation() {
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
       E('div',{class:'invitation-actions'},externalLink('오시는 길 ↗',info.mapUrl,'button quiet'),hasSchedule?externalLink('Google 캘린더에 추가',googleCalendarUrl(info),'button quiet'):null,
         hasSchedule?button('일정 파일(.ics) 다운로드',downloadInvitationCalendar,'button quiet'):null),
-      hasSchedule?E('p',{class:'small muted calendar-note'},'Google 캘린더는 로그인 후 추가 버튼을 이용하세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 한국 시간 기준이며 종료 시각은 미정이니 등록 화면에서 확인해 주세요.'):null):
+      hasSchedule?E('p',{class:'small muted calendar-note'},'Google 캘린더는 로그인 후 추가 버튼을 이용하세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 한국 시간 기준이며 종료 시각은 미정이니 등록 화면에서 확인해 주세요.'):null,
+      hasSchedule?E('p',{class:'small muted calendar-update-note'},'이 버튼과 일정 파일은 기존에 저장한 일정을 자동 수정하지 않습니다. 예식 일정이 바뀌었다면 캘린더 앱에서 기존 일정을 수정하거나 삭제한 뒤 새 일정을 추가해 중복 여부를 확인해 주세요.'):null):
     empty('우리의 첫 초대장을 준비해요.','두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.','예식 정보 입력',()=>openEditor('invitation'))];
 }
 function focusTrip(id){
@@ -287,8 +289,12 @@ function tripBudgetStatus(item){
   if(state.unallocated>0)lines.push(`항목 미배분 ${won(state.unallocated)} · 세부 비용을 확인해 주세요.`);
   if(state.unallocated<0)lines.push(`항목 배분이 계획 총액보다 ${won(-state.unallocated)} 큽니다. 총액 또는 항목을 조정해 주세요.`);
   if(state.reserve===0)lines.push('예비비가 0원입니다. 추가 비용을 검토해 주세요.');
-  lines.push('계획 기준 · 실제 견적·포함 조건 미확인');
+  lines.push(quoteReview(item).complete?'계획 배분 기준 · 실제 견적 확인 상태는 별도 표시':'계획 기준 · 실제 견적·포함 조건 미확인');
   return E('div',{class:'budget-status'+(state.excess||state.unallocated<0?' warning':''),role:'status'},lines.map(line=>E('p',{},line)));
+}
+function tripQuoteStatus(item,full=false){
+  const review=quoteReview(item);
+  return E('p',{class:'quote-status form-note'+(review.complete&&review.total>TRAVEL_CAP?' warning':''),role:'status'},full||review.complete?review.message:'실제 예산 충족 미확인 · '+(review.flightDates?'한국 출발·도착일 입력 일치':'한국 출발·도착 항공편 미확인'));
 }
 function updateTripChoices(){
   if(currentRoute()!=='honeymoon')return;
@@ -307,7 +313,7 @@ function selectedTripSummary(){
   const item=content.honeymoon.find(trip=>trip.id===prefs.tripSelected);
   if(!item)return E('p',{class:'form-note'},'최종 선택한 여행지가 없습니다. 후보의 최종 선택 버튼으로 이 기기에 저장할 수 있어요.');
   return E('section',{class:'selected-trip'},E('h2',{},'최종 선택 · '+item.title),E('p',{},`${item.startDate||'미정'} 한국 출발 → ${item.endDate||'미정'} 한국 도착 · 2인 계획예산 ${won(item.budget)}`),
-    E('div',{class:'selected-trip-status'},tripBudgetStatus(item),tripStayStatus(item)),
+    E('div',{class:'selected-trip-status'},tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item)),
     E('p',{class:'small muted'},'이 기기에 저장한 선택입니다. 예약 확정을 의미하지 않습니다.'),button('선택한 계획 보기',()=>{
       const card=[...main.querySelectorAll('[data-trip-id]')].find(node=>node.dataset.tripId===item.id);
       if(!card)return;const details=card.querySelector('.travel-details');if(details)details.open=true;
@@ -339,7 +345,7 @@ function tripComparison() {
   if(!items.length)return null;
   const fields=[['나라·지역',item=>item.country||'미정'],['한국 출발·도착',item=>[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'],
     ['2인 계획예산',item=>won(item.budget)],['예산 상한 검토',item=>{const state=budgetSummary(item);return state.excess?`${won(state.excess)} 초과`:state.balance===null?'판단 보류':`계획상 잔여 ${won(state.balance)}`;}],
-    ['숙박 가안',staySummary],['숙박·날짜 검토',item=>stayReview(item).message],...Object.entries(COST_LABELS).map(([key,label])=>[label+' 배분',item=>won(item.plan?.costs[key]??null)]),
+    ['실제 견적·귀국 확인',item=>quoteReview(item).message],['숙박 가안',staySummary],['숙박·날짜 검토',item=>stayReview(item).message],...Object.entries(COST_LABELS).map(([key,label])=>[label+' 배분',item=>won(item.plan?.costs[key]??null)]),
     ['계획상 이동',item=>item.plan?.transport||'별도 확인 필요'],['기후 유의점',item=>item.plan?`${item.plan.climateMonth}월 기준 · ${item.plan.climate||'미입력'}`:'별도 확인 필요'],
     ['좋은 점',item=>item.pros||'미기재'],['고민할 점',item=>item.cons||'미기재']];
   return E('section',{class:'trip-comparison'},E('h2',{},'여행 후보 나란히 비교'),E('p',{class:'small muted'},'관심·비교·최종 선택은 이 기기에 저장됩니다. 비용은 모두 2인 전체 여행 계획 배분입니다.'),
@@ -348,6 +354,16 @@ function tripComparison() {
 }
 function travelSection(item,key,title,...children){
   return E('details',{class:'trip-section','data-view-key':`${item.id}:${key}`},E('summary',{},title),E('div',{class:'trip-section-body'},children));
+}
+function planReference(plan,text){
+  return text?E('div',{class:'plan-reference'},E('p',{class:'small muted'},plan.narrativeVersion===2?'참고 설명 · 직접 작성한 문장의 날짜·금액·박 수는 자동 갱신되지 않습니다.':'이전 계획의 참고 설명 · 아래 원문은 현재 입력값으로 자동 갱신되지 않습니다.'),E('p',{},text)):null;
+}
+function tripQuoteDetails(item){
+  const q=item.plan.quote||emptyQuote(),state=quoteReview(item),rows=Object.entries(q.costs).map(([key,value])=>[COST_LABELS[key]+' 실제 견적',won(value)]);
+  rows.push(['현재 계획의 예비비',won(item.plan.costs.reserve)],['견적 + 예비비 합계',won(state.total)],['조회일',q.checkedOn||'미입력'],['한국 출발 시각',q.departureAt.replace('T',' ')||'미입력'],['한국 도착 시각',q.arrivalAt.replace('T',' ')||'미입력']);
+  return travelSection(item,'quote','실제 견적·항공편 확인',tripQuoteStatus(item,true),E('dl',{class:'quote-breakdown'},rows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),
+    E('p',{},'성인 2명·인천·일반석·객실 1실 기준입니다. 견적과 세금·수하물·식사·이동비 포함 조건, 현재 숙박 구성과 한국 출발·도착 시각이 모두 입력되어야 상한과 비교합니다. 입력 근거 기준의 계산이며 예약·재고를 보증하지 않습니다.'),
+    E('p',{},'항공 근거: '+(q.flightSource||'미입력')),E('p',{},'숙박 근거: '+(q.lodgingSource||'미입력')));
 }
 function travelDetails(item){
   const plan=item.plan;
@@ -361,10 +377,12 @@ function travelDetails(item){
       E('p',{},'인천 출발·일반석·객실 1실 기준입니다. 현지 출발일·항공편은 미확정입니다. 한국 도착일과 현지 출발일을 구분해 확인하세요. 한국 달력의 여행 범위를 현지 숙박 수로 계산하지 않습니다.')),
     travelSection(item,'stays','숙박·이동·일정',E('h3',{},staySummary(item)),tripStayStatus(item),
       plan.stays.map(stay=>E('p',{class:'small'},`${stay.region}: 현지 체크인 ${stay.checkIn||'미입력'} → 체크아웃 ${stay.checkOut||'미입력'} · ${stay.nights}박`)),
-      E('p',{},plan.lodgingNotes),E('h3',{},'일정 흐름 가안'),E('p',{},plan.itinerary),
+      E('p',{class:'current-trip-dates'},`현재 일정: ${item.startDate||'미정'} 한국 출발 → ${staySummary(item)} → ${item.endDate||'미정'} 한국 도착 목표. 현지 도착·출발일은 항공편 확인 후 정합니다.`),
+      planReference(plan,plan.lodgingNotes),E('h3',{},'일정 흐름 참고'),planReference(plan,plan.itinerary),
       E('p',{},`귀국 목표: ${item.endDate||'미정'} 한국 도착. 숙박 배분과 현지 이동은 실제 항공편에 맞춰 조정합니다.`),E('h3',{},'계획상 이동'),E('p',{},plan.transport)),
     travelSection(item,'costs','비용 배분·예비비',E('dl',{class:'cost-breakdown'},costRows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),tripBudgetStatus(item),
-      E('p',{},plan.budgetNotes),E('p',{},'기타 여행비는 교통·식비·활동·보험·통신·준비 비용 등의 통합 배분입니다. 개인 쇼핑은 기본 제외이며 실제 견적·예약 가능 가격은 확인하지 않았습니다.')),
+      E('p',{class:'current-budget-text'},currentBudgetText(item)),planReference(plan,plan.budgetNotes),E('p',{},'기타 여행비는 교통·식비·활동·보험·통신·준비 비용 등의 통합 배분입니다. 개인 쇼핑은 기본 제외이며 실제 견적 확인 상태는 별도 항목에서 확인합니다.')),
+    tripQuoteDetails(item),
     travelSection(item,'experiences','경험 제안',E('p',{},plan.experiences||'아직 입력한 제안이 없습니다.')),
     travelSection(item,'climate',`${plan.climateMonth}월 기후 경향·출처`,E('p',{},plan.climate||'아직 입력한 기후 안내가 없습니다.'),
       changedMonth?E('p',{class:'form-note'},`기후 안내는 ${plan.climateMonth}월 기준입니다. 수정한 여행 월에 맞는 안내를 다시 확인해 주세요.`):null,
@@ -381,19 +399,30 @@ function renderAlbums() {
       E('div',{class:'album-info'},E('p',{class:'record-date'},[item.date?formatDate(item.date):'',`사진 ${item.images.length}장`].filter(Boolean).join(' · ')),E('h2',{},item.title),E('p',{class:'record-body'},item.body),button('사진 보기',()=>openAlbum(item),'text-button'),recordActions('albums',item))))):
     empty('우리의 사진을 담을 첫 앨범','사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
+function sortedTrips(){
+  const trips=[...content.honeymoon];
+  return tripSort==='recommended'?trips:trips.sort((a,b)=>a.budget===null?(b.budget===null?0:1):b.budget===null?-1:(a.budget-b.budget)*(tripSort==='budget-high'?-1:1));
+}
+function tripSortControl(){
+  const select=E('select',{id:'trip-sort','aria-label':'여행 후보 정렬'},[['recommended','추천순'],['budget-low','계획예산 낮은 순'],['budget-high','계획예산 높은 순']].map(([value,label])=>E('option',{value},label)));
+  select.value=tripSort;
+  select.addEventListener('change',()=>{const before=select.getBoundingClientRect().top;tripSort=select.value;render();const target=$('#trip-sort');target.focus({preventScroll:true});window.scrollBy(0,target.getBoundingClientRect().top-before);});
+  return E('div',{class:'travel-tools'},E('label',{for:'trip-sort'},'후보 정렬'),select,E('p',{class:'small muted'},'정렬은 화면 순서만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.'));
+}
 function travelOverview(){
-  const trips=content.honeymoon.filter(item=>item.plan?.comparisonNote);
+  const trips=sortedTrips().filter(item=>item.plan?.comparisonNote);
   if(!trips.length)return null;
   return E('section',{class:'travel-overview','aria-labelledby':'travel-overview-title'},E('h2',{id:'travel-overview-title'},'후보 한눈에 보기'),
-    E('p',{class:'small muted'},'6월 기후·해변 휴식·이동 부담·계획 예산을 함께 고려한 검토 순서입니다. 각 후보의 조사 당시 의견과 현재 입력된 금액을 표시합니다.'),
-    E('ol',{},trips.map(item=>E('li',{},button(item.title,()=>{const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
-      E('strong',{},won(item.budget)),E('p',{class:'small'},item.plan.comparisonNote)))));
+    E('p',{class:'small muted'},'추천순은 조사 당시 6월 기후·해변 휴식·이동 부담·계획 예산을 고려한 순서입니다.'),
+    E('details',{class:'overview-disclosure',open:overviewExpanded,ontoggle:event=>{if(event.currentTarget.isConnected)overviewExpanded=event.currentTarget.open;}},E('summary',{},`후보 요약 ${trips.length}곳 펼치기·접기`),
+      E('ol',{},trips.map(item=>E('li',{},button(item.title,()=>{const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
+        E('strong',{},'2인 목표 '+won(item.budget)),E('p',{class:'small'},item.plan.comparisonNote))))));
 }
 function renderHoneymoon() {
   return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
     E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발·일반석·객실 1실·총예산 상한 1,000만 원. 아래 금액은 예비비를 포함한 지출 목표이며 해당 날짜의 항공·호텔 확정 견적은 아닙니다. 여행 날짜는 한국 출발일과 한국 도착일 기준입니다. 예식 후 공항 이동·휴식 시간을 확보할 수 있는 항공편부터 확인하세요.'),
-    travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
-    content.honeymoon.length?E('section',{class:'travel-grid'},content.honeymoon.map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripStayStatus(item),
+    tripSortControl(),travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
+    content.honeymoon.length?E('section',{class:'travel-grid'},sortedTrips().map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
       E('dl',{},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),
       travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):
     empty('어디로 떠나고 싶나요?','아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.','여행 후보 남기기',()=>openEditor('honeymoon'))];
@@ -580,6 +609,29 @@ function stayEditor(form,fields,plan){
   fields.startDate.addEventListener('input',preview);fields.endDate.addEventListener('input',preview);draw();preview();
   return {read,basis:()=>basis};
 }
+function quoteEditor(form,fields,plan,currentTrip){
+  const original=structuredClone(plan.quote||emptyQuote()),body=E('div',{class:'quote-editor-body'});
+  body.append(E('p',{class:'form-note'},'실제 조회한 성인 2명·인천·일반석·객실 1실 견적만 기록하세요. 항공·숙박의 조회 근거와 한국 출발·도착 시각, 기타 여행비까지 입력합니다. 예비비는 현재 계획 배분을 더합니다. 예약 확정을 뜻하지 않습니다.'));
+  const specs=[...['airfare','lodging','other'].map(key=>[key,`${COST_LABELS[key]} 실제 견적 (원)`,'number',original.costs[key]??'']),
+    ['checkedOn','견적 조회일','date',original.checkedOn],['flightSource','항공 견적 근거·편명·포함 조건','textarea',original.flightSource],['lodgingSource','숙박 견적 근거·객실·포함 조건','textarea',original.lodgingSource],
+    ['departureAt','견적 항공편 한국 출발 시각','datetime-local',original.departureAt],['arrivalAt','견적 항공편 한국 도착 시각','datetime-local',original.arrivalAt]];
+  for(const [key,label,type,value] of specs){
+    const input=type==='textarea'?E('textarea',{rows:'3',maxlength:'2000'}):E('input',{type});input.id='quote-'+key;input.value=value;
+    if(type==='number'){input.min='0';input.step='1';}
+    fields['quote_'+key]=input;body.append(E('label',{class:'field',for:input.id},label,input));
+  }
+  let confirmedBasis=original.basis;
+  const matches=()=>JSON.stringify(quoteBasis(currentTrip()))===JSON.stringify(confirmedBasis);
+  const included=E('input',{type:'checkbox',id:'quote-included'});included.checked=original.includesRequiredCosts&&matches();fields.quote_included=included;
+  included.addEventListener('change',()=>{if(included.checked)confirmedBasis=quoteBasis(currentTrip());});
+  const invalidate=()=>{if(!matches())included.checked=false;};
+  form.addEventListener('input',event=>{if(event.target!==included)invalidate();});form.addEventListener('click',event=>{if(event.target.closest('button'))invalidate();});
+  body.append(E('label',{class:'quote-check',for:included.id},included,'현재 여행 날짜·숙박 구성의 견적이며 세금·수하물·식사·공항 및 지역 이동비를 포함해 확인했습니다.'));
+  form.append(E('details',{class:'quote-editor'},E('summary',{},'실제 견적·항공편 기록 (선택)'),body));
+  const read=()=>({...original,costs:Object.fromEntries(['airfare','lodging','other'].map(key=>[key,fields['quote_'+key].value===''?null:Number(fields['quote_'+key].value)])),
+    ...Object.fromEntries(['checkedOn','flightSource','lodgingSource','departureAt','arrivalAt'].map(key=>[key,fields['quote_'+key].value.trim()])),includesRequiredCosts:included.checked&&matches(),basis:confirmedBasis});
+  return {read};
+}
 function openEditor(type,item=null) {
   if(guestMode)return;
   const titles={invitation:'예식 정보 편집',stories:'우리의 이야기',albums:'포토 앨범',honeymoon:'신혼여행 후보'};
@@ -597,7 +649,7 @@ function openEditor(type,item=null) {
     if(key==='title')input.maxLength=160;
     fields[key]=input;form.appendChild(E('label',{class:'field',for:input.id},label,input));
   }
-  let editedPlan,stayFields;
+  let editedPlan,stayFields,quoteFields;
   if(type==='honeymoon'){
     editedPlan=structuredClone(item?.plan||{version:1,costs:{airfare:null,lodging:null,other:null,reserve:null},stays:[],lodgingNotes:'',itinerary:'',experiences:'',transport:'',climate:'',climateMonth:5,sourceTitle:'',checkedOn:'',budgetNotes:''});
     form.append(E('p',{class:'form-note'},'참고 링크는 직접 작성하는 메모용 주소이며 기후 공식 출처와 별도로 저장합니다.'));
@@ -612,6 +664,7 @@ function openEditor(type,item=null) {
       const input=E('input',{type:'number',min:'0',step:'1',id:`cost-${key}`});input.value=editedPlan.costs[key]??'';fields[`cost_${key}`]=input;
       form.append(E('label',{class:'field',for:input.id},`${label} 배분 (원)`,input));
     }
+    quoteFields=quoteEditor(form,fields,editedPlan,()=>({country:fields.country.value.trim(),startDate:fields.startDate.value,endDate:fields.endDate.value,plan:{stays:stayFields.read()}}));
   }
   let albumImages=[...(item?.images||[])], processing=false,saving=false;
   if(type==='albums') {
@@ -672,6 +725,8 @@ function openEditor(type,item=null) {
           record.plan={...editedPlan,stays:stayFields.read(),dateBasis:stayFields.basis(),costs:Object.fromEntries(Object.keys(COST_LABELS).map(key=>[key,data[`cost_${key}`]===''?null:Number(data[`cost_${key}`])]))};
           for(const key of Object.keys(COST_LABELS))delete record[`cost_${key}`];
           for(const key of ['lodgingNotes','itinerary','transport']){record.plan[key]=data[`plan_${key}`];delete record[`plan_${key}`];}
+          record.plan.quote=quoteFields.read();
+          for(const key of Object.keys(record))if(key.startsWith('quote_'))delete record[key];
         }
         const index=next[type].findIndex(value=>value.id===id);
         if(index===-1)next[type].push(record);else next[type][index]=record;
@@ -691,7 +746,7 @@ function openEditor(type,item=null) {
       }
     }finally{saving=false;submit.disabled=false;for(const [node,disabled]of controlStates)node.disabled=disabled;}
   });
-  const snapshot=()=>JSON.stringify({values:Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.value])),images:albumImages,stays:stayFields?.read(),basis:stayFields?.basis()});
+  const snapshot=()=>JSON.stringify({values:Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.type==='checkbox'?input.checked:input.value])),images:albumImages,stays:stayFields?.read(),basis:stayFields?.basis()});
   const initial=snapshot();
   if(showDialog(titles[type],form))editorState={isDirty:()=>processing||saving||snapshot()!==initial,isSaving:()=>saving};
 }

@@ -1,0 +1,54 @@
+// Actual app, isolated browser contexts; synthetic quotes are test-only and never published.
+import assert from 'node:assert/strict';
+import {readFile,mkdir} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright');
+const base=process.env.TEST_URL||'http://127.0.0.1:4173/Wedding/';
+const browser=await chromium.launch({channel:'chrome',headless:true}),errors=[];
+const ready=p=>p.locator('#main[aria-busy="false"]').waitFor();
+const card=(p,id='bali')=>p.locator(`[data-trip-id="${id}"]`);
+const save=async p=>{await p.getByRole('button',{name:'초안에 저장',exact:true}).click();await p.waitForFunction(()=>!document.querySelector('dialog').open);};
+const edit=p=>card(p).getByRole('button',{name:'수정',exact:true}).click();
+const open=async(p,key)=>{const d=p.locator(`[data-view-key="bali:${key}"]`);if(!await d.evaluate(n=>n.open))await d.locator(':scope > summary').click();};
+try{
+ await mkdir('work/travel-review-qa',{recursive:true});
+ const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),p=await context.newPage();
+ p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});p.on('dialog',d=>d.accept());
+ await p.goto(base+'#/honeymoon');await ready(p);
+ assert.equal(await p.locator('.travel-card').count(),10);assert(!await p.locator('.overview-disclosure').evaluate(n=>n.open));
+ assert(await p.locator('.travel-overview').evaluate(n=>n.getBoundingClientRect().height)<300);
+ await p.locator('.overview-disclosure > summary').click();assert.equal(await p.locator('.travel-overview li').count(),10);
+ await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('budget-low');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'nhatrang');assert(await p.locator('.overview-disclosure').evaluate(n=>n.open));
+ await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('budget-high');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'hawaii');
+ await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('recommended');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'bali');
+ await p.locator('.overview-disclosure > summary').click();
+ assert.match(await card(p).locator(':scope > .quote-status').innerText(),/실제 예산 충족 미확인/);
+ await edit(p);await p.getByLabel('한국 출발일',{exact:true}).fill('2027-06-07');await p.getByLabel('한국 도착일',{exact:true}).fill('2027-06-14');await p.getByLabel('두 사람의 계획예산 (원)',{exact:true}).fill('8000000');await p.getByLabel('항공 배분 (원)',{exact:true}).fill('2700000');
+ await p.getByLabel('숙박 박 수 1',{exact:true}).fill('3');await p.getByRole('button',{name:'현재 날짜로 가안 기준 갱신',exact:true}).click();await save(p);
+ for(const key of ['all','stays','costs'])await open(p,key);
+ const stays=await p.locator('[data-view-key="bali:stays"]').innerText(),costs=await p.locator('[data-view-key="bali:costs"]').innerText();
+ assert.match(stays,/2027-06-07.*7박.*2027-06-14/s);assert(!stays.includes('6/6')&&!stays.includes('6/13'));
+ assert.match(costs,/항공 2,700,000원/);assert(!costs.includes('220만'));assert.match(costs,/현재 7박/);
+ await edit(p);await p.locator('.quote-editor > summary').click();
+ const fields={'항공 실제 견적 (원)':'2700000','숙박·패키지 실제 견적 (원)':'3000000','기타 여행비 실제 견적 (원)':'1500000','견적 조회일':'2026-11-08','항공 견적 근거·편명·포함 조건':'시험용 항공 견적, 실제 예약 아님','숙박 견적 근거·객실·포함 조건':'시험용 숙박 견적, 실제 예약 아님','견적 항공편 한국 출발 시각':'2027-06-07T12:00','견적 항공편 한국 도착 시각':'2027-06-14T08:00'};
+ for(const [label,value] of Object.entries(fields))await p.getByLabel(label,{exact:true}).fill(value);
+ await p.getByLabel('현재 여행 날짜·숙박 구성의 견적이며 세금·수하물·식사·공항 및 지역 이동비를 포함해 확인했습니다.',{exact:true}).check();await save(p);
+ assert.match(await card(p).locator(':scope > .quote-status').innerText(),/8,000,000원.*상한 이내/);
+ await card(p).getByRole('button',{name:'최종 선택',exact:true}).click();await p.locator('.selected-trip').waitFor();assert.match(await p.locator('.selected-trip .quote-status').innerText(),/8,000,000원/);
+ await card(p).getByRole('button',{name:'비교 선택',exact:true}).click();await p.locator('.travel-comparison').waitFor();assert.match(await p.locator('.travel-comparison').innerText(),/입력 견적.*8,000,000원/s);
+ await p.reload();await ready(p);assert.match(await card(p).locator(':scope > .quote-status').innerText(),/8,000,000원/);
+ await edit(p);await p.getByLabel('한국 도착일',{exact:true}).fill('2027-06-15');await p.getByRole('button',{name:'현재 날짜로 가안 기준 갱신',exact:true}).click();await save(p);assert.match(await card(p).locator(':scope > .quote-status').innerText(),/실제 예산 충족 미확인/);
+ await open(p,'all');await open(p,'quote');assert.match(await p.locator('[data-view-key="bali:quote"]').innerText(),/현재 여행·숙박 조건 재확인/);
+ await p.getByRole('button',{name:'내용 관리',exact:true}).click();const pending=p.waitForEvent('download');await p.getByRole('button',{name:'공개용 파일 저장',exact:true}).click();const raw=await readFile(await (await pending).path(),'utf8'),backup=JSON.parse(raw);assert.equal(backup.honeymoon[0].plan.quote.costs.airfare,2700000);
+ await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'review.json',mimeType:'application/json',buffer:Buffer.from(raw)});await p.waitForFunction(()=>!document.querySelector('dialog').open);assert.match(await card(p).locator(':scope > .quote-status').innerText(),/미확인/);
+ await p.goto(base+'?view=guest#/honeymoon');await ready(p);assert(!(await p.locator('#main').innerText()).includes('시험용'));assert.match(await card(p).locator(':scope > .quote-status').innerText(),/실제 예산 충족 미확인/);
+ await p.goto(base+'?view=guest#/invitation');await ready(p);assert.match(await p.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.equal(await p.locator('.couple-names,.invitation .message,.place p').count(),0);assert.match(await p.locator('.calendar-update-note').innerText(),/자동 수정하지 않습니다/);
+ const url=new URL(await p.getByRole('link',{name:'Google 캘린더에 추가',exact:true}).getAttribute('href'));assert.equal(url.searchParams.get('dates'),'20270605T060000Z/20270605T060000Z');assert.match(url.searchParams.get('details'),/자동 수정되지 않습니다/);
+ const download=p.waitForEvent('download');await p.getByRole('button',{name:'일정 파일(.ics) 다운로드',exact:true}).click();const ics=(await readFile(await (await download).path(),'utf8')).replace(/\r\n /g,'');assert.match(ics,/DTSTART:20270605T060000Z/);assert.match(ics,/자동 수정되지 않습니다/);assert(!ics.includes('DTEND:'));
+ await p.screenshot({path:'work/travel-review-qa/invitation-mobile.png',fullPage:true});
+ await p.goto(base+'?view=guest#/honeymoon');await ready(p);await p.screenshot({path:'work/travel-review-qa/compact-mobile.png'});
+ for(const width of [320,390,768,1440]){await p.setViewportSize({width,height:900});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await p.goto(base+'#/honeymoon');await ready(p);await p.getByRole('button',{name:'내용 관리',exact:true}).click();await p.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();await p.waitForFunction(()=>!document.querySelector('dialog').open);assert.equal(await p.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);assert.match(await card(p).locator(':scope > .quote-status').innerText(),/미확인/);
+ assert.deepEqual(errors,[]);console.log('PASS current date/cost/night descriptions; complete vs unknown/stale quote states, summary/comparison, save/reload/export/import/reset and guest isolation');
+ console.log('PASS compact overview, budget sorting, 320–1440px layouts, calendar update guidance in UI/Google/ICS and blank invitation fields; zero browser errors');await context.close();
+}finally{await browser.close();}

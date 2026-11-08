@@ -1,5 +1,27 @@
 export const TRAVEL_CAP=10000000;
 export const COST_LABELS={airfare:'항공',lodging:'숙박·패키지',other:'기타 여행비',reserve:'예비비'};
+export const emptyQuote=()=>({costs:{airfare:null,lodging:null,other:null},checkedOn:'',flightSource:'',lodgingSource:'',departureAt:'',arrivalAt:'',includesRequiredCosts:false,basis:{startDate:'',endDate:'',country:'',stays:''}});
+export function quoteBasis(trip){return {startDate:trip.startDate,endDate:trip.endDate,country:trip.country,stays:JSON.stringify((trip.plan?.stays||[]).map(s=>[s.region,s.nights,s.checkIn||'',s.checkOut||'']))};}
+export function quoteReview(trip,today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())){
+  const q=trip.plan?.quote||emptyQuote(),missing=[];
+  for(const [key,label] of Object.entries(COST_LABELS))if(key!=='reserve'&&q.costs[key]===null)missing.push(label+' 견적');
+  if(!q.checkedOn)missing.push('조회일');else if(q.checkedOn>today)missing.push('미래 조회일 수정');
+  if(!q.flightSource.trim()||!q.lodgingSource.trim())missing.push('항공·숙박 근거');
+  if(!q.includesRequiredCosts)missing.push('세금·수하물·식사·이동비 포함 조건');
+  const basis=quoteBasis(trip),stale=Object.keys(basis).some(key=>basis[key]!==q.basis[key]);
+  if(stale)missing.push('현재 여행·숙박 조건 재확인');
+  if(!(trip.plan?.stays.length)||stayReview(trip).warnings.length)missing.push('숙박 일정 재확인');
+  const flightDates=Boolean(q.departureAt&&q.arrivalAt&&q.departureAt.slice(0,10)===trip.startDate&&q.arrivalAt.slice(0,10)===trip.endDate&&q.arrivalAt>q.departureAt);
+  if(!flightDates)missing.push('한국 출발·도착 시각');
+  const reserve=trip.plan?.costs.reserve??null;if(reserve===null||reserve<=0)missing.push('예비비');
+  const complete=!missing.length,total=complete?Object.values(q.costs).reduce((a,b)=>a+b,0)+reserve:null;
+  const message=complete?`입력 견적 + 예비비 ${total.toLocaleString('ko-KR')}원 · ${total<=TRAVEL_CAP?'상한 이내':'상한 초과'} (입력 근거 기준 · 예약 확정 아님)`:'실제 예산 충족 미확인 · '+missing.join(' · ');
+  return {complete,total,stale,flightDates,missing,message};
+}
+export function currentBudgetText(trip){
+  const costs=trip.plan?.costs||{},nights=(trip.plan?.stays||[]).reduce((sum,s)=>sum+s.nights,0);
+  return Object.entries(COST_LABELS).map(([key,label])=>`${label} ${costs[key]===null||costs[key]===undefined?'미확인':costs[key].toLocaleString('ko-KR')+'원'}`).join(' · ')+(nights&&costs.lodging!==null&&costs.lodging!==undefined?` · 현재 ${nights}박 기준 숙박·패키지 1박당 배분 약 ${Math.round(costs.lodging/nights).toLocaleString('ko-KR')}원`: '');
+}
 export function budgetSummary(trip){
   const costs=trip.plan?.costs;
   const entered=costs?Object.values(costs).filter(value=>value!==null):[];

@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan} from './travel.js?v=stay-focus-5';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=travel-review-9';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -43,6 +43,14 @@ function record(value) {
   if (!title) throw new Error('제목을 입력해 주세요.');
   return { id:value.id, title };
 }
+function validateQuote(value){
+  if(value===undefined)return emptyQuote();
+  if(!object(value)||!object(value.costs)||!object(value.basis)||typeof value.includesRequiredCosts!=='boolean')throw new Error('실제 견적 확인 형식을 확인해 주세요.');
+  const costs=Object.fromEntries(['airfare','lodging','other'].map(key=>{const amount=value.costs[key];if(amount!==null&&(!Number.isSafeInteger(amount)||amount<0||amount>1000000000000))throw new Error('견적 금액을 확인해 주세요.');return [key,amount];}));
+  const instant=raw=>{const v=string(raw,16);if(v&&(!/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/.test(v)||!validDate(v.slice(0,10))))throw new Error('견적 항공편의 한국 시각을 확인해 주세요.');return v;};
+  return {costs,checkedOn:date(value.checkedOn),flightSource:string(value.flightSource,2000),lodgingSource:string(value.lodgingSource,2000),departureAt:instant(value.departureAt),arrivalAt:instant(value.arrivalAt),includesRequiredCosts:value.includesRequiredCosts,
+    basis:{startDate:date(value.basis.startDate),endDate:date(value.basis.endDate),country:string(value.basis.country,200),stays:string(value.basis.stays,12000)}};
+}
 function validatePlan(plan,tripDates){
   if(!object(plan)||plan.version!==1||!object(plan.costs)||!Array.isArray(plan.stays)||plan.stays.length>20)throw new Error('여행 계획 형식을 확인해 주세요.');
   const costs=Object.fromEntries(Object.keys(COST_LABELS).map(key=>{
@@ -74,9 +82,12 @@ function validatePlan(plan,tripDates){
     if(!title||!/^https?:\/\//i.test(url))throw new Error('여행 조사 출처의 제목과 전체 주소를 확인해 주세요.');
     return {title,url};
   });
+  const narrativeVersion=plan.narrativeVersion??1;
+  if(![1,2].includes(narrativeVersion))throw new Error('여행 설명 버전을 확인해 주세요.');
   return {version:1,costs,stays,dateBasis,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
     climate:string(plan.climate),climateMonth:plan.climateMonth,sourceTitle:string(plan.sourceTitle,500),sourceUrl:link(plan.sourceUrl??''),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
     researchNotes:string(plan.researchNotes??''),comparisonNote:string(plan.comparisonNote??'',500),references:checkedReferences,
+    narrativeVersion,quote:validateQuote(plan.quote),
     ...(plan.legacyText===undefined?{}:{legacyText:string(plan.legacyText)})};
 }
 export function validateContent(input) {

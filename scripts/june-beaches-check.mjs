@@ -34,7 +34,7 @@ try{
   for(const width of [320,390,768,1440]){await p.setViewportSize({width,height:1000});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`fits ${width}`);}
   await p.setViewportSize({width:1440,height:1000});await p.locator('.travel-overview').screenshot({path:'work/june-beaches-qa/overview-desktop.png'});
   await p.setViewportSize({width:390,height:844});await p.locator('.travel-overview').screenshot({path:'work/june-beaches-qa/overview-mobile.png'});
-  await p.locator('.travel-overview').getByRole('button',{name:expected.honeymoon.at(-1).title,exact:true}).click();
+  await p.locator('.overview-disclosure > summary').click();await p.locator('.travel-overview').getByRole('button',{name:expected.honeymoon.at(-1).title,exact:true}).click();
   assert.equal(await p.evaluate(()=>document.activeElement.textContent),expected.honeymoon.at(-1).title);assert.equal(new URL(p.url()).hash,'#/honeymoon');
   console.log('PASS actual 10 June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts');
 
