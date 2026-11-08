@@ -1,4 +1,4 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=stay-focus-5';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=june-beaches-8';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
 import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan} from './travel.js?v=stay-focus-5';
@@ -358,7 +358,7 @@ function travelDetails(item){
   const changedMonth=Boolean(item.startDate&&Number(item.startDate.slice(5,7))!==plan.climateMonth||item.endDate&&Number(item.endDate.slice(5,7))!==plan.climateMonth);
   return E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'일정·숙박·비용 상세'),
     travelSection(item,'dates','여행 조건·귀국',E('p',{},`한국 출발 ${item.startDate||'미정'} → 한국 도착 목표 ${item.endDate||'미정'} · 성인 2명 · 예산 상한 ${won(TRAVEL_CAP)}`),
-      E('p',{},'현지 출발일·항공편은 미확정입니다. 한국 도착일과 현지 출발일을 구분해 확인하세요. 한국 달력의 여행 범위를 현지 숙박 수로 계산하지 않습니다. 인천·일반석·객실 1실은 초기 비교 가정입니다.')),
+      E('p',{},'인천 출발·일반석·객실 1실 기준입니다. 현지 출발일·항공편은 미확정입니다. 한국 도착일과 현지 출발일을 구분해 확인하세요. 한국 달력의 여행 범위를 현지 숙박 수로 계산하지 않습니다.')),
     travelSection(item,'stays','숙박·이동·일정',E('h3',{},staySummary(item)),tripStayStatus(item),
       plan.stays.map(stay=>E('p',{class:'small'},`${stay.region}: 현지 체크인 ${stay.checkIn||'미입력'} → 체크아웃 ${stay.checkOut||'미입력'} · ${stay.nights}박`)),
       E('p',{},plan.lodgingNotes),E('h3',{},'일정 흐름 가안'),E('p',{},plan.itinerary),
@@ -370,8 +370,9 @@ function travelDetails(item){
       changedMonth?E('p',{class:'form-note'},`기후 안내는 ${plan.climateMonth}월 기준입니다. 수정한 여행 월에 맞는 안내를 다시 확인해 주세요.`):null,
       E('p',{class:'small muted'},`${plan.sourceTitle||'출처 미입력'}${plan.checkedOn?' · 자료 확인일 '+plan.checkedOn:''}`),externalLink('기후 공식 안내 ↗',plan.sourceUrl||''),
       plan.sourceTitle&&!plan.sourceUrl?E('p',{class:'small muted'},'기후 출처 링크 미입력 · 직접 입력한 참고 링크와는 별도로 관리합니다.'):null),
-    travelSection(item,'sources','계획 자료·확인 범위',E('p',{},plan.sourceTitle?'초기 계획 배분과 숙박 구성은 사용자 제공 Honeymoon_2027_PRD.md(2026-11-04)를 바탕으로 정리했습니다. 수정한 날짜·금액은 현재 입력값이며 실제 예약이나 견적으로 확인된 상태가 아닙니다.':'직접 입력한 여행 계획입니다. 금액·일정·출처의 확인 상태를 별도로 검토해 주세요.'),
-      plan.sourceTitle?externalLink('계획 자료와 적용 범위 ↗','https://github.com/gmlduqzhd123-lab/Wedding/blob/main/CONTENT_SOURCES.md'):null),
+    travelSection(item,'sources','계획 자료·확인 범위',E('p',{},plan.researchNotes||'저장된 여행 계획입니다. 제공 자료와 직접 수정한 항목의 적용 범위를 확인해 주세요. 실제 예약이나 견적으로 확인된 상태가 아닙니다.'),
+      (plan.references||[]).map(source=>externalLink(source.title+' ↗',source.url)),
+      externalLink('계획 자료와 적용 범위 ↗','https://github.com/gmlduqzhd123-lab/Wedding/blob/main/CONTENT_SOURCES.md')),
     item.body||item.url?travelSection(item,'memo','직접 작성한 메모·참고 링크',item.body?E('p',{class:'record-body'},item.body):null,externalLink('직접 입력한 참고 링크 ↗',item.url),E('p',{class:'small muted'},'직접 입력한 참고 링크는 기후 공식 출처와 별개입니다. 자유 메모의 문장은 날짜·금액 변경 시 자동 수정되지 않습니다.')):null);
 }
 function renderAlbums() {
@@ -380,9 +381,18 @@ function renderAlbums() {
       E('div',{class:'album-info'},E('p',{class:'record-date'},[item.date?formatDate(item.date):'',`사진 ${item.images.length}장`].filter(Boolean).join(' · ')),E('h2',{},item.title),E('p',{class:'record-body'},item.body),button('사진 보기',()=>openAlbum(item),'text-button'),recordActions('albums',item))))):
     empty('우리의 사진을 담을 첫 앨범','사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
+function travelOverview(){
+  const trips=content.honeymoon.filter(item=>item.plan?.comparisonNote);
+  if(!trips.length)return null;
+  return E('section',{class:'travel-overview','aria-labelledby':'travel-overview-title'},E('h2',{id:'travel-overview-title'},'후보 한눈에 보기'),
+    E('p',{class:'small muted'},'6월 기후·해변 휴식·이동 부담·계획 예산을 함께 고려한 검토 순서입니다. 각 후보의 조사 당시 의견과 현재 입력된 금액을 표시합니다.'),
+    E('ol',{},trips.map(item=>E('li',{},button(item.title,()=>{const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
+      E('strong',{},won(item.budget)),E('p',{class:'small'},item.plan.comparisonNote)))));
+}
 function renderHoneymoon() {
   return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
-    E('p',{class:'form-note honeymoon-note'},'두 사람의 계획용 예산입니다. 실제 견적·예약 가능 금액은 별도 확인해 주세요. 여행 날짜는 한국 출발일과 한국 도착일 기준이며, 현지 숙박 수와 출발일은 항공편에 따라 조정합니다.'),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
+    E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발·일반석·객실 1실·총예산 상한 1,000만 원. 아래 금액은 예비비를 포함한 지출 목표이며 해당 날짜의 항공·호텔 확정 견적은 아닙니다. 여행 날짜는 한국 출발일과 한국 도착일 기준입니다. 예식 후 공항 이동·휴식 시간을 확보할 수 있는 항공편부터 확인하세요.'),
+    travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
     content.honeymoon.length?E('section',{class:'travel-grid'},content.honeymoon.map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripStayStatus(item),
       E('dl',{},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),
       travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):

@@ -1,3 +1,5 @@
+// Behavioral regression uses historical plan fixtures; see june-beaches-check.mjs for live content.
+import {useReferencePlans,referencePlans} from './reference-plans.mjs';
 // Optional browser regression for lodging editing, date review, costs and private selection summary.
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -14,7 +16,7 @@ const save=async()=>{await page.getByRole('button',{name:'초안에 저장',exac
 const stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('wedding:v1:draft')));
 const open=async key=>{const section=page.locator(`[data-view-key="bali:${key}"]`);if(!await section.evaluate(n=>n.open))await section.locator(':scope > summary').click();};
 try{
-  await page.goto(base+'#/honeymoon');await ready();await edit();
+  await useReferencePlans(context);await page.goto(base+'#/honeymoon');await ready();await edit();
   await page.getByLabel('한국 도착일',{exact:true}).fill('2027-05-10');await save();
   assert.match(await card().locator(':scope > .stay-status').innerText(),/숙박 7박.*재검토/);
   assert.match(await card().locator(':scope > .stay-status').innerText(),/여행 날짜가 가안 기준과 달라/);

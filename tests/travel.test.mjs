@@ -4,7 +4,8 @@ import {readFile} from 'node:fs/promises';
 import {budgetSummary,staySummary,upgradeLegacyTrip,dateSpan,stayReview} from '../assets/js/travel.js';
 import {validateContent,parseContent} from '../assets/js/content.js';
 import {mergeChanges} from '../assets/js/storage.js';
-const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
+// Fixed historical plans exercise editing/migration independently of public recommendations.
+const original=JSON.parse(await readFile(new URL('fixtures/reference-plans.json',import.meta.url),'utf8'));
 const legacy=JSON.parse(await readFile(new URL('fixtures/legacy-trip.json',import.meta.url),'utf8'));
 
 test('total edits compute balance and show the allocation gap instead of inventing costs',()=>{

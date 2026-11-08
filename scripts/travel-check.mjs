@@ -1,3 +1,5 @@
+// Behavioral regression uses historical plan fixtures; see june-beaches-check.mjs for live content.
+import {useReferencePlans,referencePlans} from './reference-plans.mjs';
 // Optional browser regression check for the structured honeymoon plans and blank invitation fields.
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -12,7 +14,7 @@ const open=async key=>{const section=page.locator(`[data-view-key="bali:${key}"]
 const save=async()=>{await page.getByRole('button',{name:'초안에 저장',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('dialog').open);};
 const edit=()=>card().getByRole('button',{name:'수정',exact:true}).click();
 try{
- await page.goto(base+'?view=guest#/invitation');await page.locator('#main[aria-busy="false"]').waitFor();
+ await useReferencePlans(context);await page.goto(base+'?view=guest#/invitation');await page.locator('#main[aria-busy="false"]').waitFor();
  assert.equal(await page.locator('.couple-names,.invitation .message,.invitation .place p').count(),0);
  assert.equal(await page.getByRole('link',{name:'오시는 길 ↗',exact:true}).count(),0);
  assert.match(await page.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.match(await page.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);

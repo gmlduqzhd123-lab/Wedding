@@ -1,3 +1,5 @@
+// Behavioral regression uses historical plan fixtures; see june-beaches-check.mjs for live content.
+import {useReferencePlans,referencePlans} from './reference-plans.mjs';
 // Optional browser checks for selected-plan status parity and calendar file downloads.
 import assert from 'node:assert/strict';
 import {mkdir,readFile} from 'node:fs/promises';
@@ -24,7 +26,7 @@ async function calendar(p){
 try{
   await mkdir('work/calendar-summary-qa',{recursive:true});
   const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());
-  await p.goto(base+'#/honeymoon');await ready(p);
+  await useReferencePlans(context);await p.goto(base+'#/honeymoon');await ready(p);
   const choose=async id=>{await card(p,id).getByRole('button',{name:'최종 선택',exact:true}).click();await p.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).tripSelected===id,id);};
   const parity=async id=>{
     assert.equal(await p.locator('.selected-trip .budget-status').innerText(),await card(p,id).locator(':scope > .budget-status').innerText());

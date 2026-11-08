@@ -1,3 +1,5 @@
+// Behavioral regression uses historical plan fixtures; see june-beaches-check.mjs for live content.
+import {useReferencePlans,referencePlans} from './reference-plans.mjs';
 // Optional browser regressions for keyboard navigation, reference popups and legacy link-only plans.
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -8,7 +10,7 @@ const browser=await chromium.launch({headless:true,channel:process.env.BROWSER_C
 async function fresh(query='#/honeymoon'){
   const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),page=await context.newPage();
   page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(base+query);await page.locator('#main[aria-busy="false"]').waitFor();return {page,context};
+  await useReferencePlans(context);await page.goto(base+query);await page.locator('#main[aria-busy="false"]').waitFor();return {page,context};
 }
 const ready=p=>p.locator('#main[aria-busy="false"]').waitFor();
 const card=p=>p.locator('[data-trip-id="bali"]');
@@ -32,7 +34,7 @@ try{
 
   const b=await fresh(),q=b.page,dialogs=[];
   q.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});
-  const published=await q.request.get(new URL('data/site.json',base).href).then(r=>r.json());const sourceUrl=published.honeymoon[0].plan.sourceUrl;
+  const published=structuredClone(referencePlans);const sourceUrl=published.honeymoon[0].plan.sourceUrl;
   await b.context.route(sourceUrl,route=>route.fulfill({status:200,contentType:'text/html',body:'<title>Reference preview</title>'}));
   await card(q).getByRole('button',{name:'수정',exact:true}).click();await q.getByLabel('일정·상담 메모',{exact:true}).fill('출처를 확인하면서 작성한 메모');
   const popup=q.waitForEvent('popup');await q.locator('dialog').getByRole('link',{name:'기후 공식 안내 ↗',exact:true}).click();const source=await popup;await source.waitForLoadState();

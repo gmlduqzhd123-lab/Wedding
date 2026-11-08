@@ -15,203 +15,553 @@
   "honeymoon": [
     {
       "id": "bali",
-      "title": "발리 · 우붓 & 누사두아",
+      "title": "발리 · 짐바란·누사두아",
       "country": "인도네시아",
-      "startDate": "2027-05-09",
-      "endDate": "2027-05-17",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
       "budget": 7500000,
-      "pros": "숙소 중심으로 충분히 쉬는 구성\n우붓의 산책과 누사두아의 해변 체류를 함께 계획",
-      "cons": "숙소 변경일의 이동과 체크인 부담 고려\n풀빌라·객실 등급과 추가 체험에 따른 비용 확인\n건기 경향과 별개로 실제 날씨·해양 여건 확인",
+      "pros": "해변 중심으로 6박을 배분하고 숙소 이동을 한 번으로 제한\n건기 경향과 휴양·식사·산책의 균형을 우선한 후보",
+      "cons": "바닷물 수위와 파도에 따라 해수욕 여건이 달라짐\n호텔 등급·풀빌라 선택에 따라 숙박 예산 차이가 큼",
       "body": "",
       "url": "",
       "plan": {
         "version": 1,
         "costs": {
           "airfare": 2200000,
-          "lodging": 3200000,
-          "other": 1400000,
-          "reserve": 700000
+          "lodging": 3000000,
+          "other": 1500000,
+          "reserve": 800000
         },
         "stays": [
           {
-            "region": "우붓",
-            "nights": 3
+            "region": "짐바란",
+            "nights": 2,
+            "checkIn": "",
+            "checkOut": ""
           },
           {
             "region": "누사두아",
-            "nights": 4
+            "nights": 4,
+            "checkIn": "",
+            "checkOut": ""
           }
         ],
-        "lodgingNotes": "우붓은 숙소에서 쉴 시간을 확보하고, 누사두아는 해변 접근성과 숙소 내 휴식 공간을 기준으로 비교합니다.",
-        "itinerary": "한국 출국 → 우붓 적응·휴식 → 우붓 산책·식사와 자유시간 → 숙소 변경일은 이동·휴식 중심 → 누사두아 숙소·해변 체류 → 귀국 이동 → 한국 도착 목표.",
-        "experiences": "숙소에서 쉬기, 우붓 주변 산책, 현지 음식 맛보기, 해변 걷기, 가벼운 관광 중 선호하는 것을 고르는 편집 제안입니다. 체험은 비용과 운영 조건을 확인한 뒤 추가합니다.",
-        "transport": "우붓 → 누사두아 · 숙소 변경일 이동·휴식",
-        "climate": "인도네시아 관광 안내는 발리를 포함한 주요 지역의 건기를 통상 4~10월로 설명합니다. 계절 변동이 있으므로 여행일의 맑은 날씨를 보장하지 않습니다.",
-        "climateMonth": 5,
-        "sourceTitle": "Indonesia Travel — Weather, Climate & Seasons",
-        "checkedOn": "2026-11-04",
-        "budgetNotes": "세금·수하물·식사·이동의 포함 범위는 견적별로 확인해야 합니다.",
-        "sourceUrl": "https://www.indonesia.travel/id/en/general-information/weather-climate-seasons"
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "짐바란 2박 → 누사두아 4박, 총 6박 가안. 해변 접근이 쉬운 객실 1실을 우선하며 전 일정 풀빌라를 전제하지 않습니다. 현지 체크인·아웃 날짜는 항공편 확정 후 입력합니다.",
+        "itinerary": "6/6 한국 출발 후 발리 도착 가능한 편을 우선 검색 → 짐바란에서 휴식 → 누사두아로 이동해 해변 체류 → 6/12 현지 출발·6/13 한국 도착 가능한 귀국편 확인. 도착이 다음 날이면 숙박 배분을 조정합니다.",
+        "experiences": "누사두아 해변 산책, 짐바란 일몰 식사, 숙소 수영장과 스파를 선택 제안합니다. 해양 활동은 현지 운영·해상 상태를 확인한 뒤 선택합니다.",
+        "transport": "ICN–DPS 왕복을 우선 검색하고 공항–숙소·숙소 간 차량 이동을 계획합니다. 2027년 6월 편명·직항 운항일·시간표는 미확인입니다. 섬 간 배편이 필요한 일정을 필수로 넣지 않습니다.",
+        "climate": "발리는 통상 4~10월 건기입니다. 6월 해변 휴양을 검토하기 좋지만 비가 없다는 뜻은 아닙니다. 해안별 파도·조류·조석은 당일 확인합니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Indonesia Travel · Weather, Climate & Seasons",
+        "sourceUrl": "https://www.indonesia.travel/nl/en/general-information/weather-climate-seasons/",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 220만·숙박 300만(6박, 1실 평균 50만 원 목표)·기타 150만·예비비 80만 원. 숙박 세금·조식, 항공 수하물, 현지 부과금·공항 이동까지 포함되는지 확인합니다. 대한항공 공개 운임 페이지의 다른 날짜 가격은 2027년 6월 견적으로 사용하지 않았습니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "우선 검토 · 6월 건기 경향, 해변 휴식과 숙소 선택의 균형",
+        "references": [
+          {
+            "title": "Indonesia Travel · 발리 해변 안내",
+            "url": "https://www.indonesia.travel/id/id/travel-ideas/marine/pantai-bali"
+          },
+          {
+            "title": "대한항공 · 서울–발리 운임 조회",
+            "url": "https://www.koreanair.com/flights/ko/flights-from-seoul-to-denpasar-bali"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nhatrang",
+      "title": "나트랑 · 깜라인 바이자이",
+      "country": "베트남",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 5500000,
+      "pros": "시내의 식사·산책과 리조트 휴양을 함께 배분\n다른 후보보다 낮은 지출 목표로 숙소 선택 여지를 확보",
+      "cons": "6월에는 햇볕과 더위에 대비한 일정 필요\n시내와 깜라인을 오가는 차량 비용·시간을 별도 검토",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 1400000,
+          "lodging": 2000000,
+          "other": 1300000,
+          "reserve": 800000
+        },
+        "stays": [
+          {
+            "region": "나트랑 시내 해변",
+            "nights": 2,
+            "checkIn": "",
+            "checkOut": ""
+          },
+          {
+            "region": "깜라인 바이자이",
+            "nights": 4,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "나트랑 시내 해변 2박 → 바이자이 해변권 4박, 총 6박 가안. 리조트 조식·차량 이동 포함 여부를 확인하며 객실 등급은 견적에 맞춰 선택합니다.",
+        "itinerary": "6/6 한국 출발·깜라인 도착 가능한 편 검색 → 시내 2박으로 식사·산책 → 바이자이 4박 휴식 → 6/12 밤 현지 출발·6/13 한국 도착 가능한 편 확인. 새벽 도착 시 전날 객실 보유가 필요한지 먼저 확인합니다.",
+        "experiences": "쩐푸 해변 산책, 바이자이에서 쉬는 날을 중심으로 구성합니다. 섬 투어는 하루만 선택하고 취소 시 숙소 휴식으로 대체합니다.",
+        "transport": "ICN–CXR 왕복과 공항–나트랑–바이자이 차량 동선을 검토합니다. 베트남항공의 노선 판매 안내는 확인했으나 해당 날짜의 직항 여부·귀국 시간·최종 운임은 미확인입니다.",
+        "climate": "공식 관광 안내는 나트랑의 1~8월을 덥고 맑은 시기, 9~12월을 우기로 설명합니다. 6월은 해변 후보로 적합한 편이지만 강한 햇볕과 일시적 비에 대비합니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Vietnam Tourism · Weather and climate in Vietnam",
+        "sourceUrl": "https://vietnam.travel/things-to-do/weather-and-climate-vietnam/",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 140만·숙박 200만(6박, 1실 평균 약 33만 원 목표)·기타 130만·예비비 80만 원. 리조트 식사·공항 및 지역 간 이동을 포함해 비교합니다. 공개된 다른 날짜 운임은 참고 경로이며 요청 날짜의 견적이 아닙니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "우선 검토 · 6월 맑고 더운 시기, 예산 여유를 중시할 때",
+        "references": [
+          {
+            "title": "Vietnam Tourism · 나트랑 해변 안내",
+            "url": "https://vietnam.travel/things-to-do/nha-trang-best-beaches-sustainable-vacation/"
+          },
+          {
+            "title": "베트남항공 · 서울 출발 베트남 운임 조회",
+            "url": "https://www.vietnamairlines.com/ko-kr/항공편-출발-서울-도착-베트남"
+          }
+        ]
+      }
+    },
+    {
+      "id": "danang",
+      "title": "다낭 · 미케·호이안 안방",
+      "country": "베트남",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 5800000,
+      "pros": "해변 휴식에 호이안 저녁 산책을 곁들이는 구성\n두 지역 모두 육로로 이동하는 숙박 가안",
+      "cons": "5~8월 호이안은 매우 더울 수 있어 한낮 관광을 줄여야 함\n관광지를 많이 넣으면 휴양 시간이 줄어듦",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 1400000,
+          "lodging": 2200000,
+          "other": 1400000,
+          "reserve": 800000
+        },
+        "stays": [
+          {
+            "region": "다낭 미케 해변",
+            "nights": 3,
+            "checkIn": "",
+            "checkOut": ""
+          },
+          {
+            "region": "호이안 안방 해변권",
+            "nights": 3,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "미케 해변 3박 → 호이안 안방 해변권 3박, 총 6박 가안. 호이안 구시가지 한복판보다 해변 접근과 실내 휴식 공간을 우선 비교합니다.",
+        "itinerary": "6/6 한국 출발·다낭 도착 가능한 편 검색 → 미케에서 휴식 → 호이안 해변권 이동 → 구시가지 저녁 산책 하루 → 6/12 밤 현지 출발·6/13 한국 도착 가능한 편 확인.",
+        "experiences": "미케 해변 아침 산책, 안방 해변 휴식, 호이안 저녁 식사를 제안합니다. 바나힐 등 장거리 관광은 필수로 넣지 않습니다.",
+        "transport": "ICN–DAD 왕복과 다낭–호이안 육로 이동을 우선 검토합니다. 공항으로 돌아오는 차량과 마지막 날 객실 사용 시간을 포함해 비교합니다. 요청 날짜의 항공 운항·시각은 미확인입니다.",
+        "climate": "베트남 공식 기후 안내는 호이안의 5~8월 더위와 9~11월 많은 비를 설명합니다. 다낭·호이안 해안권의 6월은 더위에 맞춘 아침·저녁 활동을 권하는 계획입니다. 날짜별 날씨 예보는 아닙니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Vietnam Tourism · Weather and climate in Vietnam (Hoi An)",
+        "sourceUrl": "https://vietnam.travel/things-to-do/weather-and-climate-vietnam/",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 140만·숙박 220만(6박, 1실 평균 약 37만 원 목표)·기타 140만·예비비 80만 원. 다낭–호이안 및 귀국 공항 이동, 조식·세금, 늦은 체크아웃 비용을 검토합니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "우선 검토 · 바닷가와 호이안 산책을 함께 원할 때, 한낮 휴식 필수",
+        "references": [
+          {
+            "title": "Vietnam Tourism · 다낭 미케 해변·이동 안내",
+            "url": "https://vietnam.travel/place-to-go/south-central-coast-central-highlands/da-nang/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lombok",
+      "title": "롬복 · 승기기 해변",
+      "country": "인도네시아",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 7800000,
+      "pros": "한 해변권에 머물며 느리게 쉬는 구성\n통상적인 건기에 해당하는 6월 후보",
+      "cons": "항공 연결편에 따라 첫날·마지막 날을 이동에 더 사용\n길리섬을 추가하면 배편과 짐 이동 부담이 생김",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 2800000,
+          "lodging": 2500000,
+          "other": 1600000,
+          "reserve": 900000
+        },
+        "stays": [
+          {
+            "region": "롬복 승기기 해변권",
+            "nights": 6,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "승기기 해변권 객실 1실에 6박을 목표로 합니다. 항공 연결상 6/7 도착이면 5박으로 조정합니다. 섬 이동 때문에 귀국 연결을 촉박하게 잡지 않습니다.",
+        "itinerary": "6/6 인천 출발 → 경유 후 LOP 도착 가능한 조합 검색 → 승기기에서 휴식 중심 체류 → 6/12 현지 출발·6/13 한국 도착을 충족하는 연결편 확인. 당일 연결이 불가능하면 우선순위를 낮춥니다.",
+        "experiences": "승기기 일몰과 해변 산책을 중심으로 제안합니다. 길리섬 당일 방문은 해상 상황과 왕복 이동 여유가 있을 때만 선택합니다.",
+        "transport": "LOP 공항을 목적지로 경유 항공편을 비교합니다. 발리 등 경유지에서 별도 발권하면 수하물 재수속·연결 실패 책임·추가 숙박을 검토해야 합니다. 실제 연결 시간표는 미확인입니다.",
+        "climate": "인도네시아 관광청은 롬복의 통상 건기를 5~10월로 안내합니다. 건기에도 바람과 파도는 변하므로 해양 투어·배편은 당일 확인합니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Indonesia Travel · Lombok activities & travel tips",
+        "sourceUrl": "https://www.indonesia.travel/nl/en/travel-ideas/marine/going-on-a-trip-to-lombok-here-are-5-activities-you-should-try-there",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 280만·숙박 250만(6박, 1실 평균 약 42만 원 목표)·기타 160만·예비비 90만 원. 경유 숙박이 필요하면 별도 비용을 넣고 총액을 다시 계산합니다. 별도 발권의 저렴한 표시가만으로 선택하지 않습니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "건기 휴양 후보 · 항공 연결이 맞을 때 검토, 길리 숙박은 필수 제외",
+        "references": [
+          {
+            "title": "Indonesia Travel · 승기기 해변 안내",
+            "url": "https://www.indonesia.travel/gb/en/destination/bali-nusa-tenggara/west-nusa-tenggara/lombok---the-senggigi-beach"
+          }
+        ]
+      }
+    },
+    {
+      "id": "samui",
+      "title": "코사무이 · 청몬·보풋 해변권",
+      "country": "태국",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 8300000,
+      "pros": "조용한 해변권의 한 숙소에서 쉬는 선택\n태국 서해안과 다른 계절 패턴을 고려한 후보",
+      "cons": "국내선 또는 국제선 경유가 필요할 수 있어 연결 부담 검토\n6월에도 소나기·바람 때문에 해양 일정은 유동적",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 2800000,
+          "lodging": 3000000,
+          "other": 1600000,
+          "reserve": 900000
+        },
+        "stays": [
+          {
+            "region": "코사무이 청몬 또는 보풋",
+            "nights": 6,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "청몬 또는 보풋 해변권 6박 가안. 번화한 지역과의 거리, 도보 해변 접근성, 조식 포함 객실 1실을 비교합니다. 해변별 분위기가 달라 숙소 위치를 먼저 정합니다.",
+        "itinerary": "6/6 한국 출발 → 방콕 또는 싱가포르 등 경유해 USM 도착 가능한 편 비교 → 숙소 중심 휴식 → 6/12 현지 출발·6/13 한국 도착 가능한 왕복 조합 확인.",
+        "experiences": "청몬·보풋 해변 산책과 바다를 보며 쉬는 날을 제안합니다. 앙통 해양 투어는 운항·운영 여부를 확인한 뒤 하루만 선택합니다.",
+        "transport": "사무이 공항 USM까지 연결되는 하나의 여정을 우선 비교합니다. 싱가포르항공의 한국 출발 목적지 안내에 사무이 제휴 연결이 있으나 요청 날짜의 실제 운항과 수하물 연결 조건은 미확인입니다.",
+        "climate": "태국 관광청은 안다만 서해안과 사무이 동해안의 우기 패턴을 구분합니다. 사무이는 주된 우기가 통상 10~12월이지만 6월도 비가 올 수 있어 건기나 맑은 날을 보장하지 않습니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Tourism Authority of Thailand · 해안별 계절 안내",
+        "sourceUrl": "https://www.tatnews.org/2024/02/the-best-time-to-visit-thailands-beaches-and-islands/",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 280만·숙박 300만(6박, 1실 평균 50만 원 목표)·기타 160만·예비비 90만 원. 연결 항공·공항 이동·식사·객실 세금 포함 총액으로 비교하며 풀빌라는 필수 조건이 아닙니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "태국 휴양 후보 · 푸껫과 기후를 구분하고 환승·총요금 확인",
+        "references": [
+          {
+            "title": "TAT · 사무이 해변별 분위기",
+            "url": "https://www.tatnews.org/2021/05/ko-samuis-fabulous-beaches-and-tropical-lifestyle-await/"
+          },
+          {
+            "title": "TAT · 몬순 시기와 기상 확인",
+            "url": "https://www.tatnews.org/2018/08/tat-encourages-travellers-to-check-weather-updates-during-monsoon-season/"
+          },
+          {
+            "title": "싱가포르항공 · 한국 출발 목적지 안내",
+            "url": "https://www.singaporeair.com/kr/en/plan-travel/destinations/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "kotakinabalu",
+      "title": "코타키나발루 · 탄중아루·해양공원",
+      "country": "말레이시아",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 6300000,
+      "pros": "숙소 휴식과 일몰, 가까운 섬 당일 방문을 조합\n한 숙소 체류로 짐 이동을 줄이는 구성",
+      "cons": "연중 불규칙한 비가 있어 해양 활동을 확정하기 어려움\n본토 해변만으로 맑은 바다 경험을 보장하지 않음",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 1600000,
+          "lodging": 2300000,
+          "other": 1500000,
+          "reserve": 900000
+        },
+        "stays": [
+          {
+            "region": "코타키나발루 해변 리조트권",
+            "nights": 6,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "탄중아루 등 해변 리조트권 6박 가안. 호텔 전용 해변 유무와 실제 바다 접근, 수영장·식사 환경을 구분해 확인합니다. 해양공원 섬에서는 숙박 대신 당일 방문을 우선합니다.",
+        "itinerary": "6/6 한국 출발·BKI 도착 가능한 편 검색 → 일몰과 숙소 휴식 → 날씨 좋은 날 해양공원 섬 투어 하루 → 6/12 밤 현지 출발·6/13 한국 도착 가능한 편 확인.",
+        "experiences": "탄중아루 일몰 산책, 마누칸·사피 등 해양공원의 허용된 구역에서 해변 활동을 제안합니다. 투어 취소 시 숙소 휴식과 시내 식사로 대체합니다.",
+        "transport": "ICN–BKI 왕복과 호텔–선착장 차량 이동을 비교합니다. 툰쿠 압둘 라만 공원은 코타키나발루 앞바다의 섬들로 구성됩니다. 공원·보트 접근은 기상과 운영 상황에 따라 바뀌며 실제 항공·배편은 미확인입니다.",
+        "climate": "사바 관광청은 연중 덥고 대체로 맑지만 예측하기 어려운 산발적 비가 있다고 안내합니다. 6월을 무조건적인 건기로 표시하지 않으며 섬 방문은 해상 상태에 맞춥니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Sabah Tourism Board · Travel Tips",
+        "sourceUrl": "https://sabahtourism.com/essential/travel-tips/",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 160만·숙박 230만(6박, 1실 평균 약 38만 원 목표)·기타 150만·예비비 90만 원. 섬 보트·공원 입장·장비·공항 이동과 숙박 부과금을 기타 항목에 넣고 포함 여부를 확인합니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "예산 균형 후보 · 일몰·리조트 휴식 중심, 섬 투어는 날씨에 맞춰",
+        "references": [
+          {
+            "title": "Sabah Parks · 툰쿠 압둘 라만 해양공원",
+            "url": "https://www.sabahparks.org.my/tunku-abdul-rahman-park"
+          },
+          {
+            "title": "Sabah Tourism Board · 탄중아루 해변",
+            "url": "https://sabahtourism.com/destination/tanjung-aru-beach/?locale=en"
+          }
+        ]
+      }
+    },
+    {
+      "id": "guam",
+      "title": "괌 · 투몬 해변",
+      "country": "미국령 괌",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 8000000,
+      "pros": "투몬 한 지역에서 식사·산책·해변 휴식을 함께 구성\n장거리 환승 여행보다 이동을 단순하게 만드는 선택",
+      "cons": "6월은 건기에서 우기로 넘어가는 전환기\n식사·렌터카·객실 부가요금을 포함하면 비용 상승",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 1800000,
+          "lodging": 3200000,
+          "other": 2000000,
+          "reserve": 1000000
+        },
+        "stays": [
+          {
+            "region": "투몬 해변권",
+            "nights": 7,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "투몬 해변권 7박 가안입니다. 6/6 현지 체크인·6/13 체크아웃 후 한국에 같은 날 도착 가능한 편을 우선 검토합니다. 6/12 밤 출발편을 선택하면 6박으로 줄이고 예산을 다시 계산합니다.",
+        "itinerary": "6/6 한국 출발·괌 도착 가능한 편 검색 → 투몬 숙소에서 휴식과 근거리 활동 → 6/13 현지 출발·6/13 한국 도착 가능한 귀국편 확인. 확정 편명이나 운항 시각을 제시한 일정은 아닙니다.",
+        "experiences": "투몬 해변 산책과 숙소 수영장, 하루 정도의 섬 드라이브를 제안합니다. 해양 활동은 당일 경보와 운영 조건을 확인하고 선택합니다.",
+        "transport": "ICN–GUM 왕복을 우선 검색하고 공항–투몬 차량 이동을 검토합니다. 렌터카는 필요한 날만 선택해 주차·보험·연료까지 비교합니다. 요청 날짜의 항공 시간표는 미확인입니다.",
+        "climate": "괌 관광청은 1~5월 건기, 7~11월 우기, 6월과 12월 전환기로 설명합니다. 강수와 바람의 변동을 고려해 실내 대안을 둡니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Guam Visitors Bureau · Guam Weather",
+        "sourceUrl": "https://www.visitguam.com/planning/traveler-essentials/guam-weather/",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 180만·숙박 320만(7박, 1실 평균 약 46만 원 목표)·기타 200만·예비비 100만 원. 객실 세금·리조트 요금, 이동·식비·필요한 여행 서류 준비 비용을 포함해 비교합니다. 쇼핑 예산은 별도입니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "이동 부담을 중시할 때 · 6월 전환기, 한국 도착일에 맞춰 7박 검토",
+        "references": []
+      }
+    },
+    {
+      "id": "bohol",
+      "title": "보홀 · 팡라오 알로나·두말루안",
+      "country": "필리핀",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 6000000,
+      "pros": "한 숙소에서 해변 휴식과 선택적인 스노클링을 조합\n리조트 휴양에 집중하는 비교적 낮은 지출 목표",
+      "cons": "6월 우기 경향으로 해상 투어 취소·변경 가능\n알로나의 편의성과 조용한 해변권 사이에서 위치 선택 필요\n해수욕 전 최신 수질·현지 안내를 확인하고 숙소 수영장 등 대안 확보",
+      "body": "",
+      "url": "",
+      "plan": {
+        "version": 1,
+        "costs": {
+          "airfare": 1600000,
+          "lodging": 2100000,
+          "other": 1400000,
+          "reserve": 900000
+        },
+        "stays": [
+          {
+            "region": "팡라오 해변권",
+            "nights": 6,
+            "checkIn": "",
+            "checkOut": ""
+          }
+        ],
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "팡라오 알로나 또는 조용한 해변권 6박 가안. 알로나의 식사·이동 편의와 두말루안 인근의 휴식 환경을 비교하되 실제 해변 접근·셔틀 포함 조건을 숙소별로 확인합니다.",
+        "itinerary": "6/6 한국 출발·TAG 도착 가능한 편 검색 → 숙소 휴양 → 날씨와 허가 조건이 맞는 날 해양 투어 선택 → 6/12 밤 현지 출발·6/13 한국 도착 가능한 편 확인.",
+        "experiences": "팡라오 해변 휴식과 알로나 저녁 식사, 발리카삭 스노클링을 선택 제안합니다. 입장·활동 허가와 해상 상태를 확인하고 취소 시 숙소에서 쉽니다.",
+        "transport": "보홀–팡라오 공항 TAG 왕복편을 우선 검토합니다. 세부 도착 후 배로 이동하는 여정은 별도 연결·항만 이동 부담이 있어 자동 대체하지 않습니다. 요청 날짜 직항·시간표는 미확인입니다.",
+        "climate": "PAGASA의 필리핀 일반 기후 안내는 6~11월을 우기로 구분합니다. 지역차가 있으므로 이 안내를 보홀의 일별 예보로 해석하지 않습니다. 관광청 해변 안내도 팡라오의 우기 해상 변동을 언급합니다.",
+        "climateMonth": 6,
+        "sourceTitle": "PAGASA · Climate of the Philippines",
+        "sourceUrl": "https://bagong.pagasa.dost.gov.ph/information/climate-philippines",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 160만·숙박 210만(6박, 1실 평균 35만 원 목표)·기타 140만·예비비 90만 원. 투어 장비·허가·이동, 수하물·조식·숙박 세금과 늦은 체크아웃 비용을 비교합니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "우기 수용 시 검토 · 휴양 중심, 해양 투어를 필수 일정으로 잡지 않기",
+        "references": [
+          {
+            "title": "Philippines Tourism · 팡라오 해변 안내",
+            "url": "https://www.philippines.travel/activities/beaches"
+          },
+          {
+            "title": "보홀 주 관광청 · 팡라오 해변",
+            "url": "https://tourism.bohol.gov.ph/visitbohol-panglao/"
+          }
+        ]
       }
     },
     {
       "id": "hawaii",
-      "title": "하와이 · 오아후",
-      "country": "미국 · 하와이",
-      "startDate": "2027-05-09",
-      "endDate": "2027-05-17",
-      "budget": 9500000,
-      "pros": "한 섬을 중심으로 숙소 이동을 줄이는 구성\n해변·드라이브·도시 활동을 취향대로 조합\n와이키키 적응 후 자유일을 둘 수 있는 가안",
-      "cons": "렌터카·주차·리조트피 등 포함 여부 확인 필요\n해양 활동은 당일 파도·기상·운영 조건에 따라 조정",
+      "title": "하와이 · 오아후 와이키키",
+      "country": "미국",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 9800000,
+      "pros": "6월 여름철 해변과 도시 식사·산책을 함께 구성\n섬 간 국내선 이동 없이 오아후에 집중",
+      "cons": "예산 상한에 가까워 항공·객실·현지비 상승에 민감\n바다 전망 고급 객실·상시 렌터카를 함께 선택하기 어려울 수 있음",
       "body": "",
       "url": "",
       "plan": {
         "version": 1,
         "costs": {
-          "airfare": 3500000,
+          "airfare": 3600000,
           "lodging": 3000000,
           "other": 2200000,
-          "reserve": 800000
+          "reserve": 1000000
         },
         "stays": [
           {
-            "region": "오아후 한 섬",
-            "nights": 7
+            "region": "오아후 와이키키",
+            "nights": 6,
+            "checkIn": "",
+            "checkOut": ""
           }
         ],
-        "lodgingNotes": "와이키키 중심 숙소와 다른 지역 숙소의 접근성·총비용을 비교하되, 섬 이동을 추가한 일정으로 자동 확장하지 않습니다.",
-        "itinerary": "한국 출국 → 와이키키 적응·휴식 → 필요한 날에만 렌터카 사용 검토 → 해안 드라이브 → 해양 또는 문화 경험 → 자유일 → 귀국 이동 → 한국 도착 목표.",
-        "experiences": "와이키키 산책, 해변 휴식, 해안 드라이브, 문화 공간 둘러보기, 여유 있는 식사를 후보로 두는 편집 제안입니다. 해양 체험은 안전·운영 조건과 비용을 확인한 뒤 고릅니다.",
-        "transport": "오아후 한 섬 · 필요한 날만 렌터카 검토",
-        "climate": "하와이 관광청은 3~5월을 봄철 관광에 적합한 시기로 소개합니다. 일별 예보나 당일 바다 상태를 확인한 안내는 아닙니다.",
-        "climateMonth": 5,
-        "sourceTitle": "Go Hawaii — Hawaii in Spring",
-        "checkedOn": "2026-11-04",
-        "budgetNotes": "세금·수하물·식사·이동의 포함 범위는 견적별로 확인해야 합니다.",
-        "sourceUrl": "https://www.gohawaii.com/hawaii-in-spring"
-      }
-    },
-    {
-      "id": "italy",
-      "title": "이탈리아 · 로마 & 피렌체",
-      "country": "이탈리아",
-      "startDate": "2027-05-09",
-      "endDate": "2027-05-17",
-      "budget": 9000000,
-      "pros": "도시 산책·미식·문화 경험을 중심으로 구성\n로마와 피렌체에서 서로 다른 분위기 즐기기",
-      "cons": "도시 간 이동과 짐 운반을 일정에 반영\n문화시설의 예약·운영 조건과 비용 별도 확인\n로마 왕복 항공이면 마지막 복귀 이동 고려",
-      "body": "",
-      "url": "",
-      "plan": {
-        "version": 1,
-        "costs": {
-          "airfare": 3800000,
-          "lodging": 2600000,
-          "other": 1900000,
-          "reserve": 700000
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
         },
-        "stays": [
+        "lodgingNotes": "와이키키에서 객실 1실 6박 가안. 조식·객실 세금·리조트 요금을 포함해 300만 원 이내의 객실을 먼저 찾습니다. 오션프런트 고급 객실을 전제로 하지 않습니다.",
+        "itinerary": "6/6 한국 출발 → 날짜변경선을 넘어 현지 6/6 도착 가능한 편 검토 → 오아후 6박 → 현지 6/12 출발·한국 6/13 도착 가능한 귀국편 확인. 한국 도착일을 기준으로 발권합니다.",
+        "experiences": "와이키키 아침 산책과 해변 휴식, 오아후 드라이브 하루를 제안합니다. 고가 액티비티를 여러 개 넣기보다 휴식 시간을 확보합니다.",
+        "transport": "ICN–HNL 왕복을 우선 검색합니다. 다른 섬 방문은 제외하고 도보·대중교통·필요한 날의 차량을 조합합니다. 공개된 대한항공 운임 페이지를 확인했으나 2027년 6월 운임·운항은 미확인입니다.",
+        "climate": "하와이 관광청은 5~10월을 여름, 11~3월을 더 비가 많은 시기로 안내합니다. 6월에도 해안별 소나기와 파도·조류 차이가 있어 수영 가능 여부는 당일 확인합니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Hawaii Tourism Authority · Go Hawaii Weather",
+        "sourceUrl": "https://www.gohawaii.com/trip-planning/weather",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 360만·숙박 300만(6박, 1실 평균 50만 원 목표)·기타 220만·예비비 100만 원. 숙박 부가요금·주차·팁·보험·연료·식사·여행 서류 준비까지 포함해 비교합니다. 항공·숙박이 목표를 넘으면 예비비를 없애서 맞추지 말고 다른 후보를 선택합니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "견적 조건부 · 6월 여름철, 항공·숙박 상한을 충족할 때만",
+        "references": [
           {
-            "region": "로마",
-            "nights": 3
-          },
-          {
-            "region": "피렌체",
-            "nights": 4
+            "title": "대한항공 · 서울–호놀룰루 운임 조회",
+            "url": "https://www.koreanair.com/flights/ko-kr/flights-from-seoul-to-honolulu"
           }
-        ],
-        "lodgingNotes": "로마 왕복 항공을 선택한다면 마지막 로마 숙박을 포함해 로마 총 3박을 배분할 수 있습니다. 각 숙소는 도시 산책 동선과 역·공항 이동 편의를 함께 비교합니다.",
-        "itinerary": "한국 출국 → 로마 적응·도시 산책 → 피렌체 이동 → 피렌체 문화·미식·자유시간 → 항공 조건에 따라 로마 복귀 → 귀국 이동 → 한국 도착 목표.",
-        "experiences": "로마 거리 산책, 도시의 광장 둘러보기, 피렌체 구시가지 산책, 미술·문화 경험, 카페와 식사를 편집 제안으로 둡니다. 시설 입장·시간 지정 예약은 공식 안내를 확인한 뒤 계획합니다.",
-        "transport": "로마 → 피렌체 → 항공 조건에 따라 로마 복귀",
-        "climate": "토스카나 공식 관광 안내는 봄철 산책과 야외활동을 소개합니다. 이는 피렌체를 포함한 토스카나의 계절 안내이며 로마의 개별 날짜 예보·기온 수치를 뜻하지 않습니다.",
-        "climateMonth": 5,
-        "sourceTitle": "Visit Tuscany — What's the best time of the year to visit Tuscany?",
-        "checkedOn": "2026-11-04",
-        "budgetNotes": "세금·수하물·식사·이동의 포함 범위는 견적별로 확인해야 합니다.",
-        "sourceUrl": "https://www.visittuscany.com/en/ideas/whats-the-best-time-of-the-year-to-visit-tuscany/"
-      }
-    },
-    {
-      "id": "spain",
-      "title": "스페인 · 바르셀로나 & 마요르카",
-      "country": "스페인",
-      "startDate": "2027-05-09",
-      "endDate": "2027-05-17",
-      "budget": 9400000,
-      "pros": "도시 관광과 섬 체류를 한 여행에 조합\n산책·미식·자유시간을 중심으로 계획 가능\n바르셀로나 복귀 후 귀국하는 가안으로 비교",
-      "cons": "도시·섬 이동과 수하물·연결 조건 확인 필요\n5월 해수욕 적합성은 별도 확인 필요",
-      "body": "",
-      "url": "",
-      "plan": {
-        "version": 1,
-        "costs": {
-          "airfare": 3800000,
-          "lodging": 2500000,
-          "other": 2300000,
-          "reserve": 800000
-        },
-        "stays": [
-          {
-            "region": "바르셀로나",
-            "nights": 1
-          },
-          {
-            "region": "마요르카",
-            "nights": 3
-          },
-          {
-            "region": "바르셀로나",
-            "nights": 3
-          }
-        ],
-        "lodgingNotes": "예시는 바르셀로나 1박 → 마요르카 3박 → 바르셀로나 3박이며 실제 항공에 따라 조정합니다. 도시에서는 관광 동선, 섬에서는 휴식 장소와 이동 편의를 비교합니다.",
-        "itinerary": "한국 출국 → 바르셀로나 적응 → 마요르카 이동·섬 체류 → 바르셀로나 복귀·도시 관광 → 귀국 이동 → 한국 도착 목표. 도시와 섬을 바꾸는 날은 활동을 줄이고 이동·휴식을 우선합니다.",
-        "experiences": "바르셀로나 도시 산책, 건축·문화 공간 감상, 마요르카의 마을 산책, 해변 풍경 즐기기, 현지 식사를 편집 제안으로 둡니다. 구체적인 시설 예약·입장료와 해양 활동 가능 여부는 별도 확인합니다.",
-        "transport": "바르셀로나 → 마요르카 → 바르셀로나",
-        "climate": "발레아레스 공식 관광 안내는 마요르카의 3~5월을 산책과 야외활동을 즐기는 계절로 소개합니다. 바르셀로나의 일별 예보나 해당 날짜의 해수욕 적합성을 보장하는 정보는 아닙니다.",
-        "climateMonth": 5,
-        "sourceTitle": "Illes Balears Travel — Mallorca in Spring",
-        "checkedOn": "2026-11-04",
-        "budgetNotes": "세금·수하물·식사·이동의 포함 범위는 견적별로 확인해야 합니다.",
-        "sourceUrl": "https://www.illesbalears.travel/en/mallorca/spring"
+        ]
       }
     },
     {
       "id": "maldives",
-      "title": "몰디브 · 한 리조트에서 휴식",
+      "title": "몰디브 · 말레 근교 리조트",
       "country": "몰디브",
-      "startDate": "2027-05-09",
-      "endDate": "2027-05-17",
-      "budget": 9500000,
-      "pros": "한 리조트를 중심으로 숙소 이동을 줄이는 구성\n휴식과 둘만의 시간을 일정의 중심에 배치\n식사·이동 포함 조건을 기준으로 상품 비교 가능",
-      "cons": "여행 후반이 통상적인 우기 시작 시기와 겹칠 수 있음\n숙박 패키지의 식사·리조트 왕복 이동 포함 여부 미확인\n공항 인근 추가 숙박 여부 확인 필요",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-13",
+      "budget": 9800000,
+      "pros": "한 섬에서 바다와 숙소 휴양에 집중\n식사·이동 포함 조건을 먼저 정해 비교하는 구성",
+      "cons": "6월 남서몬순 우기로 맑은 바다와 해양 일정은 보장 불가\n식사·왕복 이동·세금을 포함한 리조트 견적 확보가 핵심",
       "body": "",
       "url": "",
       "plan": {
         "version": 1,
         "costs": {
           "airfare": 3200000,
-          "lodging": 4800000,
-          "other": 700000,
-          "reserve": 800000
+          "lodging": 4500000,
+          "other": 1200000,
+          "reserve": 900000
         },
         "stays": [
           {
-            "region": "한 리조트",
-            "nights": 6
+            "region": "말레 근교 스피드보트 리조트",
+            "nights": 6,
+            "checkIn": "",
+            "checkOut": ""
           }
         ],
-        "lodgingNotes": "객실 유형과 식사 플랜, 공항↔리조트 이동 방식을 함께 비교합니다. 항공편과 리조트 이동 가능 시간에 따라 공항 인근 숙박이 필요한지 별도로 확인합니다.",
-        "itinerary": "한국 출국 → 공항 도착·리조트 이동 → 리조트 적응·휴식 → 해변·숙소 자유시간과 선택 체험 → 리조트에서 공항 이동 → 귀국 이동 → 한국 도착 목표. 이동 시간이 맞지 않으면 숙박 수와 가안을 조정합니다.",
-        "experiences": "객실에서 휴식, 해변 산책, 여유 있는 식사, 리조트 내 가벼운 활동, 바다 풍경 감상을 편집 제안으로 둡니다. 스노클링 등 체험은 당일 여건·포함 비용·운영 조건을 확인한 뒤 추가합니다.",
-        "transport": "공항 ↔ 한 리조트 · 이동 가능 시간 확인",
-        "climate": "몰디브 기상청은 남서몬순 우기를 통상 5월 중순~11월로 설명합니다. 여행 후반이 우기 시작 시기와 겹칠 수 있습니다. 일별 날씨 예보나 맑은 날씨를 보장하는 안내는 아닙니다.",
-        "climateMonth": 5,
-        "sourceTitle": "Maldives Meteorological Service — Climate",
-        "checkedOn": "2026-11-04",
-        "budgetNotes": "숙박 패키지에 식사와 리조트 왕복 이동을 포함시키려는 계획입니다. 실제 포함 범위는 미확인이며 같은 비용을 중복 합산하지 않습니다.",
-        "sourceUrl": "https://www.meteorology.gov.mv/climate"
+        "dateBasis": {
+          "startDate": "2027-06-06",
+          "endDate": "2027-06-13"
+        },
+        "lodgingNotes": "말레 공항에서 스피드보트로 이동 가능한 리조트 6박 가안. 객실·식사·왕복 이동·세금·부과금 전체가 숙박 배분에 들어오는 견적을 조건으로 합니다. 수상비행기나 전 일정 워터빌라를 전제하지 않습니다.",
+        "itinerary": "6/6 인천 출발 → 경유 후 MLE 도착·리조트 이동이 가능한 조합 검색 → 한 리조트 휴양 → 6/12 현지 출발·6/13 한국 도착 가능한 연결편 확인. 도착 시각상 첫날 말레 숙박이 필요하면 박 수·비용을 다시 비교합니다.",
+        "experiences": "리조트 해변 산책과 수영장 휴식, 허용된 하우스리프에서의 선택적인 스노클링을 제안합니다. 해양 활동은 리조트의 당일 안내에 따릅니다.",
+        "transport": "싱가포르 등 경유 ICN–MLE 왕복을 검토합니다. 싱가포르항공은 서울–말레 싱가포르 1회 경유 여정을 안내합니다. 요청 날짜의 연결 시간·리조트 마지막 보트·야간 이동 가능 여부는 미확인입니다.",
+        "climate": "몰디브 기상청은 통상 5월 중순~11월을 남서몬순 우기로 설명하며 관광청도 5~11월 우기를 안내합니다. 6월은 비·바람에 따른 해양 활동 변동을 받아들일 수 있을 때 검토합니다.",
+        "climateMonth": 6,
+        "sourceTitle": "Visit Maldives · 우기 안내 / Maldives Meteorological Service",
+        "sourceUrl": "https://visitmaldives.com/en/experience/for-pluviophiles-and-the-love-of-petrichor",
+        "checkedOn": "2026-11-08",
+        "budgetNotes": "항공 320만·숙박 패키지 450만(6박, 객실·식사·이동·부과금 합계 목표)·기타 120만·예비비 90만 원. 패키지에 포함된 식사·보트는 기타에 중복 합산하지 않습니다. 미포함 항목을 더한 총액이 1,000만 원을 넘으면 이 후보를 제외합니다.",
+        "researchNotes": "2026-11-08 조사. 사용자 확정 조건은 2027-06-06 한국 출발·06-13 한국 도착, 성인 2명·인천·일반석·객실 1실·총예산 상한 1,000만 원입니다. 아래 숙박·일정·금액은 이번 조건에 맞춰 새로 작성한 편집 제안이며 기존 PRD의 예약 정보가 아닙니다. 공식 관광·기후 자료로 지역 특성과 계절 경향을 확인했습니다. 해당 날짜의 항공 운항·좌석·호텔 재고·최종 요금은 확인되지 않았습니다.",
+        "comparisonNote": "견적·우기 조건부 · 스피드보트·식사·세금 포함 총액 확보 시",
+        "references": [
+          {
+            "title": "Maldives Meteorological Service · 기후 안내",
+            "url": "https://www.meteorology.gov.mv/climate"
+          },
+          {
+            "title": "싱가포르항공 · 서울–말레 연결 안내",
+            "url": "https://www.singaporeair.com/sg/en/plan-travel/destinations/flights-from-seoul-to-male/"
+          }
+        ]
       }
     }
   ]

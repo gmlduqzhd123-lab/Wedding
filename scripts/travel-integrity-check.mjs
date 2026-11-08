@@ -1,3 +1,5 @@
+// Behavioral regression uses historical plan fixtures; see june-beaches-check.mjs for live content.
+import {useReferencePlans,referencePlans} from './reference-plans.mjs';
 // Optional browser regression for complete stay dates, removed choices and source/reference separation.
 import assert from 'node:assert/strict';
 import {mkdir,readFile} from 'node:fs/promises';
@@ -8,7 +10,7 @@ const browser=await chromium.launch({headless:true,channel:process.env.BROWSER_C
 async function fresh(query='#/honeymoon'){
   const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true}),page=await context.newPage();
   page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
-  await page.goto(base+query);await page.locator('#main[aria-busy="false"]').waitFor();return {page,context};
+  await useReferencePlans(context);await page.goto(base+query);await page.locator('#main[aria-busy="false"]').waitFor();return {page,context};
 }
 const card=(p,id='bali')=>p.locator(`[data-trip-id="${id}"]`);
 const edit=p=>card(p).getByRole('button',{name:'수정',exact:true}).click();
@@ -59,7 +61,7 @@ try{
   await q.evaluate(()=>Storage.prototype.setItem=window.savedSetItem);await card(q,'maldives').getByRole('button',{name:'비교 선택',exact:true}).click();await q.waitForFunction(()=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).tripCompare.includes('maldives'));
   assert.deepEqual((await prefs(q)).tripCompare,['spain','maldives']);await b.context.close();console.log('PASS deletion cleans choices, restored missing IDs and failed cleanup cannot block new comparison');
 
-  const c=await fresh(),r=c.page;const publicContent=await r.request.get(new URL('data/site.json',base).href).then(res=>res.json());const sourceUrl=publicContent.honeymoon[0].plan.sourceUrl;
+  const c=await fresh(),r=c.page;const publicContent=structuredClone(referencePlans);const sourceUrl=publicContent.honeymoon[0].plan.sourceUrl;
   await edit(r);await r.getByLabel('참고 링크',{exact:true}).fill('https://example.com/personal-note');await save(r);await open(r,'bali','all');await open(r,'bali','climate');await open(r,'bali','memo');
   assert.equal(await card(r).getByRole('link',{name:'기후 공식 안내 ↗',exact:true}).getAttribute('href'),sourceUrl);
   assert.equal(await card(r).getByRole('link',{name:'직접 입력한 참고 링크 ↗',exact:true}).getAttribute('href'),'https://example.com/personal-note');
@@ -76,5 +78,5 @@ try{
   assert.equal(await s.locator('.trip-controls,#selected-trip-region').count(),0);
   for(const width of [320,390,768,1440]){await s.setViewportSize({width,height:950});assert(await s.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
   await s.setViewportSize({width:390,height:844});await card(s,'spain').scrollIntoViewIfNeeded();await s.screenshot({path:'work/travel-integrity-qa/spain.png',fullPage:true});await d.context.close();
-  assert.deepEqual(errors,[]);console.log('PASS public ordered Spain stays, blank unknown invitation fields, guest isolation, 320–1440px layout and zero browser errors');
+  assert.deepEqual(errors,[]);console.log('PASS fixture ordered Spain stays, blank unknown invitation fields, guest isolation, 320–1440px layout and zero browser errors');
 }finally{await browser.close();}
