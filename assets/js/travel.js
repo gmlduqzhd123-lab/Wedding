@@ -1,5 +1,12 @@
 export const TRAVEL_CAP=10000000;
 export const COST_LABELS={airfare:'항공',lodging:'숙박·패키지',other:'기타 여행비',reserve:'예비비'};
+export function climateReview(trip){
+  const plan=trip.plan,entered=Boolean(plan?.climate?.trim());
+  const month=entered&&Number.isInteger(plan.climateMonth)&&plan.climateMonth>=1&&plan.climateMonth<=12?plan.climateMonth:null;
+  const changedMonth=month!==null&&[trip.startDate,trip.endDate].some(value=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number(value.slice(5,7))!==month);
+  return {entered,month,changedMonth,title:!entered?'기후 자료 미입력':month===null?'기후 경향·출처 (기준 월 미입력)':`${month}월 기후 경향·출처`,
+    summary:!entered?'기후 자료 미입력':`${month===null?'기준 월 미입력':month+'월 기준'} · ${plan.climate}`};
+}
 export const emptyQuote=()=>({costs:{airfare:null,lodging:null,other:null},checkedOn:'',flightSource:'',lodgingSource:'',departureAt:'',arrivalAt:'',includesRequiredCosts:false,basis:{startDate:'',endDate:'',country:'',stays:''}});
 export function quoteBasis(trip){return {startDate:trip.startDate,endDate:trip.endDate,country:trip.country,stays:JSON.stringify((trip.plan?.stays||[]).map(s=>[s.region,s.nights,s.checkIn||'',s.checkOut||'']))};}
 export function quoteReview(trip,today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())){

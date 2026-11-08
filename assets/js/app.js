@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=quote-focus-10';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=climate-empty-11';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText} from './travel.js?v=quote-focus-10';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=quote-focus-10';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=climate-empty-11';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=climate-empty-11';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -347,7 +347,7 @@ function tripComparison() {
   const fields=[['나라·지역',item=>item.country||'미정'],['한국 출발·도착',item=>[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'],
     ['2인 계획예산',item=>won(item.budget)],['예산 상한 검토',item=>{const state=budgetSummary(item);return state.excess?`${won(state.excess)} 초과`:state.balance===null?'판단 보류':`계획상 잔여 ${won(state.balance)}`;}],
     ['실제 견적·귀국 확인',item=>quoteReview(item).message],['숙박 가안',staySummary],['숙박·날짜 검토',item=>stayReview(item).message],...Object.entries(COST_LABELS).map(([key,label])=>[label+' 배분',item=>won(item.plan?.costs[key]??null)]),
-    ['계획상 이동',item=>item.plan?.transport||'별도 확인 필요'],['기후 유의점',item=>item.plan?`${item.plan.climateMonth}월 기준 · ${item.plan.climate||'미입력'}`:'별도 확인 필요'],
+    ['계획상 이동',item=>item.plan?.transport||'별도 확인 필요'],['기후 유의점',item=>climateReview(item).summary],
     ['좋은 점',item=>item.pros||'미기재'],['고민할 점',item=>item.cons||'미기재']];
   return E('section',{class:'trip-comparison'},E('h2',{},'여행 후보 나란히 비교'),E('p',{class:'small muted'},'관심·비교·최종 선택은 이 기기에 저장됩니다. 비용은 모두 2인 전체 여행 계획 배분입니다.'),
     E('div',{class:'table-scroll'},E('table',{class:'travel-comparison'},E('thead',{},E('tr',{},E('th',{scope:'col'},'비교 항목'),items.map(item=>E('th',{scope:'col'},item.title)))),
@@ -372,7 +372,7 @@ function travelDetails(item){
   const state=budgetSummary(item);
   const costRows=Object.entries(COST_LABELS).map(([key,label])=>[label,won(plan.costs[key])]);
   costRows.push(['입력된 배분 소계',state.known===null?'입력된 배분 없음':won(state.known)],['2인 계획 총액',won(item.budget)],['항목 미배분',state.unallocated===null?'판단 보류':state.unallocated>=0?won(state.unallocated):`배분 초과 ${won(-state.unallocated)}`]);
-  const changedMonth=Boolean(item.startDate&&Number(item.startDate.slice(5,7))!==plan.climateMonth||item.endDate&&Number(item.endDate.slice(5,7))!==plan.climateMonth);
+  const climate=climateReview(item);
   return E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'일정·숙박·비용 상세'),
     travelSection(item,'dates','여행 조건·귀국',E('p',{},`한국 출발 ${item.startDate||'미정'} → 한국 도착 목표 ${item.endDate||'미정'} · 성인 2명 · 예산 상한 ${won(TRAVEL_CAP)}`),
       E('p',{},'인천 출발·일반석·객실 1실 기준입니다. 현지 출발일·항공편은 미확정입니다. 한국 도착일과 현지 출발일을 구분해 확인하세요. 한국 달력의 여행 범위를 현지 숙박 수로 계산하지 않습니다.')),
@@ -385,8 +385,9 @@ function travelDetails(item){
       E('p',{class:'current-budget-text'},currentBudgetText(item)),planReference(plan,plan.budgetNotes),E('p',{},'기타 여행비는 교통·식비·활동·보험·통신·준비 비용 등의 통합 배분입니다. 개인 쇼핑은 기본 제외이며 실제 견적 확인 상태는 별도 항목에서 확인합니다.')),
     tripQuoteDetails(item),
     travelSection(item,'experiences','경험 제안',E('p',{},plan.experiences||'아직 입력한 제안이 없습니다.')),
-    travelSection(item,'climate',`${plan.climateMonth}월 기후 경향·출처`,E('p',{},plan.climate||'아직 입력한 기후 안내가 없습니다.'),
-      changedMonth?E('p',{class:'form-note'},`기후 안내는 ${plan.climateMonth}월 기준입니다. 수정한 여행 월에 맞는 안내를 다시 확인해 주세요.`):null,
+    travelSection(item,'climate',climate.title,E('p',{},climate.entered?plan.climate:'아직 입력한 기후 안내가 없습니다.'),
+      climate.entered&&climate.month===null?E('p',{class:'form-note'},'기후 자료의 기준 월이 입력되지 않았습니다. 출처에서 기준 월을 확인해 주세요.'):null,
+      climate.changedMonth?E('p',{class:'form-note'},`기후 안내는 ${climate.month}월 기준입니다. 수정한 여행 월에 맞는 안내를 다시 확인해 주세요.`):null,
       E('p',{class:'small muted'},`${plan.sourceTitle||'출처 미입력'}${plan.checkedOn?' · 자료 확인일 '+plan.checkedOn:''}`),externalLink('기후 공식 안내 ↗',plan.sourceUrl||''),
       plan.sourceTitle&&!plan.sourceUrl?E('p',{class:'small muted'},'기후 출처 링크 미입력 · 직접 입력한 참고 링크와는 별도로 관리합니다.'):null),
     travelSection(item,'sources','계획 자료·확인 범위',E('p',{},plan.researchNotes||'저장된 여행 계획입니다. 제공 자료와 직접 수정한 항목의 적용 범위를 확인해 주세요. 실제 예약이나 견적으로 확인된 상태가 아닙니다.'),
@@ -652,7 +653,7 @@ function openEditor(type,item=null) {
   }
   let editedPlan,stayFields,quoteFields;
   if(type==='honeymoon'){
-    editedPlan=structuredClone(item?.plan||{version:1,costs:{airfare:null,lodging:null,other:null,reserve:null},stays:[],lodgingNotes:'',itinerary:'',experiences:'',transport:'',climate:'',climateMonth:5,sourceTitle:'',checkedOn:'',budgetNotes:''});
+    editedPlan=structuredClone(item?.plan||{version:1,costs:{airfare:null,lodging:null,other:null,reserve:null},stays:[],lodgingNotes:'',itinerary:'',experiences:'',transport:'',climate:'',climateMonth:null,sourceTitle:'',checkedOn:'',budgetNotes:''});
     form.append(E('p',{class:'form-note'},'참고 링크는 직접 작성하는 메모용 주소이며 기후 공식 출처와 별도로 저장합니다.'));
     if(editedPlan.sourceTitle)form.append(E('div',{class:'form-note'},E('p',{},`기후 자료: ${editedPlan.sourceTitle}${editedPlan.checkedOn?' · 자료 확인일 '+editedPlan.checkedOn:''}`),externalLink('기후 공식 안내 ↗',editedPlan.sourceUrl||'')));
     stayFields=stayEditor(form,fields,editedPlan);

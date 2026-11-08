@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=quote-focus-10';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=climate-empty-11';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -69,7 +69,8 @@ function validatePlan(plan,tripDates){
     }
     return {region,nights:stay.nights,checkIn,checkOut};
   });
-  if(!Number.isInteger(plan.climateMonth)||plan.climateMonth<1||plan.climateMonth>12)throw new Error('기후 안내 기준 월을 확인해 주세요.');
+  const climateMonth=plan.climateMonth??null;
+  if(climateMonth!==null&&(!Number.isInteger(climateMonth)||climateMonth<1||climateMonth>12))throw new Error('기후 안내 기준 월을 확인해 주세요.');
   const basis=plan.dateBasis??tripDates;
   if(!object(basis))throw new Error('가안 기준 날짜를 확인해 주세요.');
   const dateBasis={startDate:date(basis.startDate),endDate:date(basis.endDate)};
@@ -85,7 +86,7 @@ function validatePlan(plan,tripDates){
   const narrativeVersion=plan.narrativeVersion??1;
   if(![1,2].includes(narrativeVersion))throw new Error('여행 설명 버전을 확인해 주세요.');
   return {version:1,costs,stays,dateBasis,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
-    climate:string(plan.climate),climateMonth:plan.climateMonth,sourceTitle:string(plan.sourceTitle,500),sourceUrl:link(plan.sourceUrl??''),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
+    climate:string(plan.climate),climateMonth,sourceTitle:string(plan.sourceTitle,500),sourceUrl:link(plan.sourceUrl??''),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
     researchNotes:string(plan.researchNotes??''),comparisonNote:string(plan.comparisonNote??'',500),references:checkedReferences,
     narrativeVersion,quote:validateQuote(plan.quote),
     ...(plan.legacyText===undefined?{}:{legacyText:string(plan.legacyText)})};
