@@ -4,14 +4,14 @@ import {readFile} from 'node:fs/promises';
 import {validateContent,parseContent} from '../assets/js/content.js';
 import {emptyQuote,quoteBasis,quoteReview,currentBudgetText} from '../assets/js/travel.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
-function quoted(){const trip=validateContent(original).honeymoon[0];trip.plan.quote={...emptyQuote(),costs:{airfare:2200000,lodging:3000000,other:1500000},checkedOn:'2026-11-08',flightSource:'시험용 항공 견적 근거',lodgingSource:'시험용 숙박 견적 근거',departureAt:'2027-06-06T12:00',arrivalAt:'2027-06-13T08:00',includesRequiredCosts:true,basis:quoteBasis(trip)};return trip;}
+function quoted(){const trip=validateContent(original).honeymoon[0];trip.plan.stays=[{region:'시험 숙소 1',nights:2,checkIn:'',checkOut:''},{region:'시험 숙소 2',nights:4,checkIn:'',checkOut:''}];trip.plan.quote={...emptyQuote(),costs:{airfare:2200000,lodging:3000000,other:1500000},checkedOn:'2026-11-08',flightSource:'시험용 항공 견적 근거',lodgingSource:'시험용 숙박 견적 근거',departureAt:'2027-06-06T12:00',arrivalAt:'2027-06-13T08:00',includesRequiredCosts:true,basis:quoteBasis(trip)};return trip;}
 test('unknown quote never establishes actual budget or flight dates; complete input includes reserve',()=>{
-  const trip=validateContent(original).honeymoon[0];assert.equal(quoteReview(trip).complete,false);assert.equal(quoteReview(trip).total,null);
+  const trip=validateContent(original).honeymoon[0];trip.plan.quote=emptyQuote();assert.equal(quoteReview(trip).complete,false);assert.equal(quoteReview(trip).total,null);assert.equal(quoteReview(trip).flightDates,false);
   const q=quoted();let review=quoteReview(q);assert.equal(review.total,7500000);assert(review.complete);assert.match(review.message,/입력 근거 기준/);
   q.plan.quote.costs.airfare=6000000;review=quoteReview(q);assert.equal(review.total,11300000);assert.match(review.message,/상한 초과/);
 });
 test('partial actual quotes immediately expose known subtotal and cap excess without validating missing evidence',()=>{
-  const trip=validateContent(original).honeymoon[0];let state=quoteReview(trip);
+  const trip=validateContent(original).honeymoon[0];trip.plan.quote=emptyQuote();let state=quoteReview(trip);
   assert.equal(state.known,null);assert.equal(state.assessed,null);assert.equal(state.excess,0);
   trip.plan.quote.costs.airfare=12000000;state=quoteReview(trip);
   assert.equal(state.known,12000000);assert.equal(state.assessed,12800000);assert.equal(state.excess,2800000);
@@ -36,8 +36,8 @@ test('quote/schema roundtrip preserves evidence, rejects invalid prices and inst
   delete data.honeymoon[0].plan.quote;delete data.honeymoon[0].plan.narrativeVersion;
   assert.deepEqual(validateContent(data).honeymoon[0].plan.quote,emptyQuote());assert.equal(validateContent(data).honeymoon[0].plan.narrativeVersion,1);
 });
-test('public narratives contain no frozen departure/arrival amounts; generated text follows current costs and nights',()=>{
-  for(const trip of original.honeymoon){assert.equal(trip.plan.narrativeVersion,2);for(const field of ['itinerary','lodgingNotes','budgetNotes'])assert(!/6\/\d|\d+만|\d+박/.test(trip.plan[field]),trip.id+':'+field);}
+test('dated research snapshots are labelled separately; generated text follows current costs and nights',()=>{
+  for(const trip of original.honeymoon){assert.equal(trip.plan.narrativeVersion,2);for(const field of ['itinerary','lodgingNotes','budgetNotes'])assert.match(trip.plan[field],/^2026-11-09 (조회|조사 당시)/,trip.id+':'+field);}
   const trip=quoted();trip.plan.costs.airfare=2700000;trip.plan.stays[0].nights=3;
   const text=currentBudgetText(trip);assert.match(text,/항공 2,700,000원/);assert.match(text,/현재 7박/);assert(!text.includes('2,200,000원'));
 });

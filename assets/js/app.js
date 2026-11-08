@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=initial-basis-12';
+import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-quotes-13';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
 import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=initial-basis-12';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=initial-basis-12';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=travel-quotes-13';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=travel-quotes-13';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -363,7 +363,7 @@ function tripQuoteDetails(item){
   const q=item.plan.quote||emptyQuote(),state=quoteReview(item),rows=Object.entries(q.costs).map(([key,value])=>[COST_LABELS[key]+' 실제 견적',won(value)]);
   rows.push(['입력 견적 소계',won(state.known)],['현재 계획의 예비비',won(item.plan.costs.reserve)],['입력 견적 + 기입 예비비',won(state.assessed)],['확인 조건을 갖춘 합계',won(state.total)],['조회일',q.checkedOn||'미입력'],['한국 출발 시각',q.departureAt.replace('T',' ')||'미입력'],['한국 도착 시각',q.arrivalAt.replace('T',' ')||'미입력']);
   return travelSection(item,'quote','실제 견적·항공편 확인',tripQuoteStatus(item,true),E('dl',{class:'quote-breakdown'},rows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),
-    E('p',{},'성인 2명·인천·일반석·객실 1실 기준입니다. 일부 견적만 입력해도 소계와 기입된 예비비를 기준으로 상한 초과를 표시합니다. 상한 이내 판정은 견적·포함 비용·현재 숙박 구성·한국 출발 및 도착 시각 등 확인 조건을 모두 갖춰야 합니다. 입력 근거 기준의 계산이며 예약·재고를 보증하지 않습니다.'),
+    E('p',{},'성인 2명·인천·일반석·객실 1실 기준입니다. 공개 조사 금액은 날짜를 지정한 조회 화면의 표시가이며, 항공사·호텔의 결제 직전 최종 요금이나 예약 확정 금액이 아닙니다. 이동·세금의 공시요금, 환산 가정과 추가 확인 사항은 비용 배분·이동비·예비비 항목에서 확인하세요. 일부 견적만 입력해도 소계와 기입된 예비비를 기준으로 상한 초과를 표시합니다. 상한 이내 판정은 모든 필수 비용과 현재 여행·숙박 조건을 확인한 뒤에만 표시합니다.'),
     E('p',{},'항공 근거: '+(q.flightSource||'미입력')),E('p',{},'숙박 근거: '+(q.lodgingSource||'미입력')));
 }
 function travelDetails(item){
@@ -375,13 +375,13 @@ function travelDetails(item){
   const climate=climateReview(item);
   return E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'일정·숙박·비용 상세'),
     travelSection(item,'dates','여행 조건·귀국',E('p',{},`한국 출발 ${item.startDate||'미정'} → 한국 도착 목표 ${item.endDate||'미정'} · 성인 2명 · 예산 상한 ${won(TRAVEL_CAP)}`),
-      E('p',{},'인천 출발·일반석·객실 1실 기준입니다. 현지 출발일·항공편은 미확정입니다. 한국 도착일과 현지 출발일을 구분해 확인하세요. 한국 달력의 여행 범위를 현지 숙박 수로 계산하지 않습니다.')),
+      E('p',{},'인천 출발·일반석·객실 1실 기준입니다. 조회한 왕복 일정과 각 공항의 현지 시각은 실제 견적·항공편 확인 항목에 있습니다. 조회 일정은 예약 확정이 아니며 운항·요금을 다시 확인해야 합니다. 한국 도착일과 현지 출발일을 구분하고 현지 체크인·체크아웃으로 숙박 수를 계산합니다.')),
     travelSection(item,'stays','숙박·이동·일정',E('h3',{},staySummary(item)),tripStayStatus(item),
       plan.stays.map(stay=>E('p',{class:'small'},`${stay.region}: 현지 체크인 ${stay.checkIn||'미입력'} → 체크아웃 ${stay.checkOut||'미입력'} · ${stay.nights}박`)),
-      E('p',{class:'current-trip-dates'},`현재 일정: ${item.startDate||'미정'} 한국 출발 → ${staySummary(item)} → ${item.endDate||'미정'} 한국 도착 목표. 현지 도착·출발일은 항공편 확인 후 정합니다.`),
+      E('p',{class:'current-trip-dates'},`현재 일정: ${item.startDate||'미정'} 한국 출발 → ${staySummary(item)} → ${item.endDate||'미정'} 한국 도착 목표. 현지 날짜는 조회 항공편과 대조하고 예약 전에 확정합니다.`),
       planReference(plan,plan.lodgingNotes),E('h3',{},'일정 흐름 참고'),planReference(plan,plan.itinerary),
       E('p',{},`귀국 목표: ${item.endDate||'미정'} 한국 도착. 숙박 배분과 현지 이동은 실제 항공편에 맞춰 조정합니다.`),E('h3',{},'계획상 이동'),E('p',{},plan.transport)),
-    travelSection(item,'costs','비용 배분·예비비',E('dl',{class:'cost-breakdown'},costRows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),tripBudgetStatus(item),
+    travelSection(item,'costs','비용 배분·이동비·예비비',E('dl',{class:'cost-breakdown'},costRows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),tripBudgetStatus(item),
       E('p',{class:'current-budget-text'},currentBudgetText(item)),planReference(plan,plan.budgetNotes),E('p',{},'기타 여행비는 교통·식비·활동·보험·통신·준비 비용 등의 통합 배분입니다. 개인 쇼핑은 기본 제외이며 실제 견적 확인 상태는 별도 항목에서 확인합니다.')),
     tripQuoteDetails(item),
     travelSection(item,'experiences','경험 제안',E('p',{},plan.experiences||'아직 입력한 제안이 없습니다.')),
@@ -422,7 +422,7 @@ function travelOverview(){
 }
 function renderHoneymoon() {
   return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
-    E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발·일반석·객실 1실·총예산 상한 1,000만 원. 아래 금액은 예비비를 포함한 지출 목표이며 해당 날짜의 항공·호텔 확정 견적은 아닙니다. 여행 날짜는 한국 출발일과 한국 도착일 기준입니다. 예식 후 공항 이동·휴식 시간을 확보할 수 있는 항공편부터 확인하세요.'),
+    E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발·일반석·객실 1실·총예산 상한 1,000만 원. 계획 금액은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 비교용 배분이며 확정 견적은 아닙니다. 각 후보의 상세에서 왕복 일정·현지 숙박 날짜·세금·이동비 포함 범위와 미확인 비용을 확인하세요. 여행 날짜는 한국 출발일과 한국 도착일 기준입니다. 예식 후 인천권 이동·필요 숙박 비용도 기타 배분 안에서 확보해야 합니다.'),
     tripSortControl(),travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
     content.honeymoon.length?E('section',{class:'travel-grid'},sortedTrips().map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
       E('dl',{},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),

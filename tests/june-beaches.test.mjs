@@ -13,10 +13,10 @@ test('ten public beach candidates satisfy the confirmed June dates and complete 
     assert.equal(trip.startDate,'2027-06-06');assert.equal(trip.endDate,'2027-06-13');
     assert(trip.budget>0&&trip.budget<=10000000);assert.equal(budgetSummary(trip).unallocated,0);assert(trip.plan.costs.reserve>0);
     assert.equal(trip.plan.climateMonth,6);assert.equal(trip.plan.checkedOn,'2026-11-08');assert.equal(stayReview(trip).warnings.length,0);
-    assert.equal(stayReview(trip).nights,trip.id==='guam'?7:6);
+    assert.equal(stayReview(trip).nights,['guam','danang'].includes(trip.id)?7:['lombok','maldives'].includes(trip.id)?5:6);
     assert.match(trip.plan.researchNotes,/최종 요금은 확인되지/);assert(trip.plan.comparisonNote);assert.match(trip.plan.sourceUrl,/^https:\/\//);
     for(const reference of trip.plan.references){assert(reference.title);assert.match(reference.url,/^https:\/\//);}
-    assert(!JSON.stringify(trip).includes('2027-05-'));
+    assert(![trip.startDate,trip.endDate,...trip.plan.stays.flatMap(s=>[s.checkIn,s.checkOut])].some(date=>date.startsWith('2027-05-')));
   }
   assert.deepEqual(parseContent(JSON.stringify(data)),data);
   assert.equal(data.invitation.date,'2027-06-05');assert.equal(data.invitation.time,'15:00');

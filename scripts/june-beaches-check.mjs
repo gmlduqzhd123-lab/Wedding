@@ -39,14 +39,14 @@ try{
   console.log('PASS actual 10 June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts');
 
   for(const id of ['bali','nhatrang']){await card(p,id).getByRole('button',{name:'비교 선택',exact:true}).click();await p.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences'))?.tripCompare?.includes(id),id);}
-  const comparison=await p.locator('.travel-comparison').innerText();assert(comparison.includes('7,500,000원'));assert(comparison.includes('5,500,000원'));assert(comparison.includes('6월 기준'));assert(!comparison.includes('5월 기준'));
+  const comparison=await p.locator('.travel-comparison').innerText();for(const trip of expected.honeymoon.slice(0,2))assert(comparison.includes(trip.budget.toLocaleString('ko-KR')+'원'));assert(comparison.includes('6월 기준'));assert(!comparison.includes('5월 기준'));
   await card(p).getByRole('button',{name:'최종 선택',exact:true}).click();await p.locator('.selected-trip').waitFor();
   await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.getByLabel('일정·상담 메모',{exact:true}).fill('이번 기기에서만 저장한 검증 메모');await save(p);
-  await p.reload();await ready(p);assert.match(await p.locator('.selected-trip').innerText(),/7,500,000원/);
+  await p.reload();await ready(p);assert((await p.locator('.selected-trip').innerText()).includes(expected.honeymoon[0].budget.toLocaleString('ko-KR')+'원'));
   await p.getByRole('button',{name:'내용 관리',exact:true}).click();const pending=p.waitForEvent('download');await p.getByRole('button',{name:'공개용 파일 저장',exact:true}).click();const backup=JSON.parse(await readFile(await (await pending).path(),'utf8'));
   assert.deepEqual(backup.honeymoon[0].plan,validateContent(expected).honeymoon[0].plan);assert.equal(backup.honeymoon[0].body,'이번 기기에서만 저장한 검증 메모');assert(!JSON.stringify(backup).includes('tripSelected'));
   await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'june-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});await p.waitForFunction(()=>!document.querySelector('dialog').open);
-  await open(p,'bali','all');await open(p,'bali','sources');assert.match(await p.locator('[data-view-key="bali:sources"]').innerText(),/2026-11-08 조사/);
+  await open(p,'bali','all');await open(p,'bali','sources');assert.match(await p.locator('[data-view-key="bali:sources"]').innerText(),/2026-11-09 항공·숙박 날짜 지정 조회/);
   await p.goto(base+'?view=guest#/honeymoon');await ready(p);assert.equal(await p.locator('.travel-card').count(),10);assert.equal(await p.locator('.trip-controls,#selected-trip-region').count(),0);assert(!(await p.locator('#main').innerText()).includes('이번 기기에서만 저장한 검증 메모'));
   await p.reload();await ready(p);assert.equal(await p.locator('.travel-card').count(),10);
   for(const route of ['home','invitation','story','albums','studios','honeymoon']){await p.locator(`[data-route="${route}"]`).click();await ready(p);assert.equal(new URL(p.url()).hash,'#/'+route);}

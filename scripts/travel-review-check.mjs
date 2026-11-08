@@ -18,15 +18,15 @@ try{
  assert.equal(await p.locator('.travel-card').count(),10);assert(!await p.locator('.overview-disclosure').evaluate(n=>n.open));
  assert(await p.locator('.travel-overview').evaluate(n=>n.getBoundingClientRect().height)<300);
  await p.locator('.overview-disclosure > summary').click();assert.equal(await p.locator('.travel-overview li').count(),10);
- await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('budget-low');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'nhatrang');assert(await p.locator('.overview-disclosure').evaluate(n=>n.open));
+ await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('budget-low');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'danang');assert(await p.locator('.overview-disclosure').evaluate(n=>n.open));
  await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('budget-high');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'hawaii');
  await p.getByRole('combobox',{name:'여행 후보 정렬',exact:true}).selectOption('recommended');assert.equal(await p.locator('.travel-card').first().getAttribute('data-trip-id'),'bali');
  await p.locator('.overview-disclosure > summary').click();
  assert.match(await card(p).locator(':scope > .quote-status').innerText(),/실제 예산 충족 미확인/);
  await edit(p);await p.getByLabel('한국 출발일',{exact:true}).fill('2027-06-07');await p.getByLabel('한국 도착일',{exact:true}).fill('2027-06-14');await p.getByLabel('두 사람의 계획예산 (원)',{exact:true}).fill('8000000');await p.getByLabel('항공 배분 (원)',{exact:true}).fill('2700000');
- await p.getByLabel('숙박 박 수 1',{exact:true}).fill('3');await p.getByRole('button',{name:'현재 날짜로 가안 기준 갱신',exact:true}).click();await save(p);
+ await p.getByLabel('현지 체크인 1',{exact:true}).fill('');await p.getByLabel('현지 체크아웃 1',{exact:true}).fill('');await p.getByLabel('숙박 박 수 1',{exact:true}).fill('3');await p.getByRole('button',{name:'숙박 추가',exact:true}).click();await p.getByLabel('숙박 지역 2',{exact:true}).fill('시험용 두 번째 숙소');await p.getByLabel('숙박 박 수 2',{exact:true}).fill('4');await p.getByRole('button',{name:'현재 날짜로 가안 기준 갱신',exact:true}).click();await save(p);
  for(const key of ['all','stays','costs'])await open(p,key);
- const stays=await p.locator('[data-view-key="bali:stays"]').innerText(),costs=await p.locator('[data-view-key="bali:costs"]').innerText();
+ const stays=await p.locator('[data-view-key="bali:stays"] .current-trip-dates').innerText(),costs=await p.locator('[data-view-key="bali:costs"]').innerText();
  assert.match(stays,/2027-06-07.*7박.*2027-06-14/s);assert(!stays.includes('6/6')&&!stays.includes('6/13'));
  assert.match(costs,/항공 2,700,000원/);assert(!costs.includes('220만'));assert.match(costs,/현재 7박/);
  await edit(p);await p.locator('.quote-editor > summary').click();

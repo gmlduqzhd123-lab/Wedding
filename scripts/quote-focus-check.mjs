@@ -13,7 +13,7 @@ const open=async(p,key)=>{const node=p.locator(`[data-view-key="bali:${key}"]`);
 try{
  await mkdir('work/quote-focus-qa',{recursive:true});
  const a=await fresh(320),p=a.page;
- await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.locator('.quote-editor > summary').click();await p.getByLabel('항공 실제 견적 (원)',{exact:true}).fill('12000000');await save(p);
+ await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.locator('.quote-editor > summary').click();await p.getByLabel('숙박·패키지 실제 견적 (원)',{exact:true}).fill('');await p.getByLabel('기타 여행비 실제 견적 (원)',{exact:true}).fill('');await p.getByLabel('항공 실제 견적 (원)',{exact:true}).fill('12000000');await save(p);
  const status=async()=>card(p).locator(':scope > .quote-status').innerText();
  assert.match(await status(),/입력 견적 소계 12,000,000원/);assert.match(await status(),/12,800,000원/);assert.match(await status(),/상한 2,800,000원 초과/);assert.match(await status(),/미확인/);assert(await card(p).locator(':scope > .quote-status').evaluate(n=>n.classList.contains('warning')));
  for(const label of ['최종 선택','비교 선택'])await card(p).getByRole('button',{name:label,exact:true}).click();
