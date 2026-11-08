@@ -15,7 +15,7 @@ try{
  await page.goto(base+'?view=guest#/invitation');await page.locator('#main[aria-busy="false"]').waitFor();
  assert.equal(await page.locator('.couple-names,.invitation .message,.invitation .place p').count(),0);
  assert.equal(await page.getByRole('link',{name:'오시는 길 ↗',exact:true}).count(),0);
- assert.match(await page.locator('.invitation-date').innerText(),/2027년 5월 8일.*13:00/);assert.match(await page.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
+ assert.match(await page.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.match(await page.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
  assert.equal(await page.locator('[aria-current="page"]').count(),1);
  await mkdir('work/travel-qa',{recursive:true});await page.screenshot({path:'work/travel-qa/invitation-blank.png',fullPage:true});
  console.log('PASS missing invitation fields stay blank while confirmed date/time/venue remain visible');

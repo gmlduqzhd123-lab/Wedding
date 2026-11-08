@@ -69,7 +69,7 @@ try{
   assert.equal(await card(r).getByRole('link',{name:'직접 입력한 참고 링크 ↗',exact:true}).getAttribute('href'),'https://example.com/personal-note');await c.context.close();console.log('PASS personal reference edits preserve official source and dates, JSON roundtrip and safe legacy source fallback');
 
   const d=await fresh('?view=guest#/invitation'),s=d.page;
-  assert.match(await s.locator('.invitation-date').innerText(),/2027년 5월 8일.*13:00/);assert.match(await s.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
+  assert.match(await s.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.match(await s.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
   assert.equal(await s.locator('.couple-names,.invitation .message,.place p').count(),0);assert.equal(await s.getByRole('link',{name:'오시는 길 ↗',exact:true}).count(),0);
   await s.screenshot({path:'work/travel-integrity-qa/invitation.png',fullPage:true});await s.goto(base+'?view=guest#/honeymoon');await card(s,'spain').waitFor();await open(s,'spain','all');await open(s,'spain','stays');
   assert.match(await s.locator('[data-view-key="spain:stays"]').innerText(),/바르셀로나 1박 → 마요르카 3박 → 바르셀로나 3박 · 총 7박/);

@@ -53,7 +53,7 @@ try{
   await r.setViewportSize({width:390,height:844});await r.screenshot({path:'work/navigation-qa/legacy-link.png',fullPage:true});
   await r.getByRole('button',{name:'내용 관리',exact:true}).click();await r.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();await r.waitForFunction(()=>!document.querySelector('dialog').open);
   assert.equal(await r.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);
-  await r.goto(base+'?view=guest#/invitation');await ready(r);assert.match(await r.locator('.invitation-date').innerText(),/2027년 5월 8일.*13:00/);assert.match(await r.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
+  await r.goto(base+'?view=guest#/invitation');await ready(r);assert.match(await r.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.match(await r.locator('.place').innerText(),/순천아모르웨딩컨벤션 1층/);
   assert.equal(await r.locator('.couple-names,.invitation .message,.place p').count(),0);assert.equal(await r.getByRole('link',{name:'오시는 길 ↗',exact:true}).count(),0);await c.context.close();
   console.log('PASS legacy link-only import/render/reload/export/reset, responsive layouts, confirmed invitation and blank missing fields');
   const d=await fresh(),s=d.page;s.on('dialog',d=>d.accept());
