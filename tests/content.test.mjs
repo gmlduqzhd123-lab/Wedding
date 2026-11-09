@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import {parseContent,validateContent,validDate,safeUrl,formatDate} from '../assets/js/content.js';
+import {parseContent,validateContent,validDate,safeUrl,formatDate,weddingDday} from '../assets/js/content.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 test('content export/import round trip preserves all five menu data',()=>{
  const content=structuredClone(original);
@@ -22,6 +22,10 @@ test('invalid import never normalizes into data that can overwrite a draft',()=>
 test('dates and links do not depend on the host timezone or permit scripts',()=>{
  assert(validDate('2028-02-29'));assert(!validDate('2027-02-29'));
  assert(formatDate('2026-11-04').includes('11월 4일'));
+ assert.equal(weddingDday('2027-06-05','2026-11-08'),'D-209');
+ assert.equal(weddingDday('2027-06-05','2027-06-05'),'D-Day');
+ assert.equal(weddingDday('2027-06-05','2027-06-08'),'D+3');
+ assert.equal(weddingDday('','2026-11-08'),'');
  assert.equal(safeUrl('javascript:alert(1)'), '');assert.equal(safeUrl('data:text/html,hi'), '');
  assert.equal(safeUrl(' https://example.com'), '');
  assert.equal(safeUrl('./assets/studios/01-1.jpg',{image:true}),'./assets/studios/01-1.jpg');

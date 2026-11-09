@@ -128,3 +128,9 @@ export function formatDate(value) {
   if (!validDate(value)) return '';
   return new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${value}T12:00:00+09:00`));
 }
+export function weddingDday(value, today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())) {
+  if (!validDate(value) || !validDate(today)) return '';
+  if (value === today) return 'D-Day';
+  return value > today ? `D-${dateSpan(today, value)}` : `D+${dateSpan(value, today)}`;
+}
+

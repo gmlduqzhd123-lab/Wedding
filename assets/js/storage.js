@@ -19,7 +19,9 @@ export function mergeChanges(base,local,remote,{preferLocal=false}={}) {
       if(['stories','albums','honeymoon'].includes(path)){
         const index=items=>Object.fromEntries(items.map(item=>[item.id,item]));
         const merged=merge(index(before),index(next),index(current),`${path}.records`);
-        return [...new Set([...current,...next].map(item=>item.id))].filter(id=>merged[id]).map(id=>merged[id]);
+        const reordered=!same(next.map(item=>item.id),before.map(item=>item.id))&&same(current.map(item=>item.id),before.map(item=>item.id));
+        const ordered=reordered?[...next,...current]:[...current,...next];
+        return [...new Set(ordered.map(item=>item.id))].filter(id=>merged[id]).map(id=>merged[id]);
       }
       if(['favorites','tripFavorites'].includes(path)){
         const removed=before.filter(id=>!next.includes(id)),added=next.filter(id=>!before.includes(id));

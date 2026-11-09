@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { mergeChanges, lockedMerge, StorageConflict } from '../assets/js/storage.js';
 
 test('independent invitation edits and record additions merge without dropping changes',()=>{
-  const base={invitation:{name:'',venue:''},stories:[]};
-  const a={invitation:{name:'우리',venue:''},stories:[{id:'a',title:'첫 기록'}]};
-  const b={invitation:{name:'',venue:'예식장'},stories:[{id:'b',title:'다음 기록'}]};
+  const base={invitation:{name:'',venue:''},stories:[],albums:[{id:'a',title:'첫 앨범'},{id:'b',title:'둘째 앨범'}]};
+  const a={invitation:{name:'우리',venue:''},stories:[{id:'a',title:'첫 기록'}],albums:[{id:'a',title:'수정한 첫 앨범'},{id:'b',title:'둘째 앨범'}]};
+  const b={invitation:{name:'',venue:'예식장'},stories:[{id:'b',title:'다음 기록'}],albums:[{id:'b',title:'둘째 앨범'},{id:'a',title:'첫 앨범'}]};
   const result=mergeChanges(base,b,a);
   assert.deepEqual(result.conflicts,[]);
   assert.deepEqual(result.value.invitation,{name:'우리',venue:'예식장'});
   assert.deepEqual(result.value.stories.map(x=>x.id),['a','b']);
+  assert.deepEqual(result.value.albums,[{id:'b',title:'둘째 앨범'},{id:'a',title:'수정한 첫 앨범'}]);
 });
 test('same-field edits, photo reorders, and delete-versus-edit need review',()=>{
   assert.equal(mergeChanges({name:''},{name:'A'},{name:'B'}).conflicts.length,1);

@@ -1,6 +1,6 @@
-import { parseContent, validateContent, formatDate, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-quotes-13';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-quotes-14';
 import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=travel-quotes-14';
 import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=travel-quotes-13';
 import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=travel-quotes-13';
 
@@ -91,7 +91,7 @@ function conflictDetails(error){
     E('p',{},'서로 다른 항목의 변경은 함께 보존됩니다.'));
 }
 function conflictLabel(path){
-  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',notes:'스튜디오 메모',favorites:'관심 스튜디오',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'여행',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B'};
+  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',notes:'스튜디오 메모',favorites:'관심 스튜디오',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'여행',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
   return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||studios.find(item=>item.id===key)?.name||'기록').join(' · ');
 }
 function storageMessage(error){
@@ -185,8 +185,9 @@ function renderHome() {
       E('p',{},'소중한 분들을 초대하는 날부터 둘만의 첫 여행까지. 함께 고른 것과 오래 간직할 순간을 이곳에 모아요.'),
       E('div',{class:'hero-actions'},linkButton(info.date||guestMode?'우리의 청첩장':'예식 정보 채우기','#/invitation'),linkButton('스튜디오 살펴보기','#/studios',true))),
     E('div',{class:'hero-art','aria-hidden':'true'},E('div',{class:'art-arch'},E('span',{},'Our',E('br'),'story.')),E('div',{class:'art-note'},'Together,',E('br'),'one page at a time.')));
+  const dday=weddingDday(info.date);
   const overview=E('div',{class:'overview'},
-    E('div',{},E('span',{class:'small muted'},'OUR DAY'),E('strong',{},info.date?formatDate(info.date).replace(/ \S+요일$/,''):'예식 일정 준비 중')),
+    E('div',{},E('span',{class:'small muted'},'OUR DAY'),E('strong',{},info.date?`${formatDate(info.date).replace(/ \S+요일$/,'')}${dday?` · ${dday}`:''}`:'예식 일정 준비 중')),
     E('div',{},E('span',{class:'small muted'},'OUR MEMORIES'),E('strong',{},`이야기 ${content.stories.length} · 앨범 ${content.albums.length}`)),
     E('div',{},E('span',{class:'small muted'},'OUR CHOICES'),E('strong',{},`${studiosStatus==='ready'?`스튜디오 ${studios.length}곳`:'스튜디오 자료 준비 중'} · 여행 ${content.honeymoon.length}곳`)));
   const statuses={invitation:info.date?'예식 정보 등록됨':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:studiosStatus==='ready'?`${studios.length}곳 비교하기`:'자료 불러오기',honeymoon:`${content.honeymoon.length}개의 여행 후보`};
@@ -208,19 +209,22 @@ function downloadInvitationCalendar(){
   }catch(error){toast(error.message,true);}
 }
 function renderInvitation() {
-  const info=content.invitation;
+  const info=content.invitation,dday=weddingDday(info.date);
   const hasContent=Object.values(info).some(Boolean),hasSchedule=Boolean(info.date&&info.time);
   return [pageHeader('소중한 분들을 초대합니다.','우리의 마음과 예식 안내를 한 장에 담아요.',E('div',{class:'page-actions'},editButton('예식 정보 편집',()=>openEditor('invitation')),button('청첩장 링크 복사',copyInvitationLink,'button quiet')),'THE INVITATION'),
     hasContent?E('section',{class:'invitation'},E('p',{class:'eyebrow'},'WE ARE GETTING MARRIED'),E('div',{class:'invitation-title'},'With love, together.'),
       (info.partner1||info.partner2)?E('h2',{class:'couple-names'},info.partner1,info.partner1&&info.partner2?E('span',{},'&'):null,info.partner2):null,
       info.message?E('p',{class:'message'},info.message):null,
-      E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:''),
+      E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
       E('div',{class:'invitation-actions'},externalLink('오시는 길 ↗',info.mapUrl,'button quiet'),hasSchedule?externalLink('Google 캘린더에 추가',googleCalendarUrl(info),'button quiet'):null,
         hasSchedule?button('일정 파일(.ics) 다운로드',downloadInvitationCalendar,'button quiet'):null),
       hasSchedule?E('p',{class:'small muted calendar-note'},'Google 캘린더는 로그인 후 추가 버튼을 이용하세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 한국 시간 기준이며 종료 시각은 미정이니 등록 화면에서 확인해 주세요.'):null,
       hasSchedule?E('p',{class:'small muted calendar-update-note'},'이 버튼과 일정 파일은 기존에 저장한 일정을 자동 수정하지 않습니다. 예식 일정이 바뀌었다면 캘린더 앱에서 기존 일정을 수정하거나 삭제한 뒤 새 일정을 추가해 중복 여부를 확인해 주세요.'):null):
     empty('우리의 첫 초대장을 준비해요.','두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.','예식 정보 입력',()=>openEditor('invitation'))];
+}
+function sortedStories(){
+  return [...content.stories].sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
 }
 function focusTrip(id){
   if(currentRoute()!=='honeymoon'||dialog.open)return;
@@ -231,15 +235,47 @@ function focusTrip(id){
   const bounds=target.getBoundingClientRect();
   if(bounds.top<0||bounds.bottom>innerHeight)target.scrollIntoView({block:'nearest',behavior:'instant'});
 }
+function focusRecord(type,id){
+  if(type==='honeymoon'){focusTrip(id);return;}
+  const route=type==='stories'?'story':'albums';
+  if(currentRoute()!==route||dialog.open)return;
+  const card=[...main.querySelectorAll('[data-record-id]')].find(node=>node.dataset.recordId===id);
+  const target=card?.querySelector('h2')||main.querySelector('.page-header .button')||main;
+  if(target.matches('h2'))target.tabIndex=-1;
+  target.focus({preventScroll:true});
+  const bounds=target.getBoundingClientRect();
+  if(bounds.top<0||bounds.bottom>innerHeight)target.scrollIntoView({block:'nearest',behavior:'instant'});
+}
+function displayedRecords(type){
+  return type==='honeymoon'?sortedTrips():type==='stories'?sortedStories():content.albums;
+}
 function recordActions(type,item) {
   if(guestMode)return null;
-  return E('div',{class:'record-actions'},button('수정',()=>openEditor(type,item),'text-button'),button('삭제',async()=>{
+  const reorder=[];
+  if(type==='albums'&&content.albums.length>1){
+    const index=content.albums.findIndex(album=>album.id===item.id);
+    const move=async(target,label)=>{
+      try{
+        const next=structuredClone(content);
+        [next.albums[index],next.albums[target]]=[next.albums[target],next.albums[index]];
+        await setDraft(next);render();
+        const card=[...main.querySelectorAll('[data-record-id]')].find(node=>node.dataset.recordId===item.id);
+        const buttonNode=card&&[...card.querySelectorAll('.record-actions button')].find(node=>node.textContent===label&&!node.disabled);
+        (buttonNode||card?.querySelector('h2')||main).focus({preventScroll:true});
+      }catch(error){toast(error.message,true);}
+    };
+    const prev=button('앨범 앞으로',()=>move(index-1,'앨범 앞으로'),'text-button');prev.disabled=index===0;
+    const next=button('앨범 뒤로',()=>move(index+1,'앨범 뒤로'),'text-button');next.disabled=index===content.albums.length-1;
+    reorder.push(prev,next);
+  }
+  return E('div',{class:'record-actions'},...reorder,button('수정',()=>openEditor(type,item),'text-button'),button('삭제',async()=>{
     if(!confirm(`‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`))return;
     try{
-      const ids=type==='honeymoon'?sortedTrips().map(trip=>trip.id):[],index=ids.indexOf(item.id);
+      const ids=displayedRecords(type).map(record=>record.id),index=ids.indexOf(item.id);
       const neighbors=[...ids.slice(index+1),...ids.slice(0,index).reverse()];
       const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();
-      if(type==='honeymoon')focusTrip(neighbors.find(id=>content.honeymoon.some(trip=>trip.id===id))||sortedTrips()[0]?.id);
+      const remaining=displayedRecords(type);
+      focusRecord(type,neighbors.find(id=>remaining.some(record=>record.id===id))||remaining[0]?.id);
       const cleaned=type!=='honeymoon'||await queuePreference(async()=>{
         const nextPrefs=pruneTripPreferences(prefs,content.honeymoon);
         if(JSON.stringify(nextPrefs)===JSON.stringify(prefs))return true;
@@ -250,9 +286,10 @@ function recordActions(type,item) {
   },'text-button'));
 }
 function renderStories() {
-  const records=[...content.stories].sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const records=sortedStories();
   return [pageHeader('우리가 함께 걸어온 시간','첫 만남, 기억하고 싶은 날, 함께 내린 결심을 기록해요.',editButton('이야기 추가',()=>openEditor('stories')),'OUR STORY'),
-    records.length?E('section',{class:'timeline'},records.map(item=>E('article',{class:'story-card'+(item.image?' has-image':'')},item.image?image(item.image,item.title):null,
+    records.length?E('section',{class:'timeline'},records.map(item=>E('article',{class:'story-card'+(item.image?' has-image':''),'data-record-id':item.id},
+      item.image?E('button',{type:'button',class:'photo-open story-photo-open','aria-label':`${item.title} 사진 확대`,onclick:()=>openPhotos(item.title,[item.image],0)},image(item.image,item.title)):null,
       E('div',{},E('p',{class:'record-date'},item.date?formatDate(item.date):'날짜 없는 기록'),E('h2',{},item.title),E('p',{class:'record-body'},item.body),recordActions('stories',item))))):
     empty('첫 번째 이야기를 남겨 볼까요?','처음 만난 날도, 함께 웃었던 평범한 날도 우리의 일대기가 됩니다.','첫 이야기 쓰기',()=>openEditor('stories'))];
 }
@@ -397,7 +434,7 @@ function travelDetails(item){
 }
 function renderAlbums() {
   return [pageHeader('오래 간직할 우리의 순간','사진을 앨범으로 모으고, 그날의 이야기를 함께 남겨요.',editButton('앨범 추가',()=>openEditor('albums')),'PHOTO ALBUM'),
-    content.albums.length?E('section',{class:'album-grid'},content.albums.map(item=>E('article',{class:'album-card'},item.images.length?image(item.images[0],item.title,{class:'album-cover'}):E('div',{class:'album-placeholder'},'Our memories'),
+    content.albums.length?E('section',{class:'album-grid'},content.albums.map(item=>E('article',{class:'album-card','data-record-id':item.id},item.images.length?image(item.images[0],item.title,{class:'album-cover'}):E('div',{class:'album-placeholder'},'Our memories'),
       E('div',{class:'album-info'},E('p',{class:'record-date'},[item.date?formatDate(item.date):'',`사진 ${item.images.length}장`].filter(Boolean).join(' · ')),E('h2',{},item.title),E('p',{class:'record-body'},item.body),button('사진 보기',()=>openAlbum(item),'text-button'),recordActions('albums',item))))):
     empty('우리의 사진을 담을 첫 앨범','사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
@@ -635,6 +672,49 @@ function quoteEditor(form,fields,plan,currentTrip){
     ...Object.fromEntries(['checkedOn','flightSource','lodgingSource','departureAt','arrivalAt'].map(key=>[key,fields['quote_'+key].value.trim()])),includesRequiredCosts:included.checked&&matches(),basis:confirmedBasis});
   return {read};
 }
+function planExtraEditor(form,fields,plan){
+  const body=E('div',{class:'quote-editor-body'});
+  const monthSelect=E('select',{id:'plan-climateMonth'},[['','미입력'],...Array.from({length:12},(_,i)=>[String(i+1),`${i+1}월`])].map(([value,label])=>E('option',{value},label)));
+  monthSelect.value=plan.climateMonth===null||plan.climateMonth===undefined?'':String(plan.climateMonth);
+  fields.plan_climateMonth=monthSelect;
+  const specs=[
+    ['experiences','경험 제안','textarea',plan.experiences||'','12000'],
+    ['comparisonNote','후보 한눈에 보기 요약','textarea',plan.comparisonNote||'','500'],
+    ['climate','기후 경향 안내','textarea',plan.climate||'','12000'],
+    ['climateMonth','기후 기준 월','select'],
+    ['sourceTitle','기후 출처 이름','text',plan.sourceTitle||'','500'],
+    ['sourceUrl','기후 공식 출처 링크','url',plan.sourceUrl||'','4000'],
+    ['checkedOn','기후 자료 확인일','date',plan.checkedOn||'','10'],
+    ['budgetNotes','비용 배분 참고 설명','textarea',plan.budgetNotes||'','12000'],
+    ['researchNotes','계획 자료·확인 범위 설명','textarea',plan.researchNotes||'','12000'],
+    ['references','추가 조사 출처 (한 줄에 제목 | https://주소)','textarea',(plan.references||[]).map(r=>`${r.title} | ${r.url}`).join('\n'),'24000']
+  ];
+  const initialValues={};
+  for(const [key,label,kind,value,max] of specs){
+    if(kind==='select'){initialValues[key]=monthSelect.value;body.append(E('label',{class:'field',for:monthSelect.id},label,monthSelect));continue;}
+    const input=kind==='textarea'?E('textarea',{rows:'3',maxlength:max}):E('input',{type:kind,maxlength:max});
+    input.id=`plan-${key}`;input.value=value;initialValues[key]=value;fields[`plan_${key}`]=input;
+    body.append(E('label',{class:'field',for:input.id},label,input));
+  }
+  form.append(E('details',{class:'plan-extra-editor'},E('summary',{},'기후·경험·출처·비교 요약 편집 (선택)'),body));
+  const read=()=>{
+    const next={};
+    for(const key of ['experiences','comparisonNote','climate','sourceTitle','sourceUrl','checkedOn','budgetNotes','researchNotes']){
+      const raw=fields[`plan_${key}`].value;
+      if(raw!==initialValues[key])next[key]=raw.trim();
+    }
+    if(monthSelect.value!==initialValues.climateMonth)next.climateMonth=monthSelect.value===''?null:Number(monthSelect.value);
+    if(fields.plan_references.value!==initialValues.references){
+      next.references=fields.plan_references.value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
+        const sep=line.indexOf('|');
+        if(sep===-1)throw new Error('추가 조사 출처는 한 줄에 "제목 | https://주소" 형식으로 입력해 주세요.');
+        return {title:line.slice(0,sep).trim(),url:line.slice(sep+1).trim()};
+      });
+    }
+    return next;
+  };
+  return {read};
+}
 function openEditor(type,item=null) {
   if(guestMode)return;
   const titles={invitation:'예식 정보 편집',stories:'우리의 이야기',albums:'포토 앨범',honeymoon:'신혼여행 후보'};
@@ -652,7 +732,7 @@ function openEditor(type,item=null) {
     if(key==='title')input.maxLength=160;
     fields[key]=input;form.appendChild(E('label',{class:'field',for:input.id},label,input));
   }
-  let editedPlan,stayFields,quoteFields;
+  let editedPlan,stayFields,quoteFields,extraFields;
   if(type==='honeymoon'){
     editedPlan=structuredClone(item?.plan||{version:1,costs:{airfare:null,lodging:null,other:null,reserve:null},stays:[],lodgingNotes:'',itinerary:'',experiences:'',transport:'',climate:'',climateMonth:null,sourceTitle:'',checkedOn:'',budgetNotes:''});
     form.append(E('p',{class:'form-note'},'참고 링크는 직접 작성하는 메모용 주소이며 기후 공식 출처와 별도로 저장합니다.'));
@@ -668,8 +748,30 @@ function openEditor(type,item=null) {
       form.append(E('label',{class:'field',for:input.id},`${label} 배분 (원)`,input));
     }
     quoteFields=quoteEditor(form,fields,editedPlan,()=>({country:fields.country.value.trim(),startDate:fields.startDate.value,endDate:fields.endDate.value,plan:{stays:stayFields.read()}}));
+    extraFields=planExtraEditor(form,fields,editedPlan);
   }
   let albumImages=[...(item?.images||[])], processing=false,saving=false;
+  if(type==='stories'){
+    const preview=E('div',{class:'photo-editor'});
+    const drawStoryPhoto=()=>{
+      const src=safeUrl(fields.image.value.trim(),{image:true});
+      preview.replaceChildren(...(src?[E('div',{class:'photo-edit-card'},image(src,'이야기 사진 미리보기'),E('p',{},'등록할 사진'),
+        E('div',{class:'photo-edit-actions'},button('사진 삭제',()=>{fields.image.value='';drawStoryPhoto();fields.image.focus({preventScroll:true});},'button danger')))]:[]));
+    };
+    fields.image.addEventListener('input',drawStoryPhoto);
+    const fileInput=E('input',{type:'file',accept:'image/jpeg,image/png,image/webp',class:'file-input'});
+    fileInput.addEventListener('change',async()=>{
+      const file=fileInput.files?.[0];if(!file)return;
+      processing=true;submit.disabled=true;fileInput.disabled=true;
+      try{
+        const added=await shrinkPhoto(file);
+        if(!form.isConnected||!dialog.open)return;
+        fields.image.value=added;drawStoryPhoto();
+      }catch(error){toast(error.message,true);}finally{processing=false;submit.disabled=false;fileInput.disabled=false;fileInput.value='';}
+    });
+    form.append(E('label',{class:'field'},'사진 파일 선택 (선택)',fileInput),E('p',{class:'small muted'},'사진 파일은 초안용으로 줄여 저장합니다. 원본은 별도로 보관해 주세요.'),preview);
+    drawStoryPhoto();
+  }
   if(type==='albums') {
     const previews=E('div',{class:'photo-editor'});
     const draw=(focusIndex,action)=>{previews.replaceChildren(...albumImages.map((src,index)=>{
@@ -725,18 +827,18 @@ function openEditor(type,item=null) {
         }
         if(type==='honeymoon'){
           record.budget=data.budget===''?null:Number(data.budget);
-          record.plan={...editedPlan,stays:stayFields.read(),dateBasis:stayFields.basis(),costs:Object.fromEntries(Object.keys(COST_LABELS).map(key=>[key,data[`cost_${key}`]===''?null:Number(data[`cost_${key}`])]))};
+          record.plan={...editedPlan,stays:stayFields.read(),dateBasis:stayFields.basis(),costs:Object.fromEntries(Object.keys(COST_LABELS).map(key=>[key,data[`cost_${key}`]===''?null:Number(data[`cost_${key}`])])),...extraFields.read()};
           for(const key of Object.keys(COST_LABELS))delete record[`cost_${key}`];
-          for(const key of ['lodgingNotes','itinerary','transport']){record.plan[key]=data[`plan_${key}`];delete record[`plan_${key}`];}
+          for(const key of ['lodgingNotes','itinerary','transport'])record.plan[key]=data[`plan_${key}`];
           record.plan.quote=quoteFields.read();
-          for(const key of Object.keys(record))if(key.startsWith('quote_'))delete record[key];
+          for(const key of Object.keys(record))if(key.startsWith('plan_')||key.startsWith('quote_'))delete record[key];
         }
         const index=next[type].findIndex(value=>value.id===id);
         if(index===-1)next[type].push(record);else next[type][index]=record;
       }
       attemptedNext=next;
       await setDraft(next,editingContent,approvedRaw);closeDialog();render();
-      if(type==='honeymoon')focusTrip(savedId);
+      if(type!=='invitation')focusRecord(type,savedId);
       toast('이 기기에 초안을 저장했습니다.');
     }catch(error){
       toast(error.message,true);
