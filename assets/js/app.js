@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-quotes-14';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-integrity-3';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=travel-quotes-14';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=travel-quotes-13';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=travel-quotes-13';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=travel-quotes-15';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=travel-quotes-15';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=travel-quotes-15';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=travel-quotes-15';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=travel-quotes-15';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -16,8 +16,8 @@ const menus=[
   ['honeymoon','신혼여행','결혼 후 첫 여행, 가고 싶은 곳부터 차근차근.','HONEYMOON']
 ];
 let baseContent, content, studios=[], prefs={}, isDraft=false, toastTimer;
-let filter='', favoritesOnly=false;
-let tripSort='recommended',overviewExpanded=false;
+let filter='', favoritesOnly=false, withPhoneOnly=false;
+let tripSort='recommended', tripFavoritesOnly=false, overviewExpanded=false;
 const guestMode=new URLSearchParams(location.search).get('view')==='guest';
 let baseRevision='', draftRevision=null, editorState=null, studiosStatus='loading', studiosError='';
 let previousHash=location.hash,pendingWrites=0;
@@ -297,17 +297,18 @@ function openPhotos(title,photos,index=0) {
   if(!photos.length)return;
   const body=E('div',{class:'photo-viewer'});
   const draw=()=>{
-    const previous=button('이전 사진',()=>{index=(index+photos.length-1)%photos.length;draw();body.querySelector('button')?.focus();},'button quiet');
-    const next=button('다음 사진',()=>{index=(index+1)%photos.length;draw();body.querySelector('button:last-child')?.focus();},'button quiet');
+    const previous=button('이전 사진',()=>{index=(index+photos.length-1)%photos.length;draw();body.querySelector('.viewer-controls button:first-child')?.focus();},'button quiet');
+    const next=button('다음 사진',()=>{index=(index+1)%photos.length;draw();body.querySelector('.viewer-controls button:last-child')?.focus();},'button quiet');
     previous.disabled=next.disabled=photos.length<2;
+    const thumbs=photos.length>1?E('div',{class:'viewer-thumbs','aria-label':'전체 사진 목록'},photos.map((src,idx)=>E('button',{type:'button',class:'viewer-thumb','aria-label':`${idx+1}번 사진 보기`,'aria-current':String(idx===index),onclick:()=>{index=idx;draw();body.querySelectorAll('.viewer-thumb')[idx]?.focus();}},image(src,`${title} 썸네일 ${idx+1}`)))) : null;
     body.replaceChildren(image(photos[index],`${title} 사진 ${index+1}`,{loading:'eager'}),
-      E('div',{class:'viewer-controls'},previous,E('span',{'aria-live':'polite'},`${index+1} / ${photos.length}`),next));
+      E('div',{class:'viewer-controls'},previous,E('span',{'aria-live':'polite'},`${index+1} / ${photos.length}`),next),thumbs);
   };
   draw();
   const navigate=event=>{
     if(photos.length>1&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){
       event.preventDefault();index=(index+(event.key==='ArrowLeft'?-1:1)+photos.length)%photos.length;draw();
-      body.querySelector(event.key==='ArrowLeft'?'button':'button:last-child')?.focus();
+      body.querySelector(event.key==='ArrowLeft'?'.viewer-controls button:first-child':'.viewer-controls button:last-child')?.focus();
     }
   };
   if(showDialog(title,body))photoNavigation=navigate;
@@ -336,6 +337,7 @@ function tripQuoteStatus(item,full=false){
 }
 function updateTripChoices(){
   if(currentRoute()!=='honeymoon')return;
+  if(tripFavoritesOnly){render();return;}
   const active=document.activeElement;
   const anchor=main.contains(active)?active:null,before=anchor?.getBoundingClientRect().top;
   for(const node of document.querySelectorAll('.trip-controls button')){
@@ -353,6 +355,7 @@ function selectedTripSummary(){
   return E('section',{class:'selected-trip'},E('h2',{},'최종 선택 · '+item.title),E('p',{},`${item.startDate||'미정'} 한국 출발 → ${item.endDate||'미정'} 한국 도착 · 2인 계획예산 ${won(item.budget)}`),
     E('div',{class:'selected-trip-status'},tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item)),
     E('p',{class:'small muted'},'이 기기에 저장한 선택입니다. 예약 확정을 의미하지 않습니다.'),button('선택한 계획 보기',()=>{
+      if(tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id)){tripFavoritesOnly=false;render();}
       const card=[...main.querySelectorAll('[data-trip-id]')].find(node=>node.dataset.tripId===item.id);
       if(!card)return;const details=card.querySelector('.travel-details');if(details)details.open=true;
       const heading=card.querySelector('h2');heading.tabIndex=-1;heading.focus({preventScroll:true});card.scrollIntoView({block:'start'});
@@ -439,31 +442,35 @@ function renderAlbums() {
     empty('우리의 사진을 담을 첫 앨범','사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
 function sortedTrips(){
-  const trips=[...content.honeymoon];
+  const trips=content.honeymoon.filter(item=>!tripFavoritesOnly||prefs.tripFavorites?.includes(item.id));
   return tripSort==='recommended'?trips:trips.sort((a,b)=>a.budget===null?(b.budget===null?0:1):b.budget===null?-1:(a.budget-b.budget)*(tripSort==='budget-high'?-1:1));
 }
 function tripSortControl(){
   const select=E('select',{id:'trip-sort','aria-label':'여행 후보 정렬'},[['recommended','추천순'],['budget-low','계획예산 낮은 순'],['budget-high','계획예산 높은 순']].map(([value,label])=>E('option',{value},label)));
   select.value=tripSort;
   select.addEventListener('change',()=>{const before=select.getBoundingClientRect().top;tripSort=select.value;render();const target=$('#trip-sort');target.focus({preventScroll:true});window.scrollBy(0,target.getBoundingClientRect().top-before);});
-  return E('div',{class:'travel-tools'},E('label',{for:'trip-sort'},'후보 정렬'),select,E('p',{class:'small muted'},'정렬은 화면 순서만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.'));
+  const favCheck=E('input',{type:'checkbox',id:'trip-favorites-only'});favCheck.checked=tripFavoritesOnly;
+  favCheck.addEventListener('change',()=>{const before=favCheck.getBoundingClientRect().top;tripFavoritesOnly=favCheck.checked;render();const target=$('#trip-favorites-only');target?.focus({preventScroll:true});if(target)window.scrollBy(0,target.getBoundingClientRect().top-before);});
+  return E('div',{class:'travel-tools'},E('label',{for:'trip-sort'},'후보 정렬'),select,guestMode?null:E('label',{class:'check-label',for:'trip-favorites-only'},favCheck,'관심 여행지만 보기'),E('p',{class:'small muted'},'정렬은 화면 순서만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.'));
 }
 function travelOverview(){
-  const trips=sortedTrips().filter(item=>item.plan?.comparisonNote);
-  if(!trips.length)return null;
+  const trips=[...content.honeymoon];
+  const ordered=(tripSort==='recommended'?trips:trips.sort((a,b)=>a.budget===null?(b.budget===null?0:1):b.budget===null?-1:(a.budget-b.budget)*(tripSort==='budget-high'?-1:1))).filter(item=>item.plan?.comparisonNote);
+  if(!ordered.length)return null;
   return E('section',{class:'travel-overview','aria-labelledby':'travel-overview-title'},E('h2',{id:'travel-overview-title'},'후보 한눈에 보기'),
     E('p',{class:'small muted'},'추천순은 조사 당시 6월 기후·해변 휴식·이동 부담·계획 예산을 고려한 순서입니다.'),
-    E('details',{class:'overview-disclosure',open:overviewExpanded,ontoggle:event=>{if(event.currentTarget.isConnected)overviewExpanded=event.currentTarget.open;}},E('summary',{},`후보 요약 ${trips.length}곳 펼치기·접기`),
-      E('ol',{},trips.map(item=>E('li',{},button(item.title,()=>{const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
+    E('details',{class:'overview-disclosure',open:overviewExpanded,ontoggle:event=>{if(event.currentTarget.isConnected)overviewExpanded=event.currentTarget.open;}},E('summary',{},`후보 요약 ${ordered.length}곳 펼치기·접기`),
+      E('ol',{},ordered.map(item=>E('li',{},button(item.title,()=>{if(tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id)){tripFavoritesOnly=false;render();}const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
         E('strong',{},'2인 목표 '+won(item.budget)),E('p',{class:'small'},item.plan.comparisonNote))))));
 }
 function renderHoneymoon() {
+  const visibleTrips=sortedTrips();
   return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
     E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발·일반석·객실 1실·총예산 상한 1,000만 원. 계획 금액은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 비교용 배분이며 확정 견적은 아닙니다. 각 후보의 상세에서 왕복 일정·현지 숙박 날짜·세금·이동비 포함 범위와 미확인 비용을 확인하세요. 여행 날짜는 한국 출발일과 한국 도착일 기준입니다. 예식 후 인천권 이동·필요 숙박 비용도 기타 배분 안에서 확보해야 합니다.'),
     tripSortControl(),travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
-    content.honeymoon.length?E('section',{class:'travel-grid'},sortedTrips().map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
+    content.honeymoon.length?(visibleTrips.length?E('section',{class:'travel-grid'},visibleTrips.map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
       E('dl',{},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),
-      travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):
+      travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):E('p',{class:'no-results'},'등록한 관심 여행지가 없습니다.')):
     empty('어디로 떠나고 싶나요?','아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.','여행 후보 남기기',()=>openEditor('honeymoon'))];
 }
 function contactNode(studio,compact=false) {
@@ -513,17 +520,18 @@ async function selectStudio(side,id) {if(guestMode){prefs={...prefs,[side]:id};r
 function studioDirectory() {
   const search=E('input',{type:'search',placeholder:'스튜디오 이름이나 사진 스타일 검색','aria-label':'스튜디오 검색'});search.value=filter;
   const checked=E('input',{type:'checkbox'});checked.checked=favoritesOnly;
+  const phoneChecked=E('input',{type:'checkbox'});phoneChecked.checked=withPhoneOnly;
   const results=E('div',{class:'studio-grid',id:'studio-results'});
   const count=E('span',{class:'small muted','aria-live':'polite'});
   const draw=()=>{
     const query=filter.trim().toLocaleLowerCase();
-    const filtered=studios.filter(s=>(!query||`${s.name} ${s.style}`.toLocaleLowerCase().includes(query))&&(!favoritesOnly||prefs.favorites?.includes(s.id)));
+    const filtered=studios.filter(s=>(!query||`${s.name} ${s.style}`.toLocaleLowerCase().includes(query))&&(!favoritesOnly||prefs.favorites?.includes(s.id))&&(!withPhoneOnly||Boolean(s.contact?.phone)));
     count.textContent=`${filtered.length}곳`;
     results.replaceChildren(...(filtered.length?filtered.map(studio=>E('article',{class:'studio-tile'},image(studio.images[0].src,`${studio.name} 대표 샘플`),E('div',{class:'tile-body'},E('h3',{},studio.name),E('p',{class:'style'},studio.style),contactNode(studio,true),E('div',{class:'tile-actions'},button('비교 A',()=>selectStudio('left',studio.id),'button quiet'),button('비교 B',()=>selectStudio('right',studio.id),'button quiet'),favoriteButton(studio))))):[E('p',{class:'no-results'},'조건에 맞는 스튜디오가 없습니다.')]));
   };
-  search.addEventListener('input',()=>{filter=search.value;draw();});checked.addEventListener('change',()=>{favoritesOnly=checked.checked;draw();});redrawDirectory=draw;draw();
+  search.addEventListener('input',()=>{filter=search.value;draw();});checked.addEventListener('change',()=>{favoritesOnly=checked.checked;draw();});phoneChecked.addEventListener('change',()=>{withPhoneOnly=phoneChecked.checked;draw();});redrawDirectory=draw;draw();
   return E('section',{class:'studio-directory'},E('div',{class:'section-heading'},E('div',{},E('h2',{},'전체 스튜디오 둘러보기'),E('p',{},'샘플 폴더에 포함된 30개 항목을 비교할 수 있어요.')),count),
-    E('div',{class:'directory-controls'},search,guestMode?null:E('label',{class:'check-label'},checked,'관심 스튜디오만 보기')),results);
+    E('div',{class:'directory-controls'},search,E('div',{class:'directory-filters'},guestMode?null:E('label',{class:'check-label'},checked,'관심 스튜디오만 보기'),E('label',{class:'check-label'},phoneChecked,'연락처 있는 곳만 보기'))),results);
 }
 async function loadStudios(){
   studiosStatus='loading';studiosError='';
@@ -747,6 +755,13 @@ function openEditor(type,item=null) {
       const input=E('input',{type:'number',min:'0',step:'1',id:`cost-${key}`});input.value=editedPlan.costs[key]??'';fields[`cost_${key}`]=input;
       form.append(E('label',{class:'field',for:input.id},`${label} 배분 (원)`,input));
     }
+    form.append(button('배분 합계로 계획예산 채우기',()=>{
+      const values=Object.keys(COST_LABELS).map(key=>fields[`cost_${key}`].value.trim()).filter(Boolean).map(Number);
+      if(!values.length){toast('배분 금액을 먼저 입력해 주세요.',true);return;}
+      const sum=values.reduce((a,b)=>a+b,0);
+      fields.budget.value=String(sum);
+      toast(`입력된 배분 합계 ${sum.toLocaleString('ko-KR')}원을 계획예산에 반영했습니다.`);
+    },'button quiet'));
     quoteFields=quoteEditor(form,fields,editedPlan,()=>({country:fields.country.value.trim(),startDate:fields.startDate.value,endDate:fields.endDate.value,plan:{stays:stayFields.read()}}));
     extraFields=planExtraEditor(form,fields,editedPlan);
   }
