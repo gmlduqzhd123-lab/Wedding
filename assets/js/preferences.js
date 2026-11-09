@@ -1,6 +1,7 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=wedding-suite-24';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-all-25';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
+export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 const validMoney = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000000000);
 export function validatePreferences(input) {
@@ -17,6 +18,39 @@ export function validatePreferences(input) {
   const result = { favorites: ids(input.favorites), notes: Object.fromEntries(Object.entries(notes)), tripFavorites: ids(input.tripFavorites), tripCompare: ids(input.tripCompare) };
   if (input.tipFavorites !== undefined) result.tipFavorites = ids(input.tipFavorites);
   if (input.checklist !== undefined) result.checklist = ids(input.checklist);
+  if (input.packingList !== undefined) result.packingList = ids(input.packingList);
+  if (input.checklistNotes !== undefined) {
+    if (!input.checklistNotes || typeof input.checklistNotes !== 'object' || Array.isArray(input.checklistNotes) || Object.keys(input.checklistNotes).length > 200) throw new Error('체크리스트 메모 형식을 확인해 주세요.');
+    const cNotes = {};
+    for (const [key, value] of Object.entries(input.checklistNotes)) {
+      if (!id(key) || typeof value !== 'string' || value.length > 300) throw new Error('체크리스트 메모는 300자 이하로 입력해 주세요.');
+      if (value.trim()) cNotes[key] = value.trim();
+    }
+    result.checklistNotes = cNotes;
+  }
+  if (input.customChecklist !== undefined) {
+    if (!Array.isArray(input.customChecklist) || input.customChecklist.length > 50) throw new Error('직접 추가한 할 일은 50개까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.customChecklist = input.customChecklist.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !CHECKLIST_STAGES.includes(item.stage) || typeof item.title !== 'string') throw new Error('직접 추가한 할 일 형식을 확인해 주세요.');
+      const title = item.title.trim();
+      if (!title || title.length > 160 || seen.has(item.id)) throw new Error('할 일 제목과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      return { id: item.id, stage: item.stage, title };
+    });
+  }
+  if (input.ceremonyPlan !== undefined) {
+    if (!input.ceremonyPlan || typeof input.ceremonyPlan !== 'object' || Array.isArray(input.ceremonyPlan)) throw new Error('본식 식순 설정 형식을 확인해 주세요.');
+    const style = input.ceremonyPlan.style ?? 'noOfficiant';
+    if (!['noOfficiant', 'officiant'].includes(style)) throw new Error('예식 형태를 확인해 주세요.');
+    const cPlan = { style };
+    for (const key of ['mc', 'song', 'speech', 'note']) {
+      const val = input.ceremonyPlan[key] ?? '';
+      if (typeof val !== 'string' || val.length > 500) throw new Error('식순 메모는 500자 이하로 입력해 주세요.');
+      if (val.trim()) cPlan[key] = val.trim();
+    }
+    result.ceremonyPlan = cPlan;
+  }
   if (input.budgetPlan !== undefined) {
     if (!input.budgetPlan || typeof input.budgetPlan !== 'object' || Array.isArray(input.budgetPlan)) throw new Error('예산 계산기 형식을 확인해 주세요.');
     const plan = {};

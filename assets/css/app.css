@@ -155,4 +155,49 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .budget-cat-dl dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
 .budget-empty-prompt{padding:16px 18px;border-radius:12px;background:rgba(255,255,255,.52);border:1px dashed rgba(63,93,72,.28)}
 @media(max-width:860px){.budget-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:680px){.budget-legend,.budget-legend-6{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons,.checklist-grid,.budget-summary-cards,.budget-category-grid{grid-template-columns:1fr}.travel-overview,.home-checklist,.wedding-budget-calc{padding:18px 16px}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}}
+.home-dashboard{margin-top:34px;padding:26px 28px;border-radius:20px;background:var(--surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
+.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.dashboard-card{padding:18px 20px;border-radius:14px;background:rgba(255,255,255,.64);border:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.dashboard-card-label{font-size:12px;font-weight:600;color:var(--green-dark)}
+.dashboard-card-value{font-size:17px;color:var(--ink);line-height:1.4}
+.dashboard-card-sub{margin-bottom:6px;line-height:1.5}
+.dashboard-card .button{margin-top:auto;align-self:flex-start;min-height:34px;padding:6px 12px;font-size:12px}
+.checklist-head-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.checklist-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.checklist-stage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.checklist-stage-head h3{font-size:15.5px}
+.checklist-item{padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.52);border:1px solid rgba(255,255,255,.78);display:grid;gap:6px}
+.checklist-item label{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:13px;line-height:1.5;min-width:0}
+.checklist-item input[type=checkbox]{width:17px;height:17px;margin-top:2px;flex-shrink:0}
+.checklist-row-main{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.checklist-item-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.checklist-note-btn{padding:3px 8px;min-height:26px;font-size:11px;border-radius:6px}
+.checklist-item-note{margin:0;padding:6px 10px;border-radius:8px;background:rgba(218,236,223,.48);color:var(--green-dark);border-left:3px solid var(--green)}
+.invitation-extra-guides{margin-top:24px;display:grid;gap:14px;text-align:left}
+.invitation-guide-box{padding:18px 20px;border-radius:14px;background:rgba(255,255,255,.62);border:1px solid var(--line)}
+.invitation-guide-box h3{font-size:15px;margin-bottom:8px;color:var(--green-dark)}
+.invitation-guide-box .record-body{font-size:13.5px;line-height:1.75}
+.ceremony-planner{margin-bottom:32px;padding:26px;border-radius:18px;background:var(--surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
+.ceremony-summary-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.ceremony-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+.ceremony-box{padding:18px 20px;border-radius:14px;background:rgba(255,255,255,.6);border:1px solid var(--line)}
+.ceremony-box h3{font-size:15.5px;margin-bottom:12px;color:var(--green-dark)}
+.timetable-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.timetable-row{display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:start;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.52);border:1px solid var(--line)}
+.timetable-row.highlight{background:rgba(218,236,223,.65);border-color:rgba(63,93,72,.35)}
+.timetable-time{font-size:13.5px;color:var(--green-dark);font-variant-numeric:tabular-nums}
+.timetable-detail strong{display:block;font-size:13.5px;margin-bottom:2px}
+.ceremony-order-list{margin:0;padding-left:18px;display:grid;gap:8px;font-size:13.5px;line-height:1.55}
+.ceremony-note-box{margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(246,227,218,.52);border:1px solid var(--line)}
+.ceremony-note-box strong{display:block;margin-bottom:4px;color:#5c3a2e}
+.honeymoon-packing{margin-bottom:22px}
+.packing-body{padding-top:12px;display:grid;gap:14px}
+.packing-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:680px){.budget-legend,.budget-legend-6{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons,.checklist-grid,.budget-summary-cards,.budget-category-grid,.dashboard-grid,.ceremony-grid{grid-template-columns:1fr}.travel-overview,.home-checklist,.wedding-budget-calc,.home-dashboard,.ceremony-planner{padding:18px 16px}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}}
+@media print{
+  body{background:#fff!important;color:#111!important}
+  .site-header,.skip-link,.draft-banner,.site-footer,.page-actions,.record-actions,.trip-controls,.directory-controls,.trip-quick-filters,.travel-tools,.toast,dialog{display:none!important}
+  .main{max-width:100%!important;padding:0!important;margin:0!important}
+  .home-dashboard,.home-checklist,.wedding-budget-calc,.ceremony-planner,.invitation-card,.travel-card,.compare-card,.checklist-stage-card,.dashboard-card,.ceremony-box{box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:1px solid #ccc!important;break-inside:avoid}
+}
+

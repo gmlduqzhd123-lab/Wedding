@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=wedding-couple-23';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=wedding-all-25';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -96,13 +96,17 @@ export function validateContent(input) {
   const source = input.invitation;
   const time = string(source.time, 5);
   if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('예식 시간을 확인해 주세요.');
+  const transit = source.transit === undefined ? '' : string(source.transit, 2000);
+  const notice = source.notice === undefined ? '' : string(source.notice, 2000);
   return {
     schemaVersion:1,
     invitation:{
       partner1:string(source.partner1,100), partner2:string(source.partner2,100),
       date:date(source.date), time,
       venue:string(source.venue,300), address:string(source.address,500),
-      mapUrl:link(source.mapUrl), message:string(source.message)
+      mapUrl:link(source.mapUrl), message:string(source.message),
+      ...(transit?{transit}:{}),
+      ...(notice?{notice}:{})
     },
     stories:list(input.stories, item => ({ ...record(item), date:date(item.date), body:string(item.body), image:link(item.image,true) })),
     albums:list(input.albums, item => {
