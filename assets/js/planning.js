@@ -17,3 +17,13 @@ export function studioFeeInfo(studio){
   const raw=studio.fee||'',unknown=raw.includes('별도 금액 표기 확인 안 됨');
   return {unknown,label:unknown?'💡 추가금 미확인':`💰 ${raw.replace(/^자료 표기:\s*/,'')}`};
 }
+
+export function weddingBudgetSummary(plan={},keys=[]){
+  const summarize=field=>{
+    const values=keys.map(key=>plan[key]?.[field]).filter(known);
+    const entered=values.length,missing=keys.length-entered,complete=keys.length>0&&missing===0;
+    return {known:entered?values.reduce((sum,value)=>sum+value,0):null,entered,missing,complete};
+  };
+  const planned=summarize('planned'),actual=summarize('actual');
+  return {planned,actual,difference:planned.complete&&actual.complete?planned.known-actual.known:null};
+}

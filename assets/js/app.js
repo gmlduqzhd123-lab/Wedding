@@ -1,9 +1,9 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=audit-fixes-27';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=audit-fixes-27';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=audit-fixes-27';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=audit-fixes-27';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=audit-fixes-27';
-import {venueEstimate,studioFeeInfo} from './planning.js?v=audit-fixes-27';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=preparation-28';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=preparation-28';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=preparation-28';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=preparation-28';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=preparation-28';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=preparation-28';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -71,6 +71,7 @@ const readStorage=key=>{try{return localStorage.getItem(key);}catch{return null;
 function toast(message,error=false) {
   if(dialog.open){
     if(conflictReview){
+      conflictReview.message={text:message,error};
       const status=$('#conflict-status');
       if(status){status.textContent=message;status.setAttribute('role',error?'alert':'status');}
       return;
@@ -84,26 +85,44 @@ function toast(message,error=false) {
   const target=$('#toast');target.textContent=message;target.hidden=false;target.className='toast'+(error?' error':'');
   toastTimer=setTimeout(()=>target.hidden=true,error?8500:3800);
 }
-function describeValue(value){
+function describeValue(value,path=''){
   if(value===undefined)return '삭제됨';
+  if(value===null)return '미입력';
+  if(value&&typeof value==='object'&&!Array.isArray(value)&&/^(venueSim|budgetPlan|ceremonyPlan)(\.|$)/.test(path)){
+    return Object.entries(value).map(([key,entry])=>`${conflictLabel(key)}: ${describeValue(entry,`${path}.${key}`)}`).join('\n');
+  }
+  if(typeof value==='number'&&/\.(mealPrice|hallFee|deposit|planned|actual)$/.test(path))return `${value.toLocaleString('ko-KR')}원`;
+  if(typeof value==='number'&&/\.(guestCount|minGuarantee)$/.test(path))return `${value.toLocaleString('ko-KR')}명`;
+  if(path==='ceremonyPlan.style')return value==='officiant'?'일반 예식 (주례사 중심)':'주례 없는 예식';
   const text=typeof value==='string'?value:JSON.stringify(value);
   return text.includes('data:image/')?'사진이 포함된 내용':text.slice(0,300)||'비어 있음';
 }
 function conflictDetails(error){
   return E('div',{class:'conflict-list'},error.conflicts.length?error.conflicts.map(item=>E('section',{},
-    E('p',{class:'small'},conflictLabel(item.path)),E('p',{},'현재 입력: ',describeValue(item.local)),E('p',{},'다른 탭의 저장본: ',describeValue(item.remote)))):
+    E('p',{class:'small'},conflictLabel(item.path)),E('p',{},'현재 입력: ',describeValue(item.local,item.path)),E('p',{},'다른 탭의 저장본: ',describeValue(item.remote,item.path)))):
     E('p',{},'서로 다른 항목의 변경은 함께 보존됩니다.'));
 }
 function conflictLabel(path){
   const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처·마음 전하실 곳 안내',notes:'스튜디오 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',ceremonyPlan:'본식 식순 플래너',venueSim:'웨딩홀 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
-  return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||studios.find(item=>item.id===key)?.name||'기록').join(' · ');
+  const planningLabels={planned:'목표 예산',actual:'실제 지출·계약 견적',mealPrice:'1인 식대',guestCount:'예상 하객 수',minGuarantee:'최소 보증인원',hallFee:'대관료·연출료',deposit:'기납부 계약금',note:'메모',style:'예식 진행 형태',mc:'사회자',song:'축가',speech:'축사·덕담·주례',sdm:'스튜디오·드레스·메이크업',snap:'본식 촬영·진행',rings:'예물·예복·한복·예단',living:'혼수·가전·가구'};
+  return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||planningLabels[key]||studios.find(item=>item.id===key)?.name||'기록').join(' · ');
 }
 function storageMessage(error){
   if(error.name==='QuotaExceededError')return '저장 공간이 부족합니다. 초안을 백업하고 사진 수나 용량을 줄여 주세요.';
   if(error.name==='SecurityError')return '브라우저의 저장 허용 설정을 확인해 주세요.';
   return error.message;
 }
-function beginConflictReview({key,base,next,saveLocal,keepSaved}){
+function beginConflictReview({key,base,next,saveLocal,keepSaved,lockEditor=false}){
+  conflictReview?.release?.();
+  const release=()=>{editor.inert=false;$('#dialog-actions').inert=false;};
+  if(lockEditor){editor.inert=true;$('#dialog-actions').inert=true;}
+  const review={key,refresh:null,release,busy:false};
+  const decide=async action=>{
+    if(review.busy)return;
+    review.busy=true;review.message=null;refresh();
+    try{await action();}catch(error){toast(storageMessage(error),true);}
+    finally{review.busy=false;if(conflictReview===review)refresh();}
+  };
   const refresh=()=>{
     try{
       const raw=localStorage.getItem(key);
@@ -113,12 +132,18 @@ function beginConflictReview({key,base,next,saveLocal,keepSaved}){
       const focusedAction=notice.contains(document.activeElement)&&document.activeElement.tagName==='BUTTON'?document.activeElement.textContent:null;
       notice.hidden=false;notice.className='dialog-notice error';notice.setAttribute('role','alert');
       notice.replaceChildren(E('p',{},result.conflicts.length?error.message:'최신 저장본을 확인했습니다. 현재 입력과 겹치지 않는 변경은 함께 저장합니다.'),conflictDetails(error),
-        E('div',{class:'manager-actions'},button(key===DRAFT_KEY?'다른 탭의 저장본 불러오기':'다른 탭의 저장본 유지',keepSaved,'button quiet'),
-          button('현재 입력으로 충돌 항목 저장',()=>saveLocal(raw))),E('p',{id:'conflict-status',class:'small',role:'status'},'다른 탭이 다시 저장해도 비교 내용과 선택 버튼은 유지됩니다.'));
+        E('div',{class:'manager-actions'},button(key===DRAFT_KEY?'다른 탭의 저장본 불러오기':'다른 탭의 저장본 유지',()=>decide(keepSaved),'button quiet'),
+          button('현재 입력으로 충돌 항목 저장',()=>decide(()=>saveLocal(raw))),
+          lockEditor?button('입력 계속 수정',()=>{
+            release();conflictReview=null;notice.hidden=true;
+            editor.querySelector('input,textarea,select')?.focus();
+          },'button quiet'):null),E('p',{id:'conflict-status',class:'small',role:'status'},review.busy?'선택한 내용을 처리하고 있습니다.':lockEditor?'저장할 내용을 선택하거나 입력을 계속 수정해 주세요. 다른 탭의 새 변경도 다시 확인합니다.':'다른 탭이 다시 저장해도 비교 내용과 선택 버튼은 유지됩니다.'));
+      for(const action of notice.querySelectorAll('button'))action.disabled=review.busy;
+      if(review.message){const status=$('#conflict-status');status.textContent=review.message.text;status.setAttribute('role',review.message.error?'alert':'status');}
       if(focusedAction)[...notice.querySelectorAll('button')].find(node=>node.textContent===focusedAction)?.focus({preventScroll:true});
     }catch(error){toast('최신 저장본을 확인하지 못했습니다. '+storageMessage(error),true);}
   };
-  conflictReview={key,refresh};refresh();
+  review.refresh=refresh;conflictReview=review;refresh();
   $('#dialog-notice').focus();
 }
 function savePrefs(next,base=structuredClone(prefs),approvedRaw){return trackWrite(persistPrefs(next,base,approvedRaw));}
@@ -129,8 +154,8 @@ async function persistPrefs(next,base,approvedRaw) {
     prefs=result.value;return true;
   }catch(error){
     if(error instanceof StorageConflict){
-      if(showDialog('다른 탭의 변경 확인',E('p',{},'개인 메모와 선택의 변경 내용을 확인해 주세요.'))){
-        beginConflictReview({key:PREF_KEY,base,next,
+      if(dialog.open||showDialog('다른 탭의 변경 확인',E('p',{},'개인 메모와 선택의 변경 내용을 확인해 주세요.'))){
+        beginConflictReview({key:PREF_KEY,base,next,lockEditor:true,
           keepSaved:()=>{try{prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));closeDialog();render();}catch(cause){toast(cause.message,true);}},
           saveLocal:async raw=>{if(await savePrefs(next,base,raw)){closeDialog();render();toast('선택한 내용으로 저장했습니다.');}}});
       }
@@ -158,10 +183,10 @@ async function persistDraft(next,base,approvedRaw) {
 }
 function dirtyEditor(){return editorState?.isDirty()||false;}
 function canLeaveEditor(){
-  if(editorState?.isSaving()){toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.');return false;}
+  if(editorState?.isSaving()||conflictReview?.busy){toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.');return false;}
   return !dirtyEditor()||confirm('저장하지 않은 입력이 있습니다. 입력을 버리고 닫을까요?');
 }
-function closeDialog(){clearInterval(slideshowTimer);slideshowTimer=null;editorState=null;conflictReview=null;photoNavigation=null;dialog.close();}
+function closeDialog(){clearInterval(slideshowTimer);slideshowTimer=null;conflictReview?.release?.();editorState=null;conflictReview=null;photoNavigation=null;dialog.close();}
 function requestClose(){if(canLeaveEditor())closeDialog();}
 function currentRoute() {const route=location.hash.replace(/^#\/?/,'').split('/')[0];return routes.includes(route)?route:(guestMode?'invitation':'home');}
 function pageHeader(title, description, action, eyebrow) {
@@ -279,8 +304,7 @@ function renderHomeDashboard(){
   const selectedTrip=content.honeymoon.find(t=>t.id===prefs.tripSelected);
   const tripFavCount=(prefs.tripFavorites||[]).length;
   const bPlan=prefs.budgetPlan||{};
-  const bPlanned=Object.values(bPlan).reduce((acc,v)=>acc+(v?.planned||0),0);
-  const bActual=Object.values(bPlan).reduce((acc,v)=>acc+(v?.actual||0),0);
+  const budget=weddingBudgetSummary(bPlan,WEDDING_BUDGET_CATEGORIES.map(([key])=>key));
   const bHas=Object.keys(bPlan).length>0;
   const stages=allChecklistStages();
   const allItems=stages.flatMap(g=>g[2]);
@@ -307,8 +331,9 @@ function renderHomeDashboard(){
         linkButton('신혼여행 후보 이동 →','#/honeymoon',true)),
       E('article',{class:'dashboard-card'},
         E('span',{class:'small muted'},'💰 통합 예산 현황'),
-        E('strong',{},bHas?`목표 ${won(bPlanned)}`:'6대 예산 미입력'),
-        E('p',{class:'small muted'},bHas?`실제·견적 ${won(bActual)} (${bPlanned-bActual>=0?`여유 ${won(bPlanned-bActual)}`:`초과 ${won(bActual-bPlanned)}`})`:'웨딩홀·스드메·신혼여행 통합 관리'),
+        E('strong',{},bHas?`목표 ${budget.planned.complete?'합계':'입력 소계'} ${budget.planned.known===null?'미입력':won(budget.planned.known)}`:'6대 예산 미입력'),
+        E('p',{class:'small muted'},bHas?`실제·견적 ${budget.actual.complete?'합계':'입력 소계'} ${budget.actual.known===null?'미입력':won(budget.actual.known)} (${budget.difference===null?'차액 미확인':budget.difference>=0?`여유 ${won(budget.difference)}`:`초과 ${won(-budget.difference)}`})`:'웨딩홀·스드메·신혼여행 통합 관리'),
+        bHas?E('p',{class:'small muted'},`미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개`):null,
         linkButton('예산 계산기 이동 →','#/tips',true)),
       E('article',{class:'dashboard-card'},
         E('span',{class:'small muted'},'✅ 다음 준비 할 일'),
@@ -976,17 +1001,22 @@ function openCustomPackingEditor(){
     E('label',{class:'field',for:titleInput.id},'준비물 이름',titleInput),
     E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},'준비물 추가'))
   );
+  const submit=form.querySelector('[type="submit"]');let saving=false;
   form.addEventListener('submit',async event=>{
-    event.preventDefault();
+    event.preventDefault();if(saving)return;
     const title=titleInput.value.trim();if(!title)return;
     const list=[...(prefs.customPackingList||[])];
     if(list.length>=80){toast('사용자 정의 준비물은 80개까지 추가할 수 있습니다.',true);return;}
     const id='cpack-'+crypto.randomUUID().slice(0,8);
     list.push({id,category:catSelect.value,title});
-    const saved=await queuePreference(()=>savePrefs({...prefs,customPackingList:list}));
-    if(saved){packingExpanded=true;closeDialog();render();toast('신혼여행 준비물 항목을 추가했습니다.');}
+    saving=true;submit.disabled=true;
+    try{
+      const saved=await queuePreference(()=>savePrefs({...prefs,customPackingList:list}));
+      if(saved){packingExpanded=true;closeDialog();render();toast('신혼여행 준비물 항목을 추가했습니다.');}
+    }catch(error){toast(storageMessage(error),true);}finally{saving=false;submit.disabled=false;}
   });
-  showDialog('신혼여행 우리만의 준비물 추가',form);
+  const snapshot=()=>JSON.stringify([catSelect.value,titleInput.value]),initial=snapshot();
+  if(showDialog('신혼여행 우리만의 준비물 추가',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
 }
 function renderHoneymoonPackingList(){
   if(guestMode)return null;
@@ -1406,10 +1436,10 @@ function renderBudgetCalculator(){
     const item=plan[key]||{planned:null,actual:null,note:''};
     return {key,title,cls,desc,planned:item.planned??null,actual:item.actual??null,note:item.note||''};
   });
-  const totalPlanned=rows.reduce((acc,r)=>acc+(r.planned||0),0);
-  const totalActual=rows.reduce((acc,r)=>acc+(r.actual||0),0);
+  const budget=weddingBudgetSummary(plan,WEDDING_BUDGET_CATEGORIES.map(([key])=>key));
+  const totalPlanned=budget.planned.known;
   const hasAny=rows.some(r=>r.planned!==null||r.actual!==null||r.note);
-  const diff=totalPlanned-totalActual;
+  const diff=budget.difference;
   return E('section',{class:'wedding-budget-calc','aria-labelledby':'wedding-budget-title'},
     E('div',{class:'section-heading'},
       E('div',{},
@@ -1420,9 +1450,10 @@ function renderBudgetCalculator(){
         button(hasAny?'예산 입력·수정':'첫 예산표 작성하기',openBudgetEditor,'button quiet'))),
     hasAny?E('div',{class:'budget-calc-body'},
       E('div',{class:'budget-summary-cards'},
-        E('div',{class:'budget-stat-card'},E('span',{class:'small muted'},'목표 예산 합계'),E('strong',{},won(totalPlanned))),
-        E('div',{class:'budget-stat-card'},E('span',{class:'small muted'},'실제 지출·계약 합계'),E('strong',{},won(totalActual))),
-        E('div',{class:'budget-stat-card'+(diff<0?' over':'')},E('span',{class:'small muted'},'예산 대비 잔액·차액'),E('strong',{},diff>=0?`여유 ${won(diff)}`:`초과 ${won(-diff)}`))),
+        E('div',{class:'budget-stat-card'},E('span',{class:'small muted'},`목표 예산 ${budget.planned.complete?'합계':'입력 소계'}`),E('strong',{},totalPlanned===null?'미입력':won(totalPlanned))),
+        E('div',{class:'budget-stat-card'},E('span',{class:'small muted'},`실제 지출·계약 ${budget.actual.complete?'합계':'입력 소계'}`),E('strong',{},budget.actual.known===null?'미입력':won(budget.actual.known))),
+        E('div',{class:'budget-stat-card'+(diff!==null&&diff<0?' over':'')},E('span',{class:'small muted'},'예산 대비 잔액·차액'),E('strong',{},diff===null?'미확인':diff>=0?`여유 ${won(diff)}`:`초과 ${won(-diff)}`))),
+      E('p',{class:'form-note'},`목표 ${budget.planned.entered}/6개 · 실제·견적 ${budget.actual.entered}/6개 입력. 미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개. 빈칸은 0원이 아닙니다. 6대 항목의 목표와 실제·견적이 모두 입력되어야 차액을 계산합니다. 없는 비용은 확인 후 0을 입력해 주세요.`),
       totalPlanned>0?E('div',{class:'trip-budget-visual'},
         E('div',{class:'budget-visual-head'},E('span',{class:'small muted'},'목표 예산 항목별 비중'),E('strong',{class:'small'},`총 ${won(totalPlanned)}`)),
         E('div',{class:'budget-bar-track','aria-hidden':'true'},
@@ -1477,8 +1508,9 @@ function openCeremonyEditor(){
     E('label',{class:'field',for:noteInput.id},'식순·BGM·진행 특이사항 메모 (선택)',noteInput),
     E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},'식순 플래너 저장'))
   );
+  const submit=form.querySelector('[type="submit"]');let saving=false;
   form.addEventListener('submit',async event=>{
-    event.preventDefault();
+    event.preventDefault();if(saving)return;saving=true;submit.disabled=true;
     const nextCeremony={
       style:styleSelect.value==='officiant'?'officiant':'noOfficiant',
       mc:mcInput.value.trim(),
@@ -1486,10 +1518,13 @@ function openCeremonyEditor(){
       speech:speechInput.value.trim(),
       note:noteInput.value.trim()
     };
-    const saved=await queuePreference(()=>savePrefs({...prefs,ceremonyPlan:nextCeremony}));
-    if(saved){closeDialog();render();toast('본식 당일 식순 플래너를 저장했습니다.');}
+    try{
+      const saved=await queuePreference(()=>savePrefs({...prefs,ceremonyPlan:nextCeremony}));
+      if(saved){closeDialog();render();toast('본식 당일 식순 플래너를 저장했습니다.');}
+    }catch(error){toast(storageMessage(error),true);}finally{saving=false;submit.disabled=false;}
   });
-  showDialog('본식 식순·담당자 플래너 편집',form);
+  const snapshot=()=>JSON.stringify([styleSelect.value,mcInput.value,songInput.value,speechInput.value,noteInput.value]),initial=snapshot();
+  if(showDialog('본식 식순·담당자 플래너 편집',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
 }
 function renderCeremonyPlanner(){
   if(guestMode)return null;
@@ -1643,7 +1678,7 @@ function render() {
 }
 function showDialog(title,body) {
   if(!canLeaveEditor())return false;
-  editorState=null;conflictReview=null;photoNavigation=null;$('#dialog-notice').hidden=true;
+  conflictReview?.release?.();editorState=null;conflictReview=null;photoNavigation=null;$('#dialog-notice').hidden=true;
   $('#editor-title').textContent=title;editor.replaceChildren(body);
   const actionSlot=$('#dialog-actions');actionSlot.replaceChildren();
   const actions=body.matches('form')?body.querySelector('.form-actions'):null;
