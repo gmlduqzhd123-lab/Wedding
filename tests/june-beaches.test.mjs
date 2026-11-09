@@ -21,7 +21,9 @@ test('ten public beach candidates satisfy the confirmed June dates and complete 
   assert.deepEqual(parseContent(JSON.stringify(data)),data);
   assert.equal(data.invitation.date,'2027-06-05');assert.equal(data.invitation.time,'15:00');
   assert.equal(data.invitation.partner1,'김희엽');assert.equal(data.invitation.partner2,'유미혜');
-  for(const key of ['address','mapUrl','message'])assert.equal(data.invitation[key],'');
+  assert.equal(data.invitation.address,'전라남도 순천시 서면 압곡길 94 (압곡리 607)');
+  assert.equal(data.invitation.mapUrl,'https://map.naver.com/p/search/%EC%88%9C%EC%B2%9C%EC%95%84%EB%AA%A8%EB%A5%B4%EC%9B%A8%EB%94%A9%EC%BB%A8%EB%B2%A4%EC%85%98');
+  assert.equal(data.invitation.message,'');
 });
 
 test('research provenance and safe source links survive round trips and reject malformed imports',()=>{

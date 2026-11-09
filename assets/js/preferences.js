@@ -1,6 +1,8 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=wedding-couple-23';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-suite-24';
 
+export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
+const validMoney = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000000000);
 export function validatePreferences(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('개인 설정 형식을 확인해 주세요.');
   const ids = (value = []) => {
@@ -14,6 +16,19 @@ export function validatePreferences(input) {
   }
   const result = { favorites: ids(input.favorites), notes: Object.fromEntries(Object.entries(notes)), tripFavorites: ids(input.tripFavorites), tripCompare: ids(input.tripCompare) };
   if (input.tipFavorites !== undefined) result.tipFavorites = ids(input.tipFavorites);
+  if (input.checklist !== undefined) result.checklist = ids(input.checklist);
+  if (input.budgetPlan !== undefined) {
+    if (!input.budgetPlan || typeof input.budgetPlan !== 'object' || Array.isArray(input.budgetPlan)) throw new Error('예산 계산기 형식을 확인해 주세요.');
+    const plan = {};
+    for (const [key, item] of Object.entries(input.budgetPlan)) {
+      if (!BUDGET_KEYS.includes(key) || !item || typeof item !== 'object' || Array.isArray(item)) throw new Error('예산 항목 형식을 확인해 주세요.');
+      if (!validMoney(item.planned) || !validMoney(item.actual)) throw new Error('예산 금액은 0원 이상의 정수로 입력해 주세요.');
+      const note = item.note === undefined ? '' : item.note;
+      if (typeof note !== 'string' || note.length > 300) throw new Error('예산 메모는 300자 이하로 입력해 주세요.');
+      plan[key] = { planned: item.planned ?? null, actual: item.actual ?? null, ...(note ? { note } : {}) };
+    }
+    result.budgetPlan = plan;
+  }
   if (result.tripCompare.length > 2) throw new Error('여행 비교는 두 곳까지 선택해 주세요.');
   for (const key of ['left', 'right', 'tripSelected']) {
     if (input[key] !== undefined && input[key] !== '') {

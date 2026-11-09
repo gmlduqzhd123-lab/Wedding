@@ -30,3 +30,11 @@ test('removed trip choices are pruned without changing studio preferences or the
   assert.deepEqual(clean.tripCompare,['kept']);assert.deepEqual(clean.tripFavorites,['kept']);assert.equal(clean.tripSelected,undefined);
   assert.deepEqual(clean.notes,prefs.notes);assert.deepEqual(clean.favorites,prefs.favorites);assert.equal(clean.left,'s01');assert.deepEqual(prefs,before);
 });
+test('checklist and budgetPlan persist in private preferences backup and reject invalid values',()=>{
+  const prefs=validatePreferences({checklist:['d180-hall','d120-dress'],budgetPlan:{venue:{planned:15000000,actual:14200000,note:'식대 포함'},sdm:{planned:3500000,actual:null}}});
+  const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
+  assert.deepEqual(parsePreferencesBackup(raw),prefs);
+  for(const bad of [{checklist:['bad id!']},{budgetPlan:[]},{budgetPlan:{unknown:{planned:100}}},{budgetPlan:{venue:{planned:-1}}},{budgetPlan:{venue:{planned:100,note:'x'.repeat(301)}}}]){
+    assert.throws(()=>validatePreferences(bad));
+  }
+});
