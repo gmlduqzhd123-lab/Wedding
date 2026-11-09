@@ -8,7 +8,7 @@ test('content export/import round trip preserves all six menu data including 50 
  assert.equal(new Set(original.tips.map(t=>t.url)).size,50);
  const content=structuredClone(original);
  content.invitation.partner1='우리';content.invitation.date='2027-04-03';content.invitation.time='14:30';
- content.invitation.transit='순천역 택시 이용';content.invitation.notice='1층 연회장 식사 안내';
+ content.invitation.transit='순천역 택시 이용';content.invitation.notice='1층 연회장 식사 안내';content.invitation.contacts='신랑측 연락처 · 010-0000-0000';
  content.stories=[{id:'memory-1',title:'처음 만난 날',date:'2026-11-04',body:'우리의 이야기',image:''}];
  content.albums=[{id:'album-1',title:'첫 앨범',date:'',body:'기록',images:['./assets/studios/01-1.jpg']}];
  content.honeymoon=[{id:'trip-1',title:'우리의 여행',country:'',startDate:'2027-04-04',endDate:'2027-04-10',budget:3000000,pros:'좋은 점',cons:'고민',body:'메모',url:'https://example.com'}];

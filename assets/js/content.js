@@ -98,6 +98,7 @@ export function validateContent(input) {
   if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('예식 시간을 확인해 주세요.');
   const transit = source.transit === undefined ? '' : string(source.transit, 2000);
   const notice = source.notice === undefined ? '' : string(source.notice, 2000);
+  const contacts = source.contacts === undefined ? '' : string(source.contacts, 2000);
   return {
     schemaVersion:1,
     invitation:{
@@ -106,7 +107,8 @@ export function validateContent(input) {
       venue:string(source.venue,300), address:string(source.address,500),
       mapUrl:link(source.mapUrl), message:string(source.message),
       ...(transit?{transit}:{}),
-      ...(notice?{notice}:{})
+      ...(notice?{notice}:{}),
+      ...(contacts?{contacts}:{})
     },
     stories:list(input.stories, item => ({ ...record(item), date:date(item.date), body:string(item.body), image:link(item.image,true) })),
     albums:list(input.albums, item => {

@@ -1,9 +1,11 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=wedding-all-25';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-all-26';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
+export const PACKING_CATEGORIES = ['📄 필수 서류·결제', '🔌 전자기기·통신', '🏖️ 의류·해변 용품', '💊 상비약·세면·기타'];
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 const validMoney = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000000000);
+const validGuestCount = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 10000);
 export function validatePreferences(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('개인 설정 형식을 확인해 주세요.');
   const ids = (value = []) => {
@@ -39,6 +41,17 @@ export function validatePreferences(input) {
       return { id: item.id, stage: item.stage, title };
     });
   }
+  if (input.customPackingList !== undefined) {
+    if (!Array.isArray(input.customPackingList) || input.customPackingList.length > 50) throw new Error('직접 추가한 준비물은 50개까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.customPackingList = input.customPackingList.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !PACKING_CATEGORIES.includes(item.category) || typeof item.title !== 'string') throw new Error('직접 추가한 준비물 형식을 확인해 주세요.');
+      const title = item.title.trim();
+      if (!title || title.length > 160 || seen.has(item.id)) throw new Error('준비물 이름과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      return { id: item.id, category: item.category, title };
+    });
+  }
   if (input.ceremonyPlan !== undefined) {
     if (!input.ceremonyPlan || typeof input.ceremonyPlan !== 'object' || Array.isArray(input.ceremonyPlan)) throw new Error('본식 식순 설정 형식을 확인해 주세요.');
     const style = input.ceremonyPlan.style ?? 'noOfficiant';
@@ -50,6 +63,22 @@ export function validatePreferences(input) {
       if (val.trim()) cPlan[key] = val.trim();
     }
     result.ceremonyPlan = cPlan;
+  }
+  if (input.venueSim !== undefined) {
+    if (!input.venueSim || typeof input.venueSim !== 'object' || Array.isArray(input.venueSim)) throw new Error('웨딩홀 시뮬레이터 형식을 확인해 주세요.');
+    if (!validMoney(input.venueSim.mealPrice) || !validGuestCount(input.venueSim.guestCount) || !validGuestCount(input.venueSim.minGuarantee) || !validMoney(input.venueSim.hallFee) || !validMoney(input.venueSim.deposit)) {
+      throw new Error('웨딩홀 시뮬레이터 금액과 인원을 0 이상의 정수로 입력해 주세요.');
+    }
+    const note = input.venueSim.note ?? '';
+    if (typeof note !== 'string' || note.length > 300) throw new Error('웨딩홀 메모는 300자 이하로 입력해 주세요.');
+    result.venueSim = {
+      mealPrice: input.venueSim.mealPrice ?? null,
+      guestCount: input.venueSim.guestCount ?? null,
+      minGuarantee: input.venueSim.minGuarantee ?? null,
+      hallFee: input.venueSim.hallFee ?? null,
+      deposit: input.venueSim.deposit ?? null,
+      ...(note.trim() ? { note: note.trim() } : {})
+    };
   }
   if (input.budgetPlan !== undefined) {
     if (!input.budgetPlan || typeof input.budgetPlan !== 'object' || Array.isArray(input.budgetPlan)) throw new Error('예산 계산기 형식을 확인해 주세요.');
@@ -64,7 +93,7 @@ export function validatePreferences(input) {
     result.budgetPlan = plan;
   }
   if (result.tripCompare.length > 2) throw new Error('여행 비교는 두 곳까지 선택해 주세요.');
-  for (const key of ['left', 'right', 'tripSelected']) {
+  for (const key of ['left', 'right', 'tripSelected', 'studioSelected']) {
     if (input[key] !== undefined && input[key] !== '') {
       if (!id(input[key])) throw new Error('선택 항목을 확인해 주세요.');
       result[key] = input[key];

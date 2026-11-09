@@ -30,26 +30,33 @@ test('removed trip choices are pruned without changing studio preferences or the
   assert.deepEqual(clean.tripCompare,['kept']);assert.deepEqual(clean.tripFavorites,['kept']);assert.equal(clean.tripSelected,undefined);
   assert.deepEqual(clean.notes,prefs.notes);assert.deepEqual(clean.favorites,prefs.favorites);assert.equal(clean.left,'s01');assert.deepEqual(prefs,before);
 });
-test('checklist, budgetPlan, packingList, checklistNotes, customChecklist, and ceremonyPlan persist in private preferences backup and reject invalid values',()=>{
+test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, customChecklist, ceremonyPlan, venueSim, and studioSelected persist in private preferences backup and reject invalid values',()=>{
   const prefs=validatePreferences({
+    studioSelected:'s05',
     checklist:['d180-hall','d120-dress','custom-1'],
-    packingList:['pack-passport','pack-cards'],
+    packingList:['pack-passport','pack-cards','cpack-1'],
+    customPackingList:[{id:'cpack-1',category:'📄 필수 서류·결제',title:'영문 가족관계증명서'}],
     checklistNotes:{'d180-hall':'순천아모르 1층 예약 확인'},
     customChecklist:[{id:'custom-1',stage:'D-60 ~ D-30',title:'청첩장 모임 식당 예약'}],
     budgetPlan:{venue:{planned:15000000,actual:14200000,note:'식대 포함'},sdm:{planned:3500000,actual:null}},
+    venueSim:{mealPrice:55000,guestCount:250,minGuarantee:200,hallFee:2500000,deposit:1000000,note:'순천아모르웨딩컨벤션'},
     ceremonyPlan:{style:'noOfficiant',mc:'친구 김OO',song:'축가 미정',speech:'양가 아버님 덕담',note:'입장곡 체크'}
   });
   const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
   assert.deepEqual(parsePreferencesBackup(raw),prefs);
   for(const bad of [
+    {studioSelected:123},
     {checklist:['bad id!']},
     {packingList:['bad id!']},
+    {customPackingList:[{id:'cpack-1',category:'없는 분류',title:'준비물'}]},
     {checklistNotes:{'bad id!':'메모'}},
     {customChecklist:[{id:'custom-1',stage:'없는 시기',title:'할 일'}]},
     {budgetPlan:[]},
     {budgetPlan:{unknown:{planned:100}}},
     {budgetPlan:{venue:{planned:-1}}},
     {budgetPlan:{venue:{planned:100,note:'x'.repeat(301)}}},
+    {venueSim:{mealPrice:-100}},
+    {venueSim:{guestCount:20000}},
     {ceremonyPlan:{style:'invalid'}}
   ]){
     assert.throws(()=>validatePreferences(bad));

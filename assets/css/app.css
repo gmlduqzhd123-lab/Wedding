@@ -193,11 +193,36 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .honeymoon-packing{margin-bottom:22px}
 .packing-body{padding-top:12px;display:grid;gap:14px}
 .packing-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-@media(max-width:680px){.budget-legend,.budget-legend-6{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons,.checklist-grid,.budget-summary-cards,.budget-category-grid,.dashboard-grid,.ceremony-grid{grid-template-columns:1fr}.travel-overview,.home-checklist,.wedding-budget-calc,.home-dashboard,.ceremony-planner{padding:18px 16px}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}}
+.checklist-stage-card.is-focus-stage{border-color:rgba(63,93,72,.5);background:rgba(240,248,242,.78);box-shadow:0 6px 18px rgba(45,70,54,.08)}
+.checklist-stage-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.checklist-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.invitation-calendar{max-width:340px;margin:22px auto;padding:18px 20px;border-radius:16px;background:rgba(255,255,255,.68);border:1px solid var(--line)}
+.cal-header{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;font-weight:700;color:var(--green-dark);margin-bottom:10px;letter-spacing:.02em}
+.cal-weekdays,.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.cal-weekdays{font-size:11.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.cal-weekdays .sun{color:#b04a3a}
+.cal-weekdays .sat{color:#3f5d48}
+.cal-cell{height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;border-radius:50%;font-variant-numeric:tabular-nums;color:var(--ink)}
+.cal-cell.is-sun{color:#b04a3a}
+.cal-cell.is-sat{color:#3f5d48}
+.cal-cell.is-wedding-day{background:var(--green);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(63,93,72,.35)}
+.invitation-contacts-box{margin-top:18px;text-align:left}
+.invitation-contacts-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.invitation-contact-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.66);border:1px solid var(--line);font-size:13.5px}
+.selected-studio-card{margin-bottom:20px;padding:22px 24px;border-radius:18px;background:var(--surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1.5px solid rgba(63,93,72,.42);box-shadow:var(--glass-shadow);display:grid;gap:10px}
+.selected-studio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.selected-studio-head h2{font-size:20px;margin:2px 0 4px}
+.venue-sim-box{margin-top:18px;padding:18px 20px;border-radius:14px;background:rgba(255,255,255,.62);border:1px solid var(--line);display:grid;gap:12px}
+.venue-sim-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.venue-sim-head strong{display:block;font-size:15px;color:var(--green-dark);margin-bottom:2px}
+.venue-sim-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.venue-sim-stat{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.74);border:1px solid var(--line)}
+.venue-sim-stat strong{display:block;font-size:14.5px;margin-top:3px;color:var(--ink);font-variant-numeric:tabular-nums}
+@media(max-width:860px){.budget-category-grid,.venue-sim-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.budget-legend,.budget-legend-6{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons,.checklist-grid,.budget-summary-cards,.budget-category-grid,.dashboard-grid,.ceremony-grid,.venue-sim-grid{grid-template-columns:1fr}.travel-overview,.home-checklist,.wedding-budget-calc,.home-dashboard,.ceremony-planner,.selected-studio-card{padding:18px 16px}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}}
 @media print{
   body{background:#fff!important;color:#111!important}
   .site-header,.skip-link,.draft-banner,.site-footer,.page-actions,.record-actions,.trip-controls,.directory-controls,.trip-quick-filters,.travel-tools,.toast,dialog{display:none!important}
   .main{max-width:100%!important;padding:0!important;margin:0!important}
-  .home-dashboard,.home-checklist,.wedding-budget-calc,.ceremony-planner,.invitation-card,.travel-card,.compare-card,.checklist-stage-card,.dashboard-card,.ceremony-box{box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:1px solid #ccc!important;break-inside:avoid}
+  .home-dashboard,.home-checklist,.wedding-budget-calc,.ceremony-planner,.invitation-card,.travel-card,.compare-card,.checklist-stage-card,.dashboard-card,.ceremony-box,.selected-studio-card,.venue-sim-box{box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:1px solid #ccc!important;break-inside:avoid}
 }
-
