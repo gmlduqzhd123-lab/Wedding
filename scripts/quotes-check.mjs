@@ -19,7 +19,7 @@ try{
   const quote=p.locator(`[data-view-key="${trip.id}:quote"]`),text=await quote.innerText();
   assert(text.includes(q.flightSource));assert(text.includes(q.lodgingSource));assert(text.includes(q.arrivalAt.replace('T',' ')));
   assert(text.includes((q.costs.airfare+q.costs.lodging).toLocaleString('ko-KR')+'원'));
-  assert.match(text,/실제 예산 충족 미확인/);assert(!text.includes('상한 이내 (입력 근거'));
+  assert.match(text,/실제 예산 충족 미확인/);assert(!text.includes('필수 항목 확인 완료 (입력 근거'));
   const stay=trip.plan.stays[0],stayText=await p.locator(`[data-view-key="${trip.id}:stays"]`).innerText();
   assert(stayText.includes(`현지 체크인 ${stay.checkIn} → 체크아웃 ${stay.checkOut} · ${stay.nights}박`));
   assert((await p.locator(`[data-view-key="${trip.id}:costs"]`).innerText()).replace(/\s+/g,' ').includes(trip.plan.budgetNotes.replace(/\s+/g,' ')),trip.id+' cost research rendered');

@@ -23,9 +23,9 @@ export function quoteReview(trip,today=new Intl.DateTimeFormat('sv-SE',{timeZone
   const reserve=trip.plan?.costs.reserve??null;if(reserve===null||reserve<=0)missing.push('예비비');
   const entered=Object.values(q.costs).filter(value=>value!==null),known=entered.length?entered.reduce((a,b)=>a+b,0):null;
   const assessed=known===null?null:known+(reserve??0),excess=Math.max(0,(assessed??0)-TRAVEL_CAP);
-  const amountMessage=known===null?'':`입력 견적 소계 ${known.toLocaleString('ko-KR')}원 · ${reserve===null?'예비비 미입력':`기입 예비비 포함 ${assessed.toLocaleString('ko-KR')}원`}${excess?` · 상한 ${excess.toLocaleString('ko-KR')}원 초과`:''}`;
+  const amountMessage=known===null?'':`입력 견적 소계 ${known.toLocaleString('ko-KR')}원 · ${reserve===null?'예비비 미입력':`기입 예비비 포함 ${assessed.toLocaleString('ko-KR')}원`}`;
   const complete=!missing.length,total=complete?Object.values(q.costs).reduce((a,b)=>a+b,0)+reserve:null;
-  const message=complete?`입력 견적 + 예비비 ${total.toLocaleString('ko-KR')}원 · ${total<=TRAVEL_CAP?'상한 이내':'상한 초과'} (입력 근거 기준 · 예약 확정 아님)`:[amountMessage,'실제 예산 충족 미확인 · '+missing.join(' · ')].filter(Boolean).join('\n');
+  const message=complete?`입력 견적 + 예비비 ${total.toLocaleString('ko-KR')}원 · 필수 항목 확인 완료 (입력 근거 기준 · 예약 확정 아님)`:[amountMessage,'실제 예산 충족 미확인 · '+missing.join(' · ')].filter(Boolean).join('\n');
   return {complete,total,known,assessed,excess,amountMessage,stale,flightDates,missing,message};
 }
 export function currentBudgetText(trip){

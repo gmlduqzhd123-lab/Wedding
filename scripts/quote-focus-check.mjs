@@ -15,17 +15,17 @@ try{
  const a=await fresh(320),p=a.page;
  await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.locator('.quote-editor > summary').click();await p.getByLabel('숙박·패키지 실제 견적 (원)',{exact:true}).fill('');await p.getByLabel('기타 여행비 실제 견적 (원)',{exact:true}).fill('');await p.getByLabel('항공 실제 견적 (원)',{exact:true}).fill('12000000');await save(p);
  const status=async()=>card(p).locator(':scope > .quote-status').innerText();
- assert.match(await status(),/입력 견적 소계 12,000,000원/);assert.match(await status(),/12,800,000원/);assert.match(await status(),/상한 2,800,000원 초과/);assert.match(await status(),/미확인/);assert(await card(p).locator(':scope > .quote-status').evaluate(n=>n.classList.contains('warning')));
+ assert.match(await status(),/입력 견적 소계 12,000,000원/);assert.match(await status(),/기입 예비비 포함 12,800,000원/);assert.match(await status(),/미확인/);assert(await card(p).locator(':scope > .quote-status').evaluate(n=>n.classList.contains('warning')));
  for(const label of ['최종 선택','비교 선택'])await card(p).getByRole('button',{name:label,exact:true}).click();
  await p.locator('.selected-trip').waitFor();await p.locator('.travel-comparison').waitFor();
- assert.match(await p.locator('.selected-trip .quote-status').innerText(),/2,800,000원 초과/);assert.match(await p.locator('.travel-comparison').innerText(),/2,800,000원 초과/);
+ assert.match(await p.locator('.selected-trip .quote-status').innerText(),/12,800,000원/);assert.match(await p.locator('.travel-comparison').innerText(),/12,800,000원/);
  await open(p,'all');await open(p,'quote');assert.match(await p.locator('.quote-breakdown').first().innerText(),/입력 견적 소계\n12,000,000원/);assert.match(await p.locator('.quote-breakdown').first().innerText(),/확인 조건을 갖춘 합계\n미확인/);
- await p.reload();await ready(p);assert.match(await status(),/2,800,000원 초과/);
+ await p.reload();await ready(p);assert.match(await status(),/12,800,000원/);
  await p.getByRole('button',{name:'내용 관리',exact:true}).click();const pending=p.waitForEvent('download');await p.getByRole('button',{name:'공개용 파일 저장',exact:true}).click();const raw=await readFile(await (await pending).path(),'utf8');assert.equal(JSON.parse(raw).honeymoon[0].plan.quote.costs.airfare,12000000);
- await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'partial-quote.json',mimeType:'application/json',buffer:Buffer.from(raw)});await p.waitForFunction(()=>!document.querySelector('dialog').open);assert.match(await status(),/2,800,000원 초과/);
+ await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'partial-quote.json',mimeType:'application/json',buffer:Buffer.from(raw)});await p.waitForFunction(()=>!document.querySelector('dialog').open);assert.match(await status(),/12,800,000원/);
  for(const width of [320,390,768,1440]){await p.setViewportSize({width,height:900});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  await p.setViewportSize({width:390,height:900});await card(p).screenshot({path:'work/quote-focus-qa/partial-quote.png'});
- await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.locator('.quote-editor > summary').click();await p.getByLabel('항공 실제 견적 (원)',{exact:true}).fill('0');await save(p);assert.match(await status(),/입력 견적 소계 0원/);assert(!await card(p).locator(':scope > .quote-status').evaluate(n=>n.classList.contains('warning')));assert(!(await status()).includes('상한 이내'));
+ await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.locator('.quote-editor > summary').click();await p.getByLabel('항공 실제 견적 (원)',{exact:true}).fill('0');await save(p);assert.match(await status(),/입력 견적 소계 0원/);assert(!await card(p).locator(':scope > .quote-status').evaluate(n=>n.classList.contains('warning')));assert(!(await status()).includes('필수 항목 확인 완료'));
  await p.goto(base+'?view=guest#/honeymoon');await ready(p);assert(!(await card(p).locator(':scope > .quote-status').innerText()).includes('12,000,000원'));
  await p.goto(base+'?view=guest#/invitation');await ready(p);assert.match(await p.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.equal(await p.locator('.couple-names,.invitation .message,.place p').count(),0);assert.equal(new URL(await p.getByRole('link',{name:'Google 캘린더에 추가',exact:true}).getAttribute('href')).searchParams.get('dates'),'20270605T060000Z/20270605T060000Z');await a.context.close();
  console.log('PASS partial quote subtotal/reserve/excess in card, selected summary and comparison; reload/JSON/zero/guest boundaries and 320–1440px layouts');

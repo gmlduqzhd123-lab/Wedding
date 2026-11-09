@@ -8,18 +8,18 @@ function quoted(){const trip=validateContent(original).honeymoon[0];trip.plan.st
 test('unknown quote never establishes actual budget or flight dates; complete input includes reserve',()=>{
   const trip=validateContent(original).honeymoon[0];trip.plan.quote=emptyQuote();assert.equal(quoteReview(trip).complete,false);assert.equal(quoteReview(trip).total,null);assert.equal(quoteReview(trip).flightDates,false);
   const q=quoted();let review=quoteReview(q);assert.equal(review.total,7500000);assert(review.complete);assert.match(review.message,/입력 근거 기준/);
-  q.plan.quote.costs.airfare=6000000;review=quoteReview(q);assert.equal(review.total,11300000);assert.match(review.message,/상한 초과/);
+  q.plan.quote.costs.airfare=6000000;review=quoteReview(q);assert.equal(review.total,11300000);assert.match(review.message,/필수 항목 확인 완료/);
 });
-test('partial actual quotes immediately expose known subtotal and cap excess without validating missing evidence',()=>{
+test('partial actual quotes immediately expose known subtotal without validating missing evidence',()=>{
   const trip=validateContent(original).honeymoon[0];trip.plan.quote=emptyQuote();let state=quoteReview(trip);
   assert.equal(state.known,null);assert.equal(state.assessed,null);assert.equal(state.excess,0);
   trip.plan.quote.costs.airfare=12000000;state=quoteReview(trip);
   assert.equal(state.known,12000000);assert.equal(state.assessed,12800000);assert.equal(state.excess,2800000);
-  assert.equal(state.complete,false);assert.equal(state.total,null);assert.match(state.message,/2,800,000원 초과/);assert.match(state.message,/실제 예산 충족 미확인/);
+  assert.equal(state.complete,false);assert.equal(state.total,null);assert.match(state.message,/12,800,000원/);assert.match(state.message,/실제 예산 충족 미확인/);
   trip.plan.costs.reserve=null;state=quoteReview(trip);assert.equal(state.excess,2000000);assert.match(state.amountMessage,/예비비 미입력/);
-  trip.plan.quote.costs.airfare=0;state=quoteReview(trip);assert.equal(state.known,0);assert.equal(state.excess,0);assert(!state.message.includes('상한 이내'));
+  trip.plan.quote.costs.airfare=0;state=quoteReview(trip);assert.equal(state.known,0);assert.equal(state.excess,0);assert(!state.message.includes('필수 항목 확인 완료'));
   trip.plan.quote.costs.lodging=11000000;state=quoteReview(trip);assert.equal(state.excess,1000000);
-  trip.plan.quote.costs={airfare:2000000,lodging:7000000,other:null};trip.plan.costs.reserve=1000000;state=quoteReview(trip);assert.equal(state.excess,0);assert.equal(state.assessed,10000000);assert(!state.message.includes('상한 이내'));
+  trip.plan.quote.costs={airfare:2000000,lodging:7000000,other:null};trip.plan.costs.reserve=1000000;state=quoteReview(trip);assert.equal(state.excess,0);assert.equal(state.assessed,10000000);assert(!state.message.includes('필수 항목 확인 완료'));
   const stale=quoted();stale.plan.quote.costs.airfare=6000000;stale.endDate='2027-06-14';state=quoteReview(stale);assert(state.stale);assert.equal(state.excess,1300000);assert.equal(state.total,null);
 });
 test('quote dates, sources, inclusions, future check date and changed hotel conditions require review',()=>{

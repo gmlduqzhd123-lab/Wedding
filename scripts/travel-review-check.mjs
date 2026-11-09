@@ -33,7 +33,7 @@ try{
  const fields={'항공 실제 견적 (원)':'2700000','숙박·패키지 실제 견적 (원)':'3000000','기타 여행비 실제 견적 (원)':'1500000','견적 조회일':'2026-11-08','항공 견적 근거·편명·포함 조건':'시험용 항공 견적, 실제 예약 아님','숙박 견적 근거·객실·포함 조건':'시험용 숙박 견적, 실제 예약 아님','견적 항공편 한국 출발 시각':'2027-06-07T12:00','견적 항공편 한국 도착 시각':'2027-06-14T08:00'};
  for(const [label,value] of Object.entries(fields))await p.getByLabel(label,{exact:true}).fill(value);
  await p.getByLabel('현재 여행 날짜·숙박 구성의 견적이며 세금·수하물·식사·공항 및 지역 이동비를 포함해 확인했습니다.',{exact:true}).check();await save(p);
- assert.match(await card(p).locator(':scope > .quote-status').innerText(),/8,000,000원.*상한 이내/);
+ assert.match(await card(p).locator(':scope > .quote-status').innerText(),/8,000,000원.*필수 항목 확인 완료/);
  await card(p).getByRole('button',{name:'최종 선택',exact:true}).click();await p.locator('.selected-trip').waitFor();assert.match(await p.locator('.selected-trip .quote-status').innerText(),/8,000,000원/);
  await card(p).getByRole('button',{name:'비교 선택',exact:true}).click();await p.locator('.travel-comparison').waitFor();assert.match(await p.locator('.travel-comparison').innerText(),/입력 견적.*8,000,000원/s);
  await p.reload();await ready(p);assert.match(await card(p).locator(':scope > .quote-status').innerText(),/8,000,000원/);
