@@ -45,20 +45,31 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .viewer-thumb{padding:2px;border:2px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
 .viewer-thumb[aria-current=true]{border-color:var(--green)}
 .viewer-thumb img{width:100%;height:52px;object-fit:cover;border-radius:5px}
-.trip-video-links{margin:14px 0 4px;padding:12px 14px;background:rgba(255,255,255,.52);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px}
-.trip-video-links>p{margin:0 0 8px}
-.trip-video-list{display:flex;flex-wrap:wrap;gap:8px 14px}
-.trip-video-list a{font-size:13px;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
+.trip-video-links{margin:14px 0 4px;padding:14px;background:rgba(255,255,255,.52);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px}
+.trip-video-links>p{margin:0 0 10px}
+.trip-video-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.trip-video-list a{font-size:13px;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}
+.yt-video-card{display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:12px;background:rgba(255,255,255,.58);border:1px solid var(--line);text-decoration:none;min-width:0;transition:transform .18s,background .18s,box-shadow .18s}
+.yt-video-card:hover{transform:translateY(-2px);background:var(--surface-strong);box-shadow:var(--glass-shadow)}
+.yt-thumb-wrap,.yt-thumb-banner{position:relative;display:block;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(135deg,rgba(63,93,72,.22),rgba(216,180,166,.28));text-decoration:none}
+.yt-thumb-banner{border-radius:12px;margin-bottom:14px;box-shadow:0 6px 20px rgba(28,48,35,.08)}
+.yt-thumb-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .24s ease}
+.yt-thumb-banner:hover .yt-thumb-img,.yt-video-card:hover .yt-thumb-img{transform:scale(1.03)}
+.yt-play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:rgba(24,38,29,.64);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.88);color:#fffefa;display:grid;place-items:center;font-size:16px;padding-left:3px;box-shadow:0 6px 18px rgba(0,0,0,.26);transition:transform .2s ease,background .2s ease}
+.yt-thumb-wrap .yt-play-icon{width:38px;height:38px;font-size:13px}
+.yt-thumb-banner:hover .yt-play-icon,.yt-video-card:hover .yt-play-icon{transform:translate(-50%,-50%) scale(1.08);background:rgba(63,93,72,.86)}
+.yt-badge{position:absolute;right:10px;bottom:10px;padding:3px 9px;border-radius:999px;background:rgba(24,38,29,.68);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.45);color:#fffefa;font-size:11px;font-weight:500}
+.yt-video-title{font-size:12px;line-height:1.45;color:var(--ink);font-weight:500}
 .tip-categories{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .tip-categories .button{padding:7px 14px;min-height:36px;font-size:13px;border-radius:999px}
 .tip-categories .button[aria-pressed=true]{background:linear-gradient(135deg,rgba(63,93,72,.92),rgba(41,65,49,.94));color:#fffefa;border-color:rgba(255,255,255,.4)}
 .tips-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
 .tip-card{padding:24px;background:var(--surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line);border-radius:16px;box-shadow:var(--glass-shadow);display:flex;flex-direction:column;min-width:0;transition:transform .18s,box-shadow .18s,background .18s}
 .tip-card:hover{transform:translateY(-3px);background:var(--surface-strong);box-shadow:var(--glass-shadow-hover)}
-.tip-card .card-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.tip-card .card-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
 .tip-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tip-card h2{font-size:19px}
 .tip-card .record-body{margin-top:10px;font-size:14px;line-height:1.75}
 .tip-actions{margin-top:auto;padding-top:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .tip-actions .record-actions{margin-top:0}
-@media(max-width:680px){.tips-grid{grid-template-columns:1fr}.tip-card{padding:20px}}
+@media(max-width:680px){.tips-grid,.trip-video-list{grid-template-columns:1fr}.tip-card{padding:20px}}

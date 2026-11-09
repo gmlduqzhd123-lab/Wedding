@@ -1,8 +1,8 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-glass-17';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=wedding-glass-17';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-glass-17';
-import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-glass-17';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-glass-17';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-yt-thumb-18';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=wedding-yt-thumb-18';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-yt-thumb-18';
+import {TRAVEL_CAP,COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-yt-thumb-18';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-yt-thumb-18';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -439,7 +439,7 @@ function travelDetails(item){
     travelSection(item,'sources','계획 자료·확인 범위',E('p',{},plan.researchNotes||'저장된 여행 계획입니다. 제공 자료와 직접 수정한 항목의 적용 범위를 확인해 주세요. 실제 예약이나 견적으로 확인된 상태가 아닙니다.'),
       (plan.references||[]).map(source=>externalLink(source.title+' ↗',source.url)),
       externalLink('계획 자료와 적용 범위 ↗','https://github.com/gmlduqzhd123-lab/Wedding/blob/main/CONTENT_SOURCES.md')),
-    item.body||item.url?travelSection(item,'memo','직접 작성한 메모·참고 링크',item.body?E('p',{class:'record-body'},item.body):null,externalLink('직접 입력한 참고 링크 ↗',item.url),E('p',{class:'small muted'},'직접 입력한 참고 링크는 기후 공식 출처와 별개입니다. 자유 메모의 문장은 날짜·금액 변경 시 자동 수정되지 않습니다.')):null);
+    item.body||item.url?travelSection(item,'memo','직접 작성한 메모·참고 링크',item.body?E('p',{class:'record-body'},item.body):null,youtubeThumbBanner(item.url,item.title),externalLink('직접 입력한 참고 링크 ↗',item.url),E('p',{class:'small muted'},'직접 입력한 참고 링크는 기후 공식 출처와 별개입니다. 자유 메모의 문장은 날짜·금액 변경 시 자동 수정되지 않습니다.')):null);
 }
 function renderAlbums() {
   return [pageHeader('오래 간직할 우리의 순간','사진을 앨범으로 모으고, 그날의 이야기를 함께 남겨요.',editButton('앨범 추가',()=>openEditor('albums')),'PHOTO ALBUM'),
@@ -469,18 +469,59 @@ function travelOverview(){
       E('ol',{},ordered.map(item=>E('li',{},button(item.title,()=>{if(tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id)){tripFavoritesOnly=false;render();}const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
         E('strong',{},'2인 목표 '+won(item.budget)),E('p',{class:'small'},item.plan.comparisonNote))))));
 }
+function youtubeVideoId(raw){
+  try{
+    const parsed=new URL(raw),host=parsed.hostname.toLocaleLowerCase();
+    if(host==='youtu.be'){
+      const id=parsed.pathname.slice(1).split('/')[0];
+      return /^[A-Za-z0-9_-]{11}$/.test(id)?id:'';
+    }
+    if(host==='youtube.com'||host.endsWith('.youtube.com')){
+      const v=parsed.searchParams.get('v');
+      if(v&&/^[A-Za-z0-9_-]{11}$/.test(v))return v;
+      const parts=parsed.pathname.split('/').filter(Boolean);
+      if(['shorts','embed','live'].includes(parts[0])&&/^[A-Za-z0-9_-]{11}$/.test(parts[1]||''))return parts[1];
+    }
+  }catch{}
+  return '';
+}
 function isYoutubeUrl(raw){
   try{
     const host=new URL(raw).hostname.toLocaleLowerCase();
     return host==='youtu.be'||host==='youtube.com'||host.endsWith('.youtube.com');
   }catch{return false;}
 }
+function youtubeThumbUrl(raw){
+  const id=youtubeVideoId(raw);
+  return id?`https://i.ytimg.com/vi/${id}/hqdefault.jpg`:'';
+}
+function youtubeThumbBanner(rawUrl,title){
+  const url=safeUrl(rawUrl),thumb=youtubeThumbUrl(url);
+  if(!url||!thumb)return null;
+  const img=E('img',{class:'yt-thumb-img',src:thumb,alt:`${title} 유튜브 썸네일`,loading:'lazy',decoding:'async',width:'480',height:'270'});
+  img.addEventListener('error',()=>{img.hidden=true;});
+  return E('a',{class:'yt-thumb-banner',href:url,target:'_blank',rel:'noopener noreferrer','aria-label':`${title} 유튜브 영상 새 탭에서 재생`},
+    img,
+    E('span',{class:'yt-play-icon','aria-hidden':'true'},'▶'),
+    E('span',{class:'yt-badge','aria-hidden':'true'},'YouTube ↗'));
+}
 function tripVideoLinks(item){
   const videos=(item.plan?.references||[]).filter(ref=>isYoutubeUrl(ref.url));
   if(!videos.length)return null;
   return E('div',{class:'trip-video-links','aria-label':`${item.title} 관련 유튜브 영상`},
     E('p',{class:'small muted'},'참고 영상 (YouTube)'),
-    E('div',{class:'trip-video-list'},videos.map(ref=>externalLink('▶ '+ref.title.replace(/^유튜브\s*·\s*/,''),ref.url))));
+    E('div',{class:'trip-video-list'},videos.map(ref=>{
+      const url=safeUrl(ref.url),thumb=youtubeThumbUrl(url),clean=ref.title.replace(/^유튜브\s*·\s*/,'');
+      if(!url)return null;
+      if(!thumb)return externalLink('▶ '+clean,url);
+      const img=E('img',{class:'yt-thumb-img',src:thumb,alt:`${clean} 유튜브 썸네일`,loading:'lazy',decoding:'async',width:'320',height:'180'});
+      img.addEventListener('error',()=>{img.hidden=true;});
+      return E('a',{class:'yt-video-card',href:url,target:'_blank',rel:'noopener noreferrer'},
+        E('span',{class:'yt-thumb-wrap'},
+          img,
+          E('span',{class:'yt-play-icon','aria-hidden':'true'},'▶')),
+        E('span',{class:'yt-video-title'},'▶ '+clean+' ↗'));
+    })));
 }
 function renderHoneymoon() {
   const visibleTrips=sortedTrips();
@@ -629,6 +670,7 @@ function renderTips(){
         E('div',{class:'card-heading'},
           E('div',{class:'tip-meta'},E('span',{class:'badge'},item.category||'결혼 꿀팁'),E('span',{class:'small muted'},`#${String(num).padStart(2,'0')}${item.channel?` · ${item.channel}`:''}`)),
           tipFavoriteButton(item)),
+        youtubeThumbBanner(item.url,item.title),
         E('h2',{},item.title),
         item.body?E('p',{class:'record-body'},item.body):null,
         E('div',{class:'tip-actions'},
