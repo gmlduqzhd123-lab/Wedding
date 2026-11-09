@@ -30,10 +30,12 @@ try{
  await p.setViewportSize({width:390,height:900});await p.locator('[data-trip-id="bali"]').screenshot({path:'work/quotes-qa/bali-mobile.png'});
  await p.setViewportSize({width:1440,height:1000});await p.locator('[data-view-key="bali:quote"]').screenshot({path:'work/quotes-qa/bali-quote-desktop.png'});
  await p.goto(base+'?view=guest#/invitation');await p.locator('#main[aria-busy="false"]').waitFor();
- assert.match(await p.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.equal(await p.locator('.couple-names,.invitation .message,.place p').count(),0);
+ assert.match(await p.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.equal(await p.locator('.invitation .message,.invitation-extra-guides,.invitation-contacts-box').count(),0);
+ for(const name of [data.invitation.partner1,data.invitation.partner2].filter(Boolean))assert((await p.locator('.couple-names').innerText()).includes(name));
+ assert.equal(await p.locator('.place p').innerText(),data.invitation.address);
  assert.equal(new URL(await p.getByRole('link',{name:'Google 캘린더에 추가',exact:true}).getAttribute('href')).searchParams.get('dates'),'20270605T060000Z/20270605T060000Z');
  const download=p.waitForEvent('download');await p.getByRole('button',{name:'일정 파일(.ics) 다운로드',exact:true}).click();const ics=(await readFile(await(await download).path(),'utf8')).replace(/\r\n /g,'');
  assert.match(ics,/DTSTART:20270605T060000Z/);assert(!ics.includes('DTEND:'));
- assert.deepEqual(errors,[]);console.log('PASS actual 10 dated flight/room quotes, June 13 Korean arrivals, local nights, price breakdowns/source links, incomplete-cost boundaries, 320–1440px layouts, blank invitation and Google/ICS payload; zero browser errors');
+ assert.deepEqual(errors,[]);console.log('PASS actual 10 dated flight/room quotes, June 13 Korean arrivals, local nights, price breakdowns/source links, incomplete-cost boundaries, 320–1440px layouts, registered invitation/empty optional fields and Google/ICS payload; zero browser errors');
  await context.close();
 }finally{await browser.close();}

@@ -1,5 +1,14 @@
 export const TRAVEL_CAP=10000000;
 export const COST_LABELS={airfare:'항공',lodging:'숙박·패키지',other:'기타 여행비',reserve:'예비비'};
+export const CLIMATE_CATEGORIES={dry:'☀️ 건기 경향',sunny:'☀️ 덥고 맑은 시기',hot:'🌡️ 더위 유의',summer:'🌤️ 여름철 · 지역별 강수 차이',variable:'🌦️ 산발적 비 · 변동성',transition:'🌦️ 건기·우기 전환기',wet:'🌧️ 우기 경향'};
+export function climateBadgeInfo(trip){
+  const review=climateReview(trip),summary=trip.plan?.climateSummary;
+  if(!review.entered)return {label:'🌤️ 기후 미입력',dry:false};
+  const valid=summary&&Object.hasOwn(CLIMATE_CATEGORIES,summary.category)&&summary.month===review.month&&!review.changedMonth;
+  if(!valid)return {label:review.changedMonth||summary?`🌤️ ${review.month===null?'기준 월 미입력':review.month+'월 자료'} · 기후 요약 재확인`:`🌤️ ${review.month===null?'기준 월 미입력':review.month+'월'} · 기후 요약 미분류`,dry:false};
+  const [icon,...words]=CLIMATE_CATEGORIES[summary.category].split(' ');
+  return {label:`${icon} ${summary.month}월 ${words.join(' ')}`,dry:['dry','sunny'].includes(summary.category)};
+}
 export function climateReview(trip){
   const plan=trip.plan,entered=Boolean(plan?.climate?.trim());
   const month=entered&&Number.isInteger(plan.climateMonth)&&plan.climateMonth>=1&&plan.climateMonth<=12?plan.climateMonth:null;

@@ -1,7 +1,9 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-all-26';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=wedding-all-26';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-all-26';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-all-26';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=audit-fixes-27';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=audit-fixes-27';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=audit-fixes-27';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=audit-fixes-27';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=audit-fixes-27';
+import {venueEstimate,studioFeeInfo} from './planning.js?v=audit-fixes-27';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -471,8 +473,15 @@ function renderInvitationContacts(rawContacts){
       E('span',{},line),
       button('복사',()=>copyVenueAddress(line,'안내 정보'),'button quiet small-copy-btn')))));
 }
+function downloadInvitationCalendar(){
+  try{
+    downloadText(invitationCalendar(content.invitation),`wedding-${content.invitation.date}.ics`,'text/calendar;charset=utf-8');
+    toast('일정 파일을 내려받습니다. 캘린더 앱에서 가져와 주세요.');
+  }catch(error){toast(error.message,true);}
+}
 function renderInvitation() {
   const info=content.invitation,dday=weddingDday(info.date);
+  let calendarUrl='';try{calendarUrl=googleCalendarUrl(info);}catch{}
   const hasContent=Object.values(info).some(Boolean);
   const mapLink=externalLink('오시는 길 (네이버 지도) ↗',info.mapUrl,'button quiet');
   const searchKeyword=(info.venue||info.address||'').replace(/\s+\d+층$/,'').trim();
@@ -488,6 +497,9 @@ function renderInvitation() {
       info.message?E('p',{class:'message'},info.message):null,
       E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
       renderInvitationCalendar(info.date,info.time),
+      calendarUrl?E('div',{class:'invitation-actions'},externalLink('Google 캘린더에 추가',calendarUrl,'button quiet'),button('일정 파일(.ics) 다운로드',downloadInvitationCalendar,'button quiet')):null,
+      calendarUrl?E('p',{class:'small muted calendar-note'},'한국 시간 기준의 시작 일정입니다. Google 캘린더는 로그인 후 추가해 주세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 종료 시각은 미정이므로 저장 화면에서 확인해 주세요.'):null,
+      calendarUrl?E('p',{class:'small muted calendar-update-note'},'기존에 저장한 일정은 자동 수정하지 않습니다. 예식 일정이 바뀌었다면 캘린더 앱에서 기존 일정을 수정하거나 삭제한 뒤 새 일정을 추가해 중복 여부를 확인해 주세요.'):null,
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
       actionButtons.length?E('div',{class:'invitation-actions'},...actionButtons):null,
       (info.transit||info.notice)?E('div',{class:'invitation-extra-guides'},
@@ -619,20 +631,11 @@ function tripFlightBadge(item){
   return {direct:false,short:'✈️ 항공 미정',detail:'✈️ 항공편 별도 확인'};
 }
 function tripClimateBadge(item){
-  const c=item.plan?.climate||'';
-  if(!c)return '🌤️ 기후 미입력';
-  const temp=c.match(/\d+(?:\.\d+)?[~/–-]\d+(?:\.\d+)?°C|\d+(?:\.\d+)?°C/g);
-  const tempStr=temp?temp.slice(0,2).join(' / '):'';
-  if(/건기/.test(c))return `☀️ 6월 건기${tempStr?` (${tempStr})`:''}`;
-  if(/우기/.test(c)&&/소나기|스콜/.test(c))return `🌦️ 6월 스콜·소나기${tempStr?` (${tempStr})`:''}`;
-  if(/우기/.test(c))return `🌦️ 6월 우기${tempStr?` (${tempStr})`:''}`;
-  if(/맑고 더운|여름철/.test(c))return `☀️ 6월 맑음·초여름${tempStr?` (${tempStr})`:''}`;
-  if(/온화/.test(c))return `🌤️ 6월 온화${tempStr?` (${tempStr})`:''}`;
-  return `🌤️ ${climateReview(item).summary.slice(0,24)}`;
+  return climateBadgeInfo(item).label;
 }
 function matchesTripQuickFilter(item,key=tripQuickFilter){
   if(key==='direct')return tripFlightBadge(item).direct;
-  if(key==='dry')return /건기|맑고 더운|여름철/.test(item.plan?.climate||'');
+  if(key==='dry')return climateBadgeInfo(item).dry;
   if(key==='under6m')return item.budget!==null&&item.budget<=6000000;
   if(key==='longstay')return stayReview(item).nights>=6;
   return true;
@@ -816,7 +819,7 @@ function tripSortControl(){
   const quickFilters=[
     ['all',`전체 (${content.honeymoon.length})`],
     ['direct',`✈️ 직항 노선 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'direct')).length})`],
-    ['dry',`☀️ 6월 건기·맑음 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'dry')).length})`],
+    ['dry',`☀️ 건기·맑은 시기 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'dry')).length})`],
     ['under6m',`💸 600만 원 이하 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'under6m')).length})`],
     ['longstay',`🏖️ 6~7박 일정 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'longstay')).length})`]
   ];
@@ -828,7 +831,7 @@ function tripSortControl(){
     }},label)));
   return E('div',{class:'travel-tools'},
     E('div',{class:'travel-tools-row'},E('label',{for:'trip-sort'},'후보 정렬'),select,guestMode?null:E('label',{class:'check-label',for:'trip-favorites-only'},favCheck,'관심 여행지만 보기'),E('p',{class:'small muted'},'정렬·필터는 화면 표시만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.')),
-    filterBar);
+    filterBar,E('p',{class:'small muted'},'기후 필터는 확인된 기준 월의 계절 경향입니다. 여행 월이 달라지거나 요약 분류가 미입력인 후보는 제외하며 해당 기간의 날씨를 보장하지 않습니다.'));
 }
 function travelOverview(){
   const trips=[...content.honeymoon];
@@ -1116,15 +1119,14 @@ function matchesStudioQuickFilter(studio,key=studioQuickFilter){
   if(key==='portrait')return /인물|심플|정석|모던|화이트/.test(text);
   if(key==='outdoor')return /정원|야외|야간|녹음|옥상|자연/.test(text);
   if(key==='mood')return /필름|흑백|명암|무드|실루엣|클래식/.test(text);
-  if(key==='nofee')return (studio.fee||'').includes('확인 안 됨');
+  if(key==='nofee')return studioFeeInfo(studio).unknown;
   return true;
 }
 function studioSpecChips(studio,compact=false){
-  const noFee=(studio.fee||'').includes('확인 안 됨');
-  const feeText=noFee?'💡 표기 추가금 없음':`💰 ${studio.fee.replace(/^자료 표기:\s*/,'')}`;
+  const fee=studioFeeInfo(studio),feeText=fee.label;
   const hasNote=!guestMode&&Boolean(prefs.notes?.[studio.id]?.trim());
   return E('div',{class:'trip-spec-chips studio-spec-chips','aria-label':`${studio.name} 핵심 요약`},
-    E('span',{class:'spec-chip'+(noFee?' direct':' highlight')},feeText),
+    E('span',{class:'spec-chip'+(fee.unknown?'':' highlight')},feeText),
     E('span',{class:'spec-chip'},studio.contact?.phone?'📞 연락처 기재':'📞 연락처 미기재'),
     hasNote&&compact?E('span',{class:'spec-chip highlight'},'📝 메모 있음'):null,
     !compact&&studio.fit?E('span',{class:'spec-chip'},'🎯 '+studio.fit):null);
@@ -1181,7 +1183,7 @@ function studioDirectory() {
     ['portrait',`📸 인물·깔끔 중심 (${studios.filter(s=>matchesStudioQuickFilter(s,'portrait')).length})`],
     ['outdoor',`🌿 야외·정원·야간씬 (${studios.filter(s=>matchesStudioQuickFilter(s,'outdoor')).length})`],
     ['mood',`🎞️ 무드·필름·흑백 (${studios.filter(s=>matchesStudioQuickFilter(s,'mood')).length})`],
-    ['nofee',`💡 표기 추가금 없음 (${studios.filter(s=>matchesStudioQuickFilter(s,'nofee')).length})`]
+    ['nofee',`💡 추가금 미확인 (${studios.filter(s=>matchesStudioQuickFilter(s,'nofee')).length})`]
   ];
   const draw=()=>{
     filterBar.replaceChildren(...quickSpecs.map(([key,label])=>E('button',{type:'button',class:'button quiet trip-filter-chip','data-studio-filter':key,'aria-pressed':String(studioQuickFilter===key),onclick:()=>{
@@ -1250,7 +1252,7 @@ function openVenueSimulator(){
   if(guestMode)return;
   const cur=structuredClone(prefs.venueSim||{mealPrice:null,guestCount:null,minGuarantee:null,hallFee:null,deposit:null,note:''});
   const form=E('form',{class:'editor-form'});
-  form.append(E('p',{class:'form-note'},'웨딩홀 1인 식대·예상 하객 수·보증인원·대관료·계약금을 입력하면 총 견적과 본식 당일 정산 잔금을 자동 계산합니다. 이 기기에만 저장됩니다.'));
+  form.append(E('p',{class:'form-note'},'빈칸은 미입력이며 0원·0명과 다릅니다. 식대·예상 하객 수·최소 보증인원·대관료를 모두 입력해야 총액을 계산합니다. 계약금을 입력해야 잔금을 계산하며, 없는 비용은 확인 후 0을 입력해 주세요. 일부 입력도 이 기기에 저장할 수 있습니다.'));
   const mealInput=E('input',{type:'number',min:'0',max:'10000000',step:'1',id:'vsim-meal',placeholder:'예: 55000'});mealInput.value=cur.mealPrice??'';
   const guestInput=E('input',{type:'number',min:'0',max:'10000',step:'1',id:'vsim-guest',placeholder:'예: 250'});guestInput.value=cur.guestCount??'';
   const minInput=E('input',{type:'number',min:'0',max:'10000',step:'1',id:'vsim-min',placeholder:'예: 200'});minInput.value=cur.minGuarantee??'';
@@ -1258,17 +1260,14 @@ function openVenueSimulator(){
   const depInput=E('input',{type:'number',min:'0',max:'1000000000',step:'1',id:'vsim-dep',placeholder:'예: 1000000'});depInput.value=cur.deposit??'';
   const noteInput=E('input',{type:'text',maxlength:'300',id:'vsim-note',placeholder:'예: 순천아모르웨딩컨벤션 아모르홀 · 생화장식·혼주메이크업 포함 조건'});noteInput.value=cur.note||'';
   const previewBox=E('div',{class:'form-note','aria-live':'polite'});
+  let saving=false;
+  const numOrNull=node=>node.value.trim()===''?null:Number(node.value);
+  const read=()=>({mealPrice:numOrNull(mealInput),guestCount:numOrNull(guestInput),minGuarantee:numOrNull(minInput),hallFee:numOrNull(hallInput),deposit:numOrNull(depInput),note:noteInput.value.trim()});
   const updatePreview=()=>{
-    const meal=Number(mealInput.value)||0;
-    const guest=Number(guestInput.value)||0;
-    const minG=Number(minInput.value)||0;
-    const hall=Number(hallInput.value)||0;
-    const dep=Number(depInput.value)||0;
-    const billedGuests=Math.max(guest,minG);
-    const mealTotal=meal*billedGuests;
-    const grandTotal=mealTotal+hall;
-    const balance=Math.max(0,grandTotal-dep);
-    previewBox.textContent=`계산 기준 인원 ${billedGuests.toLocaleString('ko-KR')}명 (예상 ${guest}명 / 보증 ${minG}명) · 식대 합계 ${won(mealTotal)} + 대관료 ${won(hall)} = 총 ${won(grandTotal)} (계약금 차감 후 잔금 ${won(balance)})`;
+    const state=venueEstimate(read());
+    previewBox.textContent=`계산 기준 인원 ${state.billedGuests===null?'미입력':state.billedGuests.toLocaleString('ko-KR')+'명'} · 식대 ${won(state.mealTotal)} · 입력값 기준 소계 ${won(state.subtotal)}\n`+
+      (state.complete?`총액 ${won(state.total)} (입력값 기준 · 확정 계약 견적 아님) · 계약금 차감 후 잔금 ${won(state.balance)}${state.balance===null?' · 계약금 미입력':''}`:`총액 미확인 · 추가 입력 필요: ${state.missing.join(' · ')}. 통합 예산에 반영할 수 없습니다.`)+
+      (state.overpaid?`\n계약금이 계산 총액보다 ${won(state.overpaid)} 많습니다. 입력값을 확인해 주세요.`:'');
   };
   for(const node of [mealInput,guestInput,minInput,hallInput,depInput])node.addEventListener('input',updatePreview);
   updatePreview();
@@ -1285,43 +1284,31 @@ function openVenueSimulator(){
     previewBox,
     E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},'웨딩홀 시뮬레이터 저장'))
   );
+  const submit=form.querySelector('[type="submit"]');
+  const snapshot=()=>JSON.stringify([mealInput.value,guestInput.value,minInput.value,hallInput.value,depInput.value,noteInput.value]),initial=snapshot();
   form.addEventListener('submit',async event=>{
-    event.preventDefault();
-    const numOrNull=node=>node.value.trim()===''?null:Math.round(Number(node.value.trim()));
-    const nextSim={
-      mealPrice:numOrNull(mealInput),
-      guestCount:numOrNull(guestInput),
-      minGuarantee:numOrNull(minInput),
-      hallFee:numOrNull(hallInput),
-      deposit:numOrNull(depInput),
-      note:noteInput.value.trim()
-    };
-    const saved=await queuePreference(()=>savePrefs({...prefs,venueSim:nextSim}));
-    if(saved){closeDialog();render();toast('웨딩홀 식대·대관료 시뮬레이터를 저장했습니다.');}
+    event.preventDefault();if(saving)return;saving=true;submit.disabled=true;
+    try{
+      const nextSim=read(),saved=await queuePreference(()=>savePrefs({...prefs,venueSim:nextSim}));
+      if(saved){closeDialog();render();toast('웨딩홀 식대·대관료 시뮬레이터를 저장했습니다.');}
+    }catch(error){toast(error.message,true);}finally{saving=false;submit.disabled=false;}
   });
-  showDialog('웨딩홀 식대 · 보증인원 · 대관료 시뮬레이터',form);
+  if(showDialog('웨딩홀 식대 · 보증인원 · 대관료 시뮬레이터',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
 }
 function renderVenueSimulator(){
   if(guestMode)return null;
   const sim=prefs.venueSim;
   const hasSim=sim&&(sim.mealPrice!==null||sim.guestCount!==null||sim.minGuarantee!==null||sim.hallFee!==null||sim.deposit!==null||sim.note);
-  const meal=sim?.mealPrice||0;
-  const guest=sim?.guestCount||0;
-  const minG=sim?.minGuarantee||0;
-  const hall=sim?.hallFee||0;
-  const dep=sim?.deposit||0;
-  const billedGuests=Math.max(guest,minG);
-  const mealTotal=meal*billedGuests;
-  const grandTotal=mealTotal+hall;
-  const balance=Math.max(0,grandTotal-dep);
+  const meal=sim?.mealPrice??null,hall=sim?.hallFee??null;
+  const state=venueEstimate(sim),{billedGuests,mealTotal,total:grandTotal,balance}=state;
   return E('div',{class:'venue-sim-box'},
     E('div',{class:'venue-sim-head'},
       E('div',{},
         E('strong',{},`🏛️ 웨딩홀 식대·보증인원·대관료 시뮬레이터 (${content.invitation?.venue||'웨딩홀'})`),
-        E('p',{class:'small muted'},hasSim?(sim.note||'보증인원과 예상 하객 수 중 큰 인원을 기준으로 식대 합계와 당일 정산 잔금을 계산합니다.'):'1인 식대, 예상 하객 수, 보증인원, 대관료·계약금을 입력해 웨딩홀 총액을 시뮬레이션해 보세요.')),
+        E('p',{class:'small muted'},hasSim?(sim.note||'입력값으로 계산한 시뮬레이션입니다. 미입력 항목은 0원으로 계산하지 않습니다.'):'1인 식대, 예상 하객 수, 보증인원, 대관료·계약금을 입력해 웨딩홀 총액을 시뮬레이션해 보세요.')),
       E('div',{class:'page-actions'},
         button(hasSim?'시뮬레이터 수정':'시뮬레이터 입력',openVenueSimulator,'button quiet'),
-        hasSim&&grandTotal>0?button('계산 총액을 웨딩홀 예산에 반영',()=>{
+        hasSim&&state.complete?button('계산 총액을 웨딩홀 예산에 반영',()=>{
           const nextPlan=structuredClone(prefs.budgetPlan||{});
           const curVenue=nextPlan.venue||{planned:null,actual:null,note:''};
           nextPlan.venue={
@@ -1336,10 +1323,13 @@ function renderVenueSimulator(){
           });
         },'button quiet'):null)),
     hasSim?E('div',{class:'venue-sim-grid'},
-      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'1인 식대 × 적용 인원'),E('strong',{},`${won(meal)} × ${billedGuests}명`)),
-      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'식대 합계 + 대관료'),E('strong',{},`${won(mealTotal)} + ${won(hall)}`)),
-      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'웨딩홀 총 견적'),E('strong',{},won(grandTotal))),
-      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'당일 정산 잔금 (계약금 차감)'),E('strong',{},won(balance)))):null);
+      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'1인 식대 × 적용 인원'),E('strong',{},`${won(meal)} × ${billedGuests===null?'미입력':billedGuests+'명'}`)),
+      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'입력값 기준 소계'),E('strong',{},won(state.subtotal))),
+      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'입력값 기준 총액'),E('strong',{},won(grandTotal))),
+      E('div',{class:'venue-sim-stat'},E('span',{class:'small muted'},'계약금 차감 후 잔금'),E('strong',{},won(balance)))):null,
+    hasSim&&!state.complete?E('p',{class:'form-note'},`총액 미확인 · 추가 입력 필요: ${state.missing.join(' · ')}. 통합 예산에 반영할 수 없습니다.`):null,
+    hasSim&&state.complete&&balance===null?E('p',{class:'small muted'},'계약금 미입력 · 잔금 미확인'):null,
+    state.overpaid?E('p',{class:'form-note'},`계약금이 계산 총액보다 ${won(state.overpaid)} 많습니다. 입력값을 확인해 주세요.`):null);
 }
 function openBudgetEditor(){
   if(guestMode)return;
@@ -1357,10 +1347,9 @@ function openBudgetEditor(){
     },'button quiet'));
   }
   const sim=prefs.venueSim;
-  if(sim&&(sim.mealPrice||sim.hallFee)){
-    const billed=Math.max(sim.guestCount||0,sim.minGuarantee||0);
-    const simTotal=(sim.mealPrice||0)*billed+(sim.hallFee||0);
-    if(simTotal>0){
+  if(sim){
+    const estimate=venueEstimate(sim),simTotal=estimate.total;
+    if(estimate.complete){
       form.append(button(`🏛️ 웨딩홀 시뮬레이터 총액(${won(simTotal)})을 웨딩홀 실제·견적에 채우기`,()=>{
         if(fields.venue_actual){
           fields.venue_actual.value=String(simTotal);
@@ -1745,9 +1734,16 @@ function quoteEditor(form,fields,plan,currentTrip){
 }
 function planExtraEditor(form,fields,plan){
   const body=E('div',{class:'quote-editor-body'});
-  const monthSelect=E('select',{id:'plan-climateMonth'},[['','미입력'],...Array.from({length:12},(_,i)=>[String(i+1),`${i+1}월`])].map(([value,label])=>E('option',{value},label)));
+  const monthSelect=E('select',{id:'plan-climateMonth','aria-label':'기후 기준 월'},[['','미입력'],...Array.from({length:12},(_,i)=>[String(i+1),`${i+1}월`])].map(([value,label])=>E('option',{value},label)));
   monthSelect.value=plan.climateMonth===null||plan.climateMonth===undefined?'':String(plan.climateMonth);
   fields.plan_climateMonth=monthSelect;
+  const categorySelect=E('select',{id:'plan-climateCategory','aria-label':'기후 요약 분류 (기준 월 자료 확인 후 선택)'},[['','미분류'],...Object.entries(CLIMATE_CATEGORIES)].map(([value,label])=>E('option',{value},label)));
+  categorySelect.value=plan.climateSummary&&plan.climateSummary.month===plan.climateMonth?plan.climateSummary.category:'';
+  fields.plan_climateCategory=categorySelect;
+  const originalCategory=categorySelect.value;
+  let categoryTouched=false;
+  categorySelect.addEventListener('change',()=>{categoryTouched=true;});
+  monthSelect.addEventListener('change',()=>{categorySelect.value='';categoryTouched=true;});
   const specs=[
     ['experiences','경험 제안','textarea',plan.experiences||'','12000'],
     ['comparisonNote','후보 한눈에 보기 요약','textarea',plan.comparisonNote||'','500'],
@@ -1768,6 +1764,7 @@ function planExtraEditor(form,fields,plan){
     body.append(E('label',{class:'field',for:input.id},label,input));
   }
   form.append(E('details',{class:'plan-extra-editor'},E('summary',{},'기후·경험·출처·비교 요약 편집 (선택)'),body));
+  body.append(E('label',{class:'field',for:categorySelect.id},'기후 요약 분류 (기준 월 자료 확인 후 선택)',categorySelect),E('p',{class:'small muted'},'기후 본문의 단어로 분류를 추측하지 않습니다. 기준 월을 바꾸면 분류를 다시 선택해 주세요.'));
   const read=()=>{
     const next={};
     for(const key of ['experiences','comparisonNote','climate','sourceTitle','sourceUrl','checkedOn','budgetNotes','researchNotes']){
@@ -1775,6 +1772,10 @@ function planExtraEditor(form,fields,plan){
       if(raw!==initialValues[key])next[key]=raw.trim();
     }
     if(monthSelect.value!==initialValues.climateMonth)next.climateMonth=monthSelect.value===''?null:Number(monthSelect.value);
+    if(categoryTouched||categorySelect.value!==originalCategory){
+      if(categorySelect.value&&!monthSelect.value)throw new Error('기후 요약 분류의 기준 월을 먼저 입력해 주세요.');
+      next.climateSummary=categorySelect.value?{month:Number(monthSelect.value),category:categorySelect.value}:null;
+    }
     if(fields.plan_references.value!==initialValues.references){
       next.references=fields.plan_references.value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{
         const sep=line.indexOf('|');

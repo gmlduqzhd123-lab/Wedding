@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=wedding-all-25';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=audit-fixes-27';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -71,6 +71,8 @@ function validatePlan(plan,tripDates){
   });
   const climateMonth=plan.climateMonth??null;
   if(climateMonth!==null&&(!Number.isInteger(climateMonth)||climateMonth<1||climateMonth>12))throw new Error('기후 안내 기준 월을 확인해 주세요.');
+  const climateSummary=plan.climateSummary??null;
+  if(climateSummary!==null&&(!object(climateSummary)||!Number.isInteger(climateSummary.month)||climateSummary.month<1||climateSummary.month>12||!Object.hasOwn(CLIMATE_CATEGORIES,climateSummary.category)))throw new Error('기후 요약 분류와 기준 월을 확인해 주세요.');
   const basis=plan.dateBasis??tripDates;
   if(!object(basis))throw new Error('가안 기준 날짜를 확인해 주세요.');
   const dateBasis={startDate:date(basis.startDate),endDate:date(basis.endDate)};
@@ -86,7 +88,7 @@ function validatePlan(plan,tripDates){
   const narrativeVersion=plan.narrativeVersion??1;
   if(![1,2].includes(narrativeVersion))throw new Error('여행 설명 버전을 확인해 주세요.');
   return {version:1,costs,stays,dateBasis,lodgingNotes:string(plan.lodgingNotes),itinerary:string(plan.itinerary),experiences:string(plan.experiences),transport:string(plan.transport),
-    climate:string(plan.climate),climateMonth,sourceTitle:string(plan.sourceTitle,500),sourceUrl:link(plan.sourceUrl??''),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
+    climate:string(plan.climate),climateMonth,climateSummary:climateSummary===null?null:{month:climateSummary.month,category:climateSummary.category},sourceTitle:string(plan.sourceTitle,500),sourceUrl:link(plan.sourceUrl??''),checkedOn:date(plan.checkedOn),budgetNotes:string(plan.budgetNotes),
     researchNotes:string(plan.researchNotes??''),comparisonNote:string(plan.comparisonNote??'',500),references:checkedReferences,
     narrativeVersion,quote:validateQuote(plan.quote),
     ...(plan.legacyText===undefined?{}:{legacyText:string(plan.legacyText)})};

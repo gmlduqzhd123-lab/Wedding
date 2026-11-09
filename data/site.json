@@ -109,6 +109,10 @@
             "country": "인도네시아",
             "stays": "[[\"누사두아 · MERUSAKA\",6,\"2027-06-06\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "dry"
         }
       }
     },
@@ -196,6 +200,10 @@
             "country": "베트남",
             "stays": "[[\"깜라인 바이자이 · Radisson Blu\",6,\"2027-06-06\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "sunny"
         }
       }
     },
@@ -291,6 +299,10 @@
             "country": "베트남",
             "stays": "[[\"미케 해변 · BlueSun\",7,\"2027-06-06\",\"2027-06-13\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "hot"
         }
       }
     },
@@ -386,6 +398,10 @@
             "country": "인도네시아",
             "stays": "[[\"승기기 · Qunci Villas\",5,\"2027-06-07\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "dry"
         }
       }
     },
@@ -481,6 +497,10 @@
             "country": "태국",
             "stays": "[[\"차웽 · Amari\",6,\"2027-06-06\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "variable"
         }
       }
     },
@@ -580,6 +600,10 @@
             "country": "말레이시아",
             "stays": "[[\"탄중아루 · Shangri-La\",6,\"2027-06-06\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "variable"
         }
       }
     },
@@ -675,6 +699,10 @@
             "country": "미국령 괌",
             "stays": "[[\"투몬 · Crowne Plaza\",7,\"2027-06-06\",\"2027-06-13\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "transition"
         }
       }
     },
@@ -770,6 +798,10 @@
             "country": "필리핀",
             "stays": "[[\"팡라오 · Bohol Beach Club\",6,\"2027-06-07\",\"2027-06-13\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "wet"
         }
       }
     },
@@ -857,6 +889,10 @@
             "country": "미국",
             "stays": "[[\"와이키키 · Marriott\",6,\"2027-06-06\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "summer"
         }
       }
     },
@@ -948,6 +984,10 @@
             "country": "몰디브",
             "stays": "[[\"말레 근교 · Grand Park Kodhipparu\",5,\"2027-06-07\",\"2027-06-12\"]]"
           }
+        },
+        "climateSummary": {
+          "month": 6,
+          "category": "wet"
         }
       }
     }
