@@ -1,8 +1,7 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-honeymoon-20';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=wedding-honeymoon-20';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-honeymoon-20';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-honeymoon-20';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-honeymoon-20';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-inv-clean-21';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=wedding-inv-clean-21';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-inv-clean-21';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-inv-clean-21';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -204,25 +203,17 @@ async function copyInvitationLink(){
     showDialog('청첩장 링크 복사',E('div',{},E('p',{},'아래 링크를 선택해 복사해 주세요. 기기 초안은 공유되지 않습니다.'),input));input.focus();input.select();
   }
 }
-function downloadInvitationCalendar(){
-  try{
-    downloadText(invitationCalendar(content.invitation),`wedding-${content.invitation.date}.ics`,'text/calendar;charset=utf-8');
-    toast('일정 파일을 내려받습니다. 캘린더 앱에서 가져와 주세요.');
-  }catch(error){toast(error.message,true);}
-}
 function renderInvitation() {
   const info=content.invitation,dday=weddingDday(info.date);
-  const hasContent=Object.values(info).some(Boolean),hasSchedule=Boolean(info.date&&info.time);
+  const hasContent=Object.values(info).some(Boolean);
+  const mapLink=externalLink('오시는 길 ↗',info.mapUrl,'button quiet');
   return [pageHeader('소중한 분들을 초대합니다.','우리의 마음과 예식 안내를 한 장에 담아요.',E('div',{class:'page-actions'},editButton('예식 정보 편집',()=>openEditor('invitation')),button('청첩장 링크 복사',copyInvitationLink,'button quiet')),'THE INVITATION'),
     hasContent?E('section',{class:'invitation'},E('p',{class:'eyebrow'},'WE ARE GETTING MARRIED'),E('div',{class:'invitation-title'},'With love, together.'),
       (info.partner1||info.partner2)?E('h2',{class:'couple-names'},info.partner1,info.partner1&&info.partner2?E('span',{},'&'):null,info.partner2):null,
       info.message?E('p',{class:'message'},info.message):null,
       E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
-      E('div',{class:'invitation-actions'},externalLink('오시는 길 ↗',info.mapUrl,'button quiet'),hasSchedule?externalLink('Google 캘린더에 추가',googleCalendarUrl(info),'button quiet'):null,
-        hasSchedule?button('일정 파일(.ics) 다운로드',downloadInvitationCalendar,'button quiet'):null),
-      hasSchedule?E('p',{class:'small muted calendar-note'},'Google 캘린더는 로그인 후 추가 버튼을 이용하세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 한국 시간 기준이며 종료 시각은 미정이니 등록 화면에서 확인해 주세요.'):null,
-      hasSchedule?E('p',{class:'small muted calendar-update-note'},'이 버튼과 일정 파일은 기존에 저장한 일정을 자동 수정하지 않습니다. 예식 일정이 바뀌었다면 캘린더 앱에서 기존 일정을 수정하거나 삭제한 뒤 새 일정을 추가해 중복 여부를 확인해 주세요.'):null):
+      mapLink?E('div',{class:'invitation-actions'},mapLink):null):
     empty('우리의 첫 초대장을 준비해요.','두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.','예식 정보 입력',()=>openEditor('invitation'))];
 }
 function sortedStories(){

@@ -1,4 +1,4 @@
-import { formatDate } from './content.js?v=wedding-honeymoon-20';
+import { formatDate } from './content.js?v=wedding-inv-clean-21';
 export const PUBLIC_URL='https://gmlduqzhd123-lab.github.io/Wedding/?view=guest';
 export function shareMetadata(content) {
   const info=content.invitation;
