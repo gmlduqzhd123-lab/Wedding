@@ -1,7 +1,7 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-inv-clean-21';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=wedding-inv-clean-21';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-inv-clean-21';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-inv-clean-21';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-couple-23';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences } from './preferences.js?v=wedding-couple-23';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-couple-23';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview} from './travel.js?v=wedding-couple-23';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -177,11 +177,16 @@ function image(src,alt,attrs={}) {
   node.addEventListener('error',()=>{node.hidden=true;node.parentElement?.appendChild(E('span',{class:'small muted'},'사진을 불러오지 못했습니다.'));},{once:true});
   return node;
 }
+function formatPartner(name,role){
+  if(!name)return '';
+  return name.startsWith(role)?name:`${role} ${name}`;
+}
 function renderHome() {
   const info=content.invitation;
   const names=[info.partner1,info.partner2].filter(Boolean).join(' & ');
+  const roleNames=[formatPartner(info.partner1,'신랑'),formatPartner(info.partner2,'신부')].filter(Boolean).join(' · ');
   const hero=E('section',{class:'hero'},
-    E('div',{class:'hero-copy'},E('p',{class:'eyebrow'},'OUR NEXT CHAPTER'),E('div',{class:'hero-line'}),
+    E('div',{class:'hero-copy'},E('p',{class:'eyebrow'},roleNames?`${roleNames} · OUR NEXT CHAPTER`:'OUR NEXT CHAPTER'),E('div',{class:'hero-line'}),
       E('h1',{},names?`${names},`:'함께 준비하는',E('br'),names?'우리의 다음 이야기':'우리의 다음 장'),
       E('p',{},'소중한 분들을 초대하는 날부터 둘만의 첫 여행까지. 함께 고른 것과 오래 간직할 순간을 이곳에 모아요.'),
       E('div',{class:'hero-actions'},linkButton(info.date||guestMode?'우리의 청첩장':'예식 정보 채우기','#/invitation'),linkButton('스튜디오 살펴보기','#/studios',true))),
@@ -209,7 +214,10 @@ function renderInvitation() {
   const mapLink=externalLink('오시는 길 ↗',info.mapUrl,'button quiet');
   return [pageHeader('소중한 분들을 초대합니다.','우리의 마음과 예식 안내를 한 장에 담아요.',E('div',{class:'page-actions'},editButton('예식 정보 편집',()=>openEditor('invitation')),button('청첩장 링크 복사',copyInvitationLink,'button quiet')),'THE INVITATION'),
     hasContent?E('section',{class:'invitation'},E('p',{class:'eyebrow'},'WE ARE GETTING MARRIED'),E('div',{class:'invitation-title'},'With love, together.'),
-      (info.partner1||info.partner2)?E('h2',{class:'couple-names'},info.partner1,info.partner1&&info.partner2?E('span',{},'&'):null,info.partner2):null,
+      (info.partner1||info.partner2)?E('h2',{class:'couple-names'},
+        info.partner1?[E('small',{class:'role-label'},'신랑 '),info.partner1.replace(/^신랑\s*/,'')]:null,
+        info.partner1&&info.partner2?E('span',{},'&'):null,
+        info.partner2?[E('small',{class:'role-label'},'신부 '),info.partner2.replace(/^신부\s*/,'')]:null):null,
       info.message?E('p',{class:'message'},info.message):null,
       E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
@@ -506,8 +514,7 @@ function travelDetails(item){
       E('p',{class:'small muted'},`${plan.sourceTitle||'출처 미입력'}${plan.checkedOn?' · 자료 확인일 '+plan.checkedOn:''}`),externalLink('기후 공식 안내 ↗',plan.sourceUrl||''),
       plan.sourceTitle&&!plan.sourceUrl?E('p',{class:'small muted'},'기후 출처 링크 미입력 · 직접 입력한 참고 링크와는 별도로 관리합니다.'):null),
     travelSection(item,'sources','계획 자료·확인 범위',E('p',{},plan.researchNotes||'저장된 여행 계획입니다. 제공 자료와 직접 수정한 항목의 적용 범위를 확인해 주세요. 실제 예약이나 견적으로 확인된 상태가 아닙니다.'),
-      (plan.references||[]).map(source=>externalLink(source.title+' ↗',source.url)),
-      externalLink('계획 자료와 적용 범위 ↗','https://github.com/gmlduqzhd123-lab/Wedding/blob/main/CONTENT_SOURCES.md')),
+      (plan.references||[]).map(source=>externalLink(source.title+' ↗',source.url))),
     item.body||item.url?travelSection(item,'memo','직접 작성한 메모·참고 링크',item.body?E('p',{class:'record-body'},item.body):null,youtubeThumbBanner(item.url,item.title),externalLink('직접 입력한 참고 링크 ↗',item.url),E('p',{class:'small muted'},'직접 입력한 참고 링크는 기후 공식 출처와 별개입니다. 자유 메모의 문장은 날짜·금액 변경 시 자동 수정되지 않습니다.')):null);
 }
 function renderAlbums() {

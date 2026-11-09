@@ -110,4 +110,5 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .cons-title{color:#6e4234}
 .pros-cons-list{margin:0;padding-left:16px;display:grid;gap:4px}
 .travel-card .trip-meta-dl{margin:12px 0;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.44);border:1px solid var(--line);grid-template-columns:76px minmax(0,1fr);gap:5px 10px;font-size:12.5px}
+.couple-names .role-label{font-size:14px;font-weight:500;color:var(--muted);margin-right:4px;vertical-align:middle}
 @media(max-width:680px){.budget-legend{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons{grid-template-columns:1fr}.travel-overview{padding:14px 16px}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}}

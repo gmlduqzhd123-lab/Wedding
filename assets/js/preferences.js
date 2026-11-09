@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=wedding-honeymoon-clean-22';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-couple-23';
 
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 export function validatePreferences(input) {

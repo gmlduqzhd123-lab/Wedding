@@ -20,7 +20,8 @@ test('ten public beach candidates satisfy the confirmed June dates and complete 
   }
   assert.deepEqual(parseContent(JSON.stringify(data)),data);
   assert.equal(data.invitation.date,'2027-06-05');assert.equal(data.invitation.time,'15:00');
-  for(const key of ['partner1','partner2','address','mapUrl','message'])assert.equal(data.invitation[key],'');
+  assert.equal(data.invitation.partner1,'김희엽');assert.equal(data.invitation.partner2,'유미혜');
+  for(const key of ['address','mapUrl','message'])assert.equal(data.invitation[key],'');
 });
 
 test('research provenance and safe source links survive round trips and reject malformed imports',()=>{
