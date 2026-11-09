@@ -632,7 +632,6 @@ function tripVideoLinks(item){
 function renderHoneymoon() {
   const visibleTrips=sortedTrips();
   return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
-    E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발·일반석·객실 1실 기준. 계획 금액은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 비교용 배분이며 확정 견적은 아닙니다. 각 후보의 상세에서 왕복 일정·현지 숙박 날짜·세금·이동비 포함 범위와 미확인 비용을 확인하세요. 여행 날짜는 한국 출발일과 한국 도착일 기준입니다. 예식 후 인천권 이동·필요 숙박 비용도 기타 배분 안에서 확보해야 합니다.'),
     tripSortControl(),travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
     content.honeymoon.length?(visibleTrips.length?E('section',{class:'travel-grid'},visibleTrips.map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),
       tripQuickSpecs(item),tripBudgetBar(item),
