@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=travel-quotes-15';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-glass-17';
 
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 export function validatePreferences(input) {
@@ -13,6 +13,7 @@ export function validatePreferences(input) {
     if (!id(key) || typeof value !== 'string' || value.length > 1000) throw new Error('개인 메모를 확인해 주세요.');
   }
   const result = { favorites: ids(input.favorites), notes: Object.fromEntries(Object.entries(notes)), tripFavorites: ids(input.tripFavorites), tripCompare: ids(input.tripCompare) };
+  if (input.tipFavorites !== undefined) result.tipFavorites = ids(input.tipFavorites);
   if (result.tripCompare.length > 2) throw new Error('여행 비교는 두 곳까지 선택해 주세요.');
   for (const key of ['left', 'right', 'tripSelected']) {
     if (input[key] !== undefined && input[key] !== '') {

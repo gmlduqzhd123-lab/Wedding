@@ -16,14 +16,14 @@ export function mergeChanges(base,local,remote,{preferLocal=false}={}) {
         .map(key=>[key,merge(before[key],next[key],current[key],path?`${path}.${key}`:key)]).filter(([,value])=>value!==undefined));
     }
     if([before,next,current].every(Array.isArray)){
-      if(['stories','albums','honeymoon'].includes(path)){
+      if(['stories','albums','honeymoon','tips'].includes(path)){
         const index=items=>Object.fromEntries(items.map(item=>[item.id,item]));
         const merged=merge(index(before),index(next),index(current),`${path}.records`);
         const reordered=!same(next.map(item=>item.id),before.map(item=>item.id))&&same(current.map(item=>item.id),before.map(item=>item.id));
         const ordered=reordered?[...next,...current]:[...current,...next];
         return [...new Set(ordered.map(item=>item.id))].filter(id=>merged[id]).map(id=>merged[id]);
       }
-      if(['favorites','tripFavorites'].includes(path)){
+      if(['favorites','tripFavorites','tipFavorites'].includes(path)){
         const removed=before.filter(id=>!next.includes(id)),added=next.filter(id=>!before.includes(id));
         return [...new Set([...current.filter(id=>!removed.includes(id)),...added])];
       }

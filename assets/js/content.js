@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=travel-quotes-15';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote} from './travel.js?v=wedding-glass-17';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -115,7 +115,14 @@ export function validateContent(input) {
       if (startDate && endDate && startDate > endDate) throw new Error('여행 종료일은 출발일 이후로 입력해 주세요.');
       const trip=upgradeLegacyTrip({ ...record(item), country:string(item.country,200), startDate,endDate,budget:item.budget,pros:string(item.pros),cons:string(item.cons),body:string(item.body),url:link(item.url),...(item.plan===undefined?{}:{plan:item.plan}) });
       return {...trip,...(trip.plan===undefined?{}:{plan:validatePlan(trip.plan,{startDate,endDate})})};
-    })
+    }),
+    tips:list(input.tips ?? [], item => ({
+      ...record(item),
+      category:string(item.category ?? '', 80).trim(),
+      channel:string(item.channel ?? '', 120).trim(),
+      body:string(item.body ?? ''),
+      url:link(item.url ?? '')
+    }))
   };
 }
 export function parseContent(raw) {

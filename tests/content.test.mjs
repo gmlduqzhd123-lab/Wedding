@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {parseContent,validateContent,validDate,safeUrl,formatDate,weddingDday} from '../assets/js/content.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
-test('content export/import round trip preserves all five menu data',()=>{
+test('content export/import round trip preserves all six menu data including 50 wedding tips',()=>{
+ assert.equal(original.tips.length,50);
+ assert.equal(new Set(original.tips.map(t=>t.url)).size,50);
  const content=structuredClone(original);
  content.invitation.partner1='우리';content.invitation.date='2027-04-03';content.invitation.time='14:30';
  content.stories=[{id:'memory-1',title:'처음 만난 날',date:'2026-11-04',body:'우리의 이야기',image:''}];
