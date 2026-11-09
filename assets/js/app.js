@@ -463,6 +463,19 @@ function travelOverview(){
       E('ol',{},ordered.map(item=>E('li',{},button(item.title,()=>{if(tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id)){tripFavoritesOnly=false;render();}const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
         E('strong',{},'2인 목표 '+won(item.budget)),E('p',{class:'small'},item.plan.comparisonNote))))));
 }
+function isYoutubeUrl(raw){
+  try{
+    const host=new URL(raw).hostname.toLocaleLowerCase();
+    return host==='youtu.be'||host==='youtube.com'||host.endsWith('.youtube.com');
+  }catch{return false;}
+}
+function tripVideoLinks(item){
+  const videos=(item.plan?.references||[]).filter(ref=>isYoutubeUrl(ref.url));
+  if(!videos.length)return null;
+  return E('div',{class:'trip-video-links','aria-label':`${item.title} 관련 유튜브 영상`},
+    E('p',{class:'small muted'},'참고 영상 (YouTube)'),
+    E('div',{class:'trip-video-list'},videos.map(ref=>externalLink('▶ '+ref.title.replace(/^유튜브\s*·\s*/,''),ref.url))));
+}
 function renderHoneymoon() {
   const visibleTrips=sortedTrips();
   return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
@@ -470,7 +483,7 @@ function renderHoneymoon() {
     tripSortControl(),travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
     content.honeymoon.length?(visibleTrips.length?E('section',{class:'travel-grid'},visibleTrips.map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
       E('dl',{},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'좋은 점'),E('dd',{},item.pros||'아직 기록이 없어요.'),E('dt',{},'고민할 점'),E('dd',{},item.cons||'아직 기록이 없어요.')),
-      travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):E('p',{class:'no-results'},'등록한 관심 여행지가 없습니다.')):
+      tripVideoLinks(item),travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):E('p',{class:'no-results'},'등록한 관심 여행지가 없습니다.')):
     empty('어디로 떠나고 싶나요?','아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.','여행 후보 남기기',()=>openEditor('honeymoon'))];
 }
 function contactNode(studio,compact=false) {
