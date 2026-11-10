@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=audit-fixes-27';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-polish-29';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];

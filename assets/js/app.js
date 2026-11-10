@@ -1,9 +1,9 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=preparation-28';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=preparation-28';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=preparation-28';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=preparation-28';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=preparation-28';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=preparation-28';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-polish-29';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=wedding-polish-29';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-polish-29';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-polish-29';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-polish-29';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=wedding-polish-29';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -243,18 +243,22 @@ function allChecklistStages(){
     [...items.map(([id,label])=>({id,label,custom:false})),...customs.filter(c=>c.stage===stage).map(c=>({id:c.id,label:c.title,custom:true}))]
   ]);
 }
-function openCustomChecklistEditor(){
+function openCustomChecklistEditor(existing=null){
   if(guestMode)return;
+  const isEdit=Boolean(existing&&existing.id);
   const form=E('form',{class:'editor-form'});
-  form.append(E('p',{class:'form-note'},'추가한 할 일은 이 기기의 개인 설정에만 저장되며 방문자용 청첩장에는 노출되지 않습니다.'));
+  form.append(E('p',{class:'form-note'},'추가·수정한 할 일은 이 기기의 개인 설정에만 저장되며 방문자용 청첩장에는 노출되지 않습니다.'));
   const stageSelect=E('select',{id:'custom-chk-stage'},CHECKLIST_STAGES.map(s=>E('option',{value:s},s)));
+  if(isEdit&&CHECKLIST_STAGES.includes(existing.stage))stageSelect.value=existing.stage;
   const titleInput=E('input',{type:'text',id:'custom-chk-title',maxlength:'160',required:true,placeholder:'예: 양가 혼주 메이크업 예약 확인'});
+  if(isEdit)titleInput.value=existing.title||'';
   const noteInput=E('input',{type:'text',id:'custom-chk-note',maxlength:'300',placeholder:'예: 12월 초 예약금 입금 예정 (선택)'});
+  if(isEdit)noteInput.value=prefs.checklistNotes?.[existing.id]||'';
   form.append(
     E('label',{class:'field',for:stageSelect.id},'준비 시기 단계',stageSelect),
     E('label',{class:'field',for:titleInput.id},'할 일 내용',titleInput),
     E('label',{class:'field',for:noteInput.id},'진행 메모 (선택)',noteInput));
-  const submit=E('button',{class:'button',type:'submit'},'할 일 추가');
+  const submit=E('button',{class:'button',type:'submit'},isEdit?'할 일 저장':'할 일 추가');
   form.append(E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),submit));
   let saving=false;
   form.addEventListener('submit',async event=>{
@@ -262,16 +266,17 @@ function openCustomChecklistEditor(){
     try{
       const title=titleInput.value.trim(),note=noteInput.value.trim(),stage=stageSelect.value;
       if(!title)throw new Error('할 일 내용을 입력해 주세요.');
-      const id='custom-'+crypto.randomUUID().slice(0,8);
-      const nextCustom=[...(prefs.customChecklist||[]),{id,stage,title}];
+      const id=isEdit?existing.id:'custom-'+crypto.randomUUID().slice(0,8);
+      const curList=[...(prefs.customChecklist||[])];
+      const nextCustom=isEdit?curList.map(c=>c.id===id?{id,stage,title}:c):[...curList,{id,stage,title}];
       const nextNotes={...(prefs.checklistNotes||{})};
-      if(note)nextNotes[id]=note;
+      if(note)nextNotes[id]=note;else delete nextNotes[id];
       const saved=await queuePreference(()=>savePrefs({...prefs,customChecklist:nextCustom,checklistNotes:nextNotes}));
-      if(saved){closeDialog();render();toast('우리만의 할 일을 체크리스트에 추가했습니다.');}
+      if(saved){closeDialog();render();toast(isEdit?'우리만의 할 일을 수정했습니다.':'우리만의 할 일을 체크리스트에 추가했습니다.');}
     }catch(error){toast(error.message,true);}finally{saving=false;submit.disabled=false;}
   });
   const initial=JSON.stringify([stageSelect.value,titleInput.value,noteInput.value]);
-  if(showDialog('우리만의 할 일 추가',form))editorState={isDirty:()=>saving||JSON.stringify([stageSelect.value,titleInput.value,noteInput.value])!==initial,isSaving:()=>saving};
+  if(showDialog(isEdit?'우리만의 할 일 수정':'우리만의 할 일 추가',form))editorState={isDirty:()=>saving||JSON.stringify([stageSelect.value,titleInput.value,noteInput.value])!==initial,isSaving:()=>saving};
 }
 function openChecklistNoteModal(id,label){
   if(guestMode)return;
@@ -371,14 +376,17 @@ function renderHomeChecklist(){
     if(saved&&currentRoute()==='home')render();
     return saved;
   });
-  const deleteCustom=id=>queuePreference(async()=>{
-    const nextCustom=(prefs.customChecklist||[]).filter(c=>c.id!==id);
-    const nextSet=(prefs.checklist||[]).filter(cid=>cid!==id);
-    const nextNotes={...(prefs.checklistNotes||{})};delete nextNotes[id];
-    const saved=await savePrefs({...prefs,customChecklist:nextCustom,checklist:nextSet,checklistNotes:nextNotes});
-    if(saved&&currentRoute()==='home'){render();toast('직접 추가한 할 일을 삭제했습니다.');}
-    return saved;
-  });
+  const deleteCustom=(id,label)=>{
+    if(!confirm(`‘${label}’ 할 일을 삭제할까요?`))return;
+    queuePreference(async()=>{
+      const nextCustom=(prefs.customChecklist||[]).filter(c=>c.id!==id);
+      const nextSet=(prefs.checklist||[]).filter(cid=>cid!==id);
+      const nextNotes={...(prefs.checklistNotes||{})};delete nextNotes[id];
+      const saved=await savePrefs({...prefs,customChecklist:nextCustom,checklist:nextSet,checklistNotes:nextNotes});
+      if(saved&&currentRoute()==='home'){render();toast('직접 추가한 할 일을 삭제했습니다.');}
+      return saved;
+    });
+  };
   const filterCheck=E('input',{type:'checkbox',id:'chk-incomplete-only'});
   filterCheck.checked=checklistIncompleteOnly;
   filterCheck.addEventListener('change',()=>{checklistIncompleteOnly=filterCheck.checked;render();$('#chk-incomplete-only')?.focus({preventScroll:true});});
@@ -392,7 +400,7 @@ function renderHomeChecklist(){
         E('div',{class:'checklist-summary-pill'},
           E('strong',{},`진행률 ${pct}%`),
           E('span',{class:'small muted'},` (${doneCount}/${allItems.length} 완료)`)),
-        button('+ 우리만의 할 일 추가',openCustomChecklistEditor,'button quiet'))),
+        button('+ 우리만의 할 일 추가',()=>openCustomChecklistEditor(),'button quiet'))),
     E('div',{class:'checklist-progress-track','aria-hidden':'true'},
       E('span',{class:'checklist-progress-fill',style:`width:${pct}%`})),
     E('div',{class:'checklist-controls'},
@@ -415,7 +423,8 @@ function renderHomeChecklist(){
               E('label',{for:input.id,class:'checklist-label'},input,E('span',{},label)),
               E('div',{class:'checklist-item-actions'},
                 button(note?'메모 수정':'메모',()=>openChecklistNoteModal(id,label),'text-button small checklist-note-btn'),
-                custom?button('삭제',()=>deleteCustom(id),'text-button small'):null)),
+                custom?button('수정',()=>openCustomChecklistEditor({id,stage,title:label}),'text-button small checklist-note-btn'):null,
+                custom?button('삭제',()=>deleteCustom(id,label),'text-button small'):null)),
             note?E('p',{class:'checklist-item-note small'},`📝 ${note}`):null);
         })):E('p',{class:'small muted'},'이 단계의 남은 할 일이 없습니다. 🎉'));
     })));
@@ -498,15 +507,8 @@ function renderInvitationContacts(rawContacts){
       E('span',{},line),
       button('복사',()=>copyVenueAddress(line,'안내 정보'),'button quiet small-copy-btn')))));
 }
-function downloadInvitationCalendar(){
-  try{
-    downloadText(invitationCalendar(content.invitation),`wedding-${content.invitation.date}.ics`,'text/calendar;charset=utf-8');
-    toast('일정 파일을 내려받습니다. 캘린더 앱에서 가져와 주세요.');
-  }catch(error){toast(error.message,true);}
-}
 function renderInvitation() {
   const info=content.invitation,dday=weddingDday(info.date);
-  let calendarUrl='';try{calendarUrl=googleCalendarUrl(info);}catch{}
   const hasContent=Object.values(info).some(Boolean);
   const mapLink=externalLink('오시는 길 (네이버 지도) ↗',info.mapUrl,'button quiet');
   const searchKeyword=(info.venue||info.address||'').replace(/\s+\d+층$/,'').trim();
@@ -522,9 +524,6 @@ function renderInvitation() {
       info.message?E('p',{class:'message'},info.message):null,
       E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
       renderInvitationCalendar(info.date,info.time),
-      calendarUrl?E('div',{class:'invitation-actions'},externalLink('Google 캘린더에 추가',calendarUrl,'button quiet'),button('일정 파일(.ics) 다운로드',downloadInvitationCalendar,'button quiet')):null,
-      calendarUrl?E('p',{class:'small muted calendar-note'},'한국 시간 기준의 시작 일정입니다. Google 캘린더는 로그인 후 추가해 주세요. 일정 파일은 PC 또는 .ics 지원 앱에서 가져올 수 있습니다. 종료 시각은 미정이므로 저장 화면에서 확인해 주세요.'):null,
-      calendarUrl?E('p',{class:'small muted calendar-update-note'},'기존에 저장한 일정은 자동 수정하지 않습니다. 예식 일정이 바뀌었다면 캘린더 앱에서 기존 일정을 수정하거나 삭제한 뒤 새 일정을 추가해 중복 여부를 확인해 주세요.'):null,
       E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
       actionButtons.length?E('div',{class:'invitation-actions'},...actionButtons):null,
       (info.transit||info.notice)?E('div',{class:'invitation-extra-guides'},
@@ -990,33 +989,36 @@ function allPackingCategories(){
     ...custom.filter(c=>c.category===cat).map(c=>[c.id,c.title,true])
   ]]);
 }
-function openCustomPackingEditor(){
+function openCustomPackingEditor(existing=null){
   if(guestMode)return;
+  const isEdit=Boolean(existing&&existing.id);
   const form=E('form',{class:'editor-form'});
   const catSelect=E('select',{id:'custom-pack-cat'},PACKING_CATEGORIES.map(c=>E('option',{value:c},c)));
+  if(isEdit&&PACKING_CATEGORIES.includes(existing.category))catSelect.value=existing.category;
   const titleInput=E('input',{type:'text',maxlength:'160',id:'custom-pack-title',required:'true',placeholder:'예: 다이슨 에어랩 (변압기 확인) / 커플 필름카메라'});
+  if(isEdit)titleInput.value=existing.title||'';
   form.append(
-    E('p',{class:'form-note'},'추가한 준비물은 이 기기의 개인 설정에만 저장됩니다.'),
+    E('p',{class:'form-note'},'추가·수정한 준비물은 이 기기의 개인 설정에만 저장됩니다.'),
     E('label',{class:'field',for:catSelect.id},'준비물 분류',catSelect),
     E('label',{class:'field',for:titleInput.id},'준비물 이름',titleInput),
-    E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},'준비물 추가'))
+    E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},isEdit?'준비물 저장':'준비물 추가'))
   );
   const submit=form.querySelector('[type="submit"]');let saving=false;
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(saving)return;
     const title=titleInput.value.trim();if(!title)return;
-    const list=[...(prefs.customPackingList||[])];
-    if(list.length>=80){toast('사용자 정의 준비물은 80개까지 추가할 수 있습니다.',true);return;}
-    const id='cpack-'+crypto.randomUUID().slice(0,8);
-    list.push({id,category:catSelect.value,title});
+    const curList=[...(prefs.customPackingList||[])];
+    if(!isEdit&&curList.length>=80){toast('사용자 정의 준비물은 80개까지 추가할 수 있습니다.',true);return;}
+    const id=isEdit?existing.id:'cpack-'+crypto.randomUUID().slice(0,8);
+    const list=isEdit?curList.map(c=>c.id===id?{id,category:catSelect.value,title}:c):[...curList,{id,category:catSelect.value,title}];
     saving=true;submit.disabled=true;
     try{
       const saved=await queuePreference(()=>savePrefs({...prefs,customPackingList:list}));
-      if(saved){packingExpanded=true;closeDialog();render();toast('신혼여행 준비물 항목을 추가했습니다.');}
+      if(saved){packingExpanded=true;closeDialog();render();toast(isEdit?'신혼여행 준비물 항목을 수정했습니다.':'신혼여행 준비물 항목을 추가했습니다.');}
     }catch(error){toast(storageMessage(error),true);}finally{saving=false;submit.disabled=false;}
   });
   const snapshot=()=>JSON.stringify([catSelect.value,titleInput.value]),initial=snapshot();
-  if(showDialog('신혼여행 우리만의 준비물 추가',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
+  if(showDialog(isEdit?'신혼여행 우리만의 준비물 수정':'신혼여행 우리만의 준비물 추가',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
 }
 function renderHoneymoonPackingList(){
   if(guestMode)return null;
@@ -1042,7 +1044,7 @@ function renderHoneymoonPackingList(){
       E('div',{class:'packing-toolbar'},
         E('p',{class:'small muted'},'출국 전 꼭 챙겨야 할 필수 서류·로밍·스냅 의상·상비약 체크리스트입니다. 체크 상태와 직접 추가한 준비물은 이 기기에 자동 저장됩니다.'),
         E('div',{class:'page-actions'},
-          button('+ 우리만의 준비물 추가',openCustomPackingEditor,'button quiet'),
+          button('+ 우리만의 준비물 추가',()=>openCustomPackingEditor(),'button quiet'),
           button('🖨️ 인쇄 / PDF 저장',()=>window.print(),'button quiet'),
           doneCount>0?button('짐 체크 초기화',()=>{
             if(!confirm('신혼여행 짐 싸기 체크 기록을 모두 초기화할까요?'))return;
@@ -1059,16 +1061,18 @@ function renderHoneymoonPackingList(){
           return E('li',{class:'checklist-item'+(box.checked?' done':'')},
             E('div',{class:'checklist-item-top'},
               E('label',{for:box.id},box,E('span',{},label)),
-              isCustom?button('삭제',()=>{
-                if(!confirm(`‘${label}’ 준비물을 삭제할까요?`))return;
-                queuePreference(async()=>{
-                  const nextList=(prefs.customPackingList||[]).filter(c=>c.id!==id);
-                  const nextChecked=(prefs.packingList||[]).filter(k=>k!==id);
-                  const saved=await savePrefs({...prefs,customPackingList:nextList,packingList:nextChecked});
-                  if(saved){render();toast('준비물을 삭제했습니다.');}
-                  return saved;
-                });
-              },'checklist-note-btn danger-text'):null));
+              isCustom?E('div',{class:'checklist-item-actions'},
+                button('수정',()=>openCustomPackingEditor({id,category:cat,title:label}),'checklist-note-btn'),
+                button('삭제',()=>{
+                  if(!confirm(`‘${label}’ 준비물을 삭제할까요?`))return;
+                  queuePreference(async()=>{
+                    const nextList=(prefs.customPackingList||[]).filter(c=>c.id!==id);
+                    const nextChecked=(prefs.packingList||[]).filter(k=>k!==id);
+                    const saved=await savePrefs({...prefs,customPackingList:nextList,packingList:nextChecked});
+                    if(saved){render();toast('준비물을 삭제했습니다.');}
+                    return saved;
+                  });
+                },'checklist-note-btn danger-text')):null));
         })))))));
   if(packingExpanded)details.open=true;
   details.addEventListener('toggle',()=>{packingExpanded=details.open;});
@@ -1180,7 +1184,8 @@ function compareCard(studio) {
       if(!saved)memo.value=prefs.notes?.[studio.id]||'';
       else{
         for(const other of document.querySelectorAll('.compare-card textarea'))if(other!==memo&&other.getAttribute('aria-label')===memo.getAttribute('aria-label'))other.value=value;
-        if(withStudioNoteOnly)redrawDirectory();
+        $('#selected-studio-region')?.replaceChildren(...[selectedStudioSummary()].filter(Boolean));
+        redrawDirectory();
       }
       return saved;
     });
@@ -1257,7 +1262,7 @@ function renderStudios() {
   const rows=[['사진의 장점','pros'],['취향에 따른 아쉬움','cons'],['잘 맞는 취향','fit'],['추가금·구성 표기','fee']];
   const fees=[['고유 · 베네치아 야외씬','11만 원'],['고유 · 야간','11만 원'],['클레+포에버마인 · 믹스 촬영','10만 원 추가'],['리썸 · 야간·야경','22만 원 추가'],['비마이 · 포토','20만 원 추가']];
   return [pageHeader('우리에게 맞는 사진을 찾아요.','사진 스타일부터 상담 연락처까지, 두 스튜디오를 나란히 비교해 보세요.',null,'PHOTO STUDIOS'),
-    selectedStudioSummary(),
+    guestMode?null:E('div',{id:'selected-studio-region'},selectedStudioSummary()),
     E('div',{class:'studio-intro'},E('span',{class:'badge'},'30개 비교 항목'),E('span',{class:'small muted'},'제공된 대표 샘플 기준 · 총비용과 실제 서비스는 별도 확인')),
     E('section',{id:'studio-comparison'},E('div',{class:'compare-selectors'},selector('left',first,'비교할 스튜디오 A'),selector('right',second,'비교할 스튜디오 B')),
       E('div',{class:'compare-grid'},compareCard(first),compareCard(second)),
@@ -1897,12 +1902,17 @@ function openEditor(type,item=null) {
       ['💍 결혼을 결심한 순간','평생을 함께하기로 결심한 순간','이 사람과 평생을 함께하고 싶다고 느꼈던 따뜻한 순간이나 프러포즈의 기억을 적어 보세요.'],
       ['🏠 우리의 다짐','부부로서 시작하는 우리의 다짐','2027년 6월 5일 예식을 앞두고, 앞으로 어떤 부부로 살아가고 싶은지 서로에게 남기는 다짐을 적어 보세요.']
     ];
+    const presetTitles=new Set(storyGuides.map(([,t])=>t));
+    const presetBodies=new Set(storyGuides.map(([,,g])=>g));
     form.appendChild(E('div',{class:'greeting-templates'},
       E('span',{class:'small muted'},'💡 이야기 주제 가이드 (클릭하면 제목과 작성 가이드가 채워집니다):'),
       E('div',{class:'greeting-template-buttons'},
         ...storyGuides.map(([chip,titleText,guideText])=>button(chip,()=>{
-          if(!fields.title.value.trim())fields.title.value=titleText;
-          if(!fields.body.value.trim())fields.body.value=guideText;
+          const curTitle=fields.title.value.trim(),curBody=fields.body.value.trim();
+          const hasCustom=(curTitle&&!presetTitles.has(curTitle))||(curBody&&!presetBodies.has(curBody));
+          if(hasCustom&&!confirm('현재 작성 중인 내용을 선택한 주제 가이드로 바꿀까요?'))return;
+          fields.title.value=titleText;
+          fields.body.value=guideText;
           fields.body.focus({preventScroll:true});
           toast(`‘${chip}’ 이야기 가이드를 채웠습니다. 우리만의 이야기로 바꿔 보세요.`);
         },'button quiet')))));
@@ -2044,8 +2054,8 @@ function openManager() {
     try{
       if(selected.size>MAX_IMPORT_BYTES)throw new Error('개인 백업은 8MB 이하로 선택해 주세요.');
       const next=parsePreferencesBackup(await selected.text());
-      if(!confirm('이 기기의 스튜디오 메모와 관심·비교·여행 선택을 백업 내용으로 바꿀까요?'))return;
-      if(await savePrefs(next)){closeDialog();render();toast('개인 메모와 선택을 복원했습니다.');}
+      if(!confirm('이 기기의 스튜디오·여행 선택과 개인 메모, 체크리스트, 통합 예산, 웨딩홀 시뮬레이터, 본식 식순, 신혼여행 준비물을 백업 내용으로 바꿀까요?'))return;
+      if(await savePrefs(next,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·식순 설정을 복원했습니다.');}
     }catch(error){toast(error.message,true);}finally{personal.value='';}
   });
 
