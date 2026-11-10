@@ -37,6 +37,8 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     packingList:['pack-passport','pack-cards','cpack-1'],
     customPackingList:[{id:'cpack-1',category:'📄 필수 서류·결제',title:'영문 가족관계증명서'}],
     checklistNotes:{'d180-hall':'순천아모르 1층 예약 확인'},
+    tripNotes:{bali:'풀빌라 2박 특전 확인'},
+    tipNotes:{'tip-01':'드레스 피팅 시 촬영용 체크'},
     customChecklist:[{id:'custom-1',stage:'D-60 ~ D-30',title:'청첩장 모임 식당 예약'}],
     budgetPlan:{venue:{planned:15000000,actual:14200000,note:'식대 포함'},sdm:{planned:3500000,actual:null}},
     venueSim:{mealPrice:55000,guestCount:250,minGuarantee:200,hallFee:2500000,deposit:1000000,note:'순천아모르웨딩컨벤션'},
@@ -44,12 +46,16 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
   });
   const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
   assert.deepEqual(parsePreferencesBackup(raw),prefs);
+  const pruned=pruneTripPreferences({...prefs,tripNotes:{bali:'유지',removed:'삭제'}},[{id:'bali'}]);
+  assert.deepEqual(pruned.tripNotes,{bali:'유지'});
   for(const bad of [
     {studioSelected:123},
     {checklist:['bad id!']},
     {packingList:['bad id!']},
     {customPackingList:[{id:'cpack-1',category:'없는 분류',title:'준비물'}]},
     {checklistNotes:{'bad id!':'메모'}},
+    {tripNotes:{'bad id!':'메모'}},
+    {tipNotes:{'tip-01':'x'.repeat(501)}},
     {customChecklist:[{id:'custom-1',stage:'없는 시기',title:'할 일'}]},
     {budgetPlan:[]},
     {budgetPlan:{unknown:{planned:100}}},

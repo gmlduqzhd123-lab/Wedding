@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=wedding-polish-29';
+import { MAX_IMPORT_BYTES } from './content.js?v=wedding-features-30';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -29,6 +29,24 @@ export function validatePreferences(input) {
       if (value.trim()) cNotes[key] = value.trim();
     }
     result.checklistNotes = cNotes;
+  }
+  if (input.tripNotes !== undefined) {
+    if (!input.tripNotes || typeof input.tripNotes !== 'object' || Array.isArray(input.tripNotes) || Object.keys(input.tripNotes).length > 200) throw new Error('여행 후보 개인 메모 형식을 확인해 주세요.');
+    const tNotes = {};
+    for (const [key, value] of Object.entries(input.tripNotes)) {
+      if (!id(key) || typeof value !== 'string' || value.length > 1000) throw new Error('여행 후보 개인 메모는 1,000자 이하로 입력해 주세요.');
+      if (value.trim()) tNotes[key] = value.trim();
+    }
+    result.tripNotes = tNotes;
+  }
+  if (input.tipNotes !== undefined) {
+    if (!input.tipNotes || typeof input.tipNotes !== 'object' || Array.isArray(input.tipNotes) || Object.keys(input.tipNotes).length > 200) throw new Error('꿀팁 개인 메모 형식을 확인해 주세요.');
+    const pNotes = {};
+    for (const [key, value] of Object.entries(input.tipNotes)) {
+      if (!id(key) || typeof value !== 'string' || value.length > 500) throw new Error('꿀팁 개인 메모는 500자 이하로 입력해 주세요.');
+      if (value.trim()) pNotes[key] = value.trim();
+    }
+    result.tipNotes = pNotes;
   }
   if (input.customChecklist !== undefined) {
     if (!Array.isArray(input.customChecklist) || input.customChecklist.length > 50) throw new Error('직접 추가한 할 일은 50개까지 보관할 수 있습니다.');
@@ -110,7 +128,9 @@ export function parsePreferencesBackup(raw) {
 }
 export function pruneTripPreferences(input,trips){
   const valid=validatePreferences(input),ids=new Set(trips.map(trip=>trip.id));
-  return validatePreferences({...valid,tripCompare:valid.tripCompare.filter(id=>ids.has(id)),tripFavorites:valid.tripFavorites.filter(id=>ids.has(id)),tripSelected:ids.has(valid.tripSelected)?valid.tripSelected:''});
+  const next={...valid,tripCompare:valid.tripCompare.filter(id=>ids.has(id)),tripFavorites:valid.tripFavorites.filter(id=>ids.has(id)),tripSelected:ids.has(valid.tripSelected)?valid.tripSelected:''};
+  if(valid.tripNotes!==undefined)next.tripNotes=Object.fromEntries(Object.entries(valid.tripNotes).filter(([k])=>ids.has(k)));
+  return validatePreferences(next);
 }
 // Persist before committing UI state. Callers keep their current state on failure.
 export function persistPreferences(storage, key, next) {
