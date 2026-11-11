@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {venueEstimate,studioFeeInfo} from '../assets/js/planning.js';
+import {venueEstimate,studioFeeInfo,sdmEstimate,shootDeadlineSummary} from '../assets/js/planning.js';
 import {climateBadgeInfo} from '../assets/js/travel.js';
 import {validateContent,parseContent} from '../assets/js/content.js';
 const raw=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
@@ -40,4 +40,13 @@ test('unconfirmed studio fees are never described as no additional charge',async
  const unknown=studios.filter(s=>studioFeeInfo(s).unknown);assert.equal(unknown.length,19);
  for(const s of unknown){assert.equal(studioFeeInfo(s).label,'💡 추가금 미확인');assert(!studioFeeInfo(s).label.includes('없음'));}
  const known=studios.find(s=>s.fee.includes('11만 원'));assert(studioFeeInfo(known).label.includes('11만 원'));assert.equal(studioFeeInfo(known).unknown,false);
+});
+test('sdmEstimate and shootDeadlineSummary preserve missing fields and compute exact LACMA deadlines',()=>{
+ assert.equal(sdmEstimate().subtotal,null);assert.equal(sdmEstimate().total,null);
+ const partial=sdmEstimate({helperFee:250000,roadScene:true});
+ assert.equal(partial.subtotal,420000);assert.equal(partial.total,null);assert.equal(partial.complete,false);
+ const full=sdmEstimate({packageFee:2800000,helperFee:250000,extraFee:330000,roadScene:true,nightShoot:false,deposit:500000});
+ assert.equal(full.complete,true);assert.equal(full.total,3550000);assert.equal(full.balance,3050000);
+ const dl=shootDeadlineSummary('2027-02-03',new Date('2026-11-11T00:00:00Z'));
+ assert.equal(dl.daysLeft,84);assert.equal(dl.nightDeadline,'2027-01-27');assert.equal(dl.preHolidayDate,'2027-01-31');assert.equal(dl.penaltyIndex,0);
 });

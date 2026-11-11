@@ -1,4 +1,4 @@
-import { formatDate } from './content.js?v=wedding-features-32';
+import { formatDate } from './content.js?v=wedding-features-33';
 export const PUBLIC_URL='https://gmlduqzhd123-lab.github.io/Wedding/?view=guest';
 export function shareMetadata(content) {
   const info=content.invitation;

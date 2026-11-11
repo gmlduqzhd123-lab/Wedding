@@ -35,6 +35,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     studioSelected:'s05',
     checklist:['d180-hall','d120-dress','custom-1'],
     packingList:['pack-passport','pack-cards','cpack-1'],
+    shootChecklist:['shoot-0-0','shoot-1-2'],
     customPackingList:[{id:'cpack-1',category:'📄 필수 서류·결제',title:'영문 가족관계증명서'}],
     checklistNotes:{'d180-hall':'순천아모르 1층 예약 확인'},
     tripNotes:{bali:'풀빌라 2박 특전 확인'},
@@ -43,6 +44,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     vendorSchedules:[{id:'vsched-1',category:'📸 스튜디오',name:'라크마 스튜디오 웨딩촬영 (낮 12:00)',date:'2027-02-03',done:false,note:'062-714-1970 정오 자연광 촬영'}],
     budgetPlan:{venue:{planned:15000000,actual:14200000,note:'식대 포함'},sdm:{planned:3500000,actual:null}},
     venueSim:{mealPrice:55000,guestCount:250,minGuarantee:200,hallFee:2500000,deposit:1000000,note:'순천아모르웨딩컨벤션'},
+    sdmSim:{packageFee:2800000,helperFee:250000,extraFee:330000,deposit:500000,roadScene:true,nightShoot:false,note:'라크마 2/3 촬영'},
     ceremonyPlan:{style:'noOfficiant',mc:'친구 김OO',song:'축가 미정',speech:'양가 아버님 덕담',note:'입장곡 체크'}
   });
   const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
@@ -53,6 +55,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     {studioSelected:123},
     {checklist:['bad id!']},
     {packingList:['bad id!']},
+    {shootChecklist:['bad id!']},
     {customPackingList:[{id:'cpack-1',category:'없는 분류',title:'준비물'}]},
     {checklistNotes:{'bad id!':'메모'}},
     {tripNotes:{'bad id!':'메모'}},
@@ -67,6 +70,8 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     {budgetPlan:{venue:{planned:100,note:'x'.repeat(301)}}},
     {venueSim:{mealPrice:-100}},
     {venueSim:{guestCount:20000}},
+    {sdmSim:{packageFee:-100}},
+    {sdmSim:{roadScene:'yes'}},
     {ceremonyPlan:{style:'invalid'}}
   ]){
     assert.throws(()=>validatePreferences(bad));

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {invitationCalendar,googleCalendarUrl} from '../assets/js/calendar.js';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from '../assets/js/calendar.js';
 const info=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8')).invitation;
 const now=new Date('2026-11-04T00:00:00Z');
 const unfold=raw=>raw.replace(/\r\n[ \t]/g,'');
@@ -38,4 +38,20 @@ test('Google template encodes the same confirmed start and location without inve
   assert.equal(encoded.searchParams.get('text'),'가&나 결혼식');assert.equal(encoded.searchParams.get('location'),custom.venue);assert.equal(encoded.searchParams.get('dates'),'20270604T153000Z/20270604T153000Z');
   assert(!new URL(googleCalendarUrl({...info,venue:'',address:''})).searchParams.has('location'));
   assert.throws(()=>googleCalendarUrl({...info,time:''}),/날짜와 시간/);
+});
+
+test('schedule calendar and Google URL support both timed studio shoots and date-only vendor schedules',()=>{
+  const shoot={uid:'studio-lachma',summary:'라크마 스튜디오 웨딩촬영',date:'2027-02-03',time:'12:00',location:'광주광역시 남구 중앙로 117',description:'루나메이크업(천변좌로 432 1층) 경유'};
+  const shootIcs=unfold(scheduleCalendar(shoot,now));
+  assert.match(shootIcs,/DTSTART:20270203T030000Z\r\n/);
+  assert.match(shootIcs,/SUMMARY:라크마 스튜디오 웨딩촬영\r\n/);
+  assert.match(shootIcs,/LOCATION:광주광역시 남구 중앙로 117\r\n/);
+  const shootUrl=new URL(scheduleGoogleCalendarUrl(shoot));
+  assert.equal(shootUrl.searchParams.get('dates'),'20270203T030000Z/20270203T030000Z');
+  const vendor={uid:'vsched-1',summary:'드레스 가봉',date:'2027-03-15',description:'가봉 체크'};
+  const vendorIcs=unfold(scheduleCalendar(vendor,now));
+  assert.match(vendorIcs,/DTSTART;VALUE=DATE:20270315\r\n/);
+  const vendorUrl=new URL(scheduleGoogleCalendarUrl(vendor));
+  assert.equal(vendorUrl.searchParams.get('dates'),'20270315/20270316');
+  assert.throws(()=>scheduleCalendar({summary:'',date:'2027-02-03'}),/날짜와 제목/);
 });

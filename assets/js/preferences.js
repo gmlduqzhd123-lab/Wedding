@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-32';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-33';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -22,6 +22,7 @@ export function validatePreferences(input) {
   if (input.tipFavorites !== undefined) result.tipFavorites = ids(input.tipFavorites);
   if (input.checklist !== undefined) result.checklist = ids(input.checklist);
   if (input.packingList !== undefined) result.packingList = ids(input.packingList);
+  if (input.shootChecklist !== undefined) result.shootChecklist = ids(input.shootChecklist);
   if (input.checklistNotes !== undefined) {
     if (!input.checklistNotes || typeof input.checklistNotes !== 'object' || Array.isArray(input.checklistNotes) || Object.keys(input.checklistNotes).length > 200) throw new Error('체크리스트 메모 형식을 확인해 주세요.');
     const cNotes = {};
@@ -113,6 +114,26 @@ export function validatePreferences(input) {
       minGuarantee: input.venueSim.minGuarantee ?? null,
       hallFee: input.venueSim.hallFee ?? null,
       deposit: input.venueSim.deposit ?? null,
+      ...(note.trim() ? { note: note.trim() } : {})
+    };
+  }
+  if (input.sdmSim !== undefined) {
+    if (!input.sdmSim || typeof input.sdmSim !== 'object' || Array.isArray(input.sdmSim)) throw new Error('스드메 시뮬레이터 형식을 확인해 주세요.');
+    if (!validMoney(input.sdmSim.packageFee) || !validMoney(input.sdmSim.helperFee) || !validMoney(input.sdmSim.extraFee) || !validMoney(input.sdmSim.deposit)) {
+      throw new Error('스드메 시뮬레이터 금액을 0원 이상의 정수로 입력해 주세요.');
+    }
+    if ((input.sdmSim.roadScene !== undefined && typeof input.sdmSim.roadScene !== 'boolean') || (input.sdmSim.nightShoot !== undefined && typeof input.sdmSim.nightShoot !== 'boolean')) {
+      throw new Error('스드메 촬영 옵션 선택 형식을 확인해 주세요.');
+    }
+    const note = input.sdmSim.note ?? '';
+    if (typeof note !== 'string' || note.length > 300) throw new Error('스드메 메모는 300자 이하로 입력해 주세요.');
+    result.sdmSim = {
+      packageFee: input.sdmSim.packageFee ?? null,
+      helperFee: input.sdmSim.helperFee ?? null,
+      extraFee: input.sdmSim.extraFee ?? null,
+      deposit: input.sdmSim.deposit ?? null,
+      roadScene: Boolean(input.sdmSim.roadScene),
+      nightShoot: Boolean(input.sdmSim.nightShoot),
       ...(note.trim() ? { note: note.trim() } : {})
     };
   }
