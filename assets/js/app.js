@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-33';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-33';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-33';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-33';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-33';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-33';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-33';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-34';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-34';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-34';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-34';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-34';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-34';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-34';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -1087,11 +1087,11 @@ function travelOverview(){
   return E('section',{class:'travel-overview','aria-labelledby':'travel-overview-title'},
     E('div',{class:'overview-head'},
       E('div',{},
-        E('h2',{id:'travel-overview-title'},'후보 한눈에 보기'),
-        E('p',{class:'small muted'},'추천순은 조사 당시 6월 기후·해변 휴식·이동 부담·계획 예산을 고려한 순서입니다.')),
+        E('h2',{id:'travel-overview-title'},'인천 직항 후보 한눈에 보기'),
+        E('p',{class:'small muted'},'추천순은 조사 당시 6월 기후·해변 휴식·인천 직항 이동성·계획 예산을 고려한 순서입니다.')),
       E('div',{class:'overview-stats'},
         E('span',{class:'spec-chip'},`총 ${ordered.length}곳`),
-        E('span',{class:'spec-chip direct'},`✈️ 직항 ${directCount}곳 · 경유 ${ordered.length-directCount}곳`),
+        E('span',{class:'spec-chip direct'},directCount===ordered.length?`✈️ 전 노선 인천 직항 (${directCount}곳)`:`✈️ 직항 ${directCount}곳 · 경유 ${ordered.length-directCount}곳`),
         budgets.length?E('span',{class:'spec-chip highlight'},`💰 2인 계획예산 ${minBudget}만~${maxBudget}만 원`):null)),
     E('details',{class:'overview-disclosure',open:overviewExpanded,ontoggle:event=>{if(event.currentTarget.isConnected)overviewExpanded=event.currentTarget.open;}},E('summary',{},`후보 요약 ${ordered.length}곳 비교 보드 펼치기·접기`),
       E('ol',{class:'overview-board'},ordered.map(item=>{
@@ -2916,7 +2916,7 @@ window.addEventListener('storage',event=>{
   if(dialog.open||document.activeElement?.matches('textarea')){
     toast('다른 탭의 저장 내용이 변경되었습니다. 현재 입력은 유지하며 저장할 때 변경 내용을 확인합니다.');return;
   }
-  try{syncDraftFromStorage();prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));render();toast('다른 탭의 저장 내용을 반영했습니다.');}
+  try{syncDraftFromStorage();prefs=pruneTripPreferences(validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}')),content.honeymoon);render();toast('다른 탭의 저장 내용을 반영했습니다.');}
   catch(error){toast('다른 탭의 내용을 읽지 못했습니다. 기존 화면을 유지합니다. '+error.message,true);}
 });
 
@@ -2930,7 +2930,7 @@ async function init() {
     let notice='';
     const saved=readStorage(DRAFT_KEY);
     if(saved&&!guestMode){try{content=parseContent(saved);draftRevision=JSON.parse(saved).baseRevision??null;isDraft=true;}catch{notice='저장된 초안을 읽지 못해 공개본을 표시합니다. 기존 초안은 지우지 않았습니다.';}}
-    try{prefs=validatePreferences(guestMode?{}:JSON.parse(readStorage(PREF_KEY)||'{}'));}catch{prefs=validatePreferences({});notice='개인 설정을 읽지 못했습니다. 기존 저장 데이터는 지우지 않았습니다.';}
+    try{prefs=pruneTripPreferences(validatePreferences(guestMode?{}:JSON.parse(readStorage(PREF_KEY)||'{}')),content.honeymoon);}catch{prefs=validatePreferences({});notice='개인 설정을 읽지 못했습니다. 기존 저장 데이터는 지우지 않았습니다.';}
     $('#manage-content').hidden=guestMode;
     syncNavVisibility();
     if(guestMode)document.querySelector('.header-inner').appendChild(linkButton('일반 보기','./#/home',true));

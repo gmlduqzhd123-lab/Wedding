@@ -5,15 +5,16 @@ import {validateContent,parseContent} from '../assets/js/content.js';
 import {budgetSummary,stayReview} from '../assets/js/travel.js';
 const raw=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 
-test('ten public beach candidates satisfy the confirmed June dates and complete budget allocations',()=>{
+test('five Incheon direct-flight beach candidates satisfy the confirmed June dates and complete budget allocations',()=>{
   const data=validateContent(raw);
-  assert.equal(data.honeymoon.length,10);assert.equal(new Set(data.honeymoon.map(t=>t.id)).size,10);
-  assert.deepEqual(data.honeymoon.slice(0,3).map(t=>t.id),['bali','nhatrang','danang']);
+  assert.equal(data.honeymoon.length,5);assert.equal(new Set(data.honeymoon.map(t=>t.id)).size,5);
+  assert.deepEqual(data.honeymoon.map(t=>t.id),['bali','nhatrang','danang','guam','hawaii']);
   for(const trip of data.honeymoon){
     assert.equal(trip.startDate,'2027-06-06');assert.equal(trip.endDate,'2027-06-13');
+    assert.match(trip.plan.transport,/직항/);assert.doesNotMatch(trip.plan.transport.split(/\r?\n/)[0],/경유/);
     assert(trip.budget>0&&trip.budget<=10000000);assert.equal(budgetSummary(trip).unallocated,0);assert(trip.plan.costs.reserve>0);
     assert.equal(trip.plan.climateMonth,6);assert.equal(trip.plan.checkedOn,'2026-11-08');assert.equal(stayReview(trip).warnings.length,0);
-    assert.equal(stayReview(trip).nights,['guam','danang'].includes(trip.id)?7:['lombok','maldives'].includes(trip.id)?5:6);
+    assert.equal(stayReview(trip).nights,['guam','danang'].includes(trip.id)?7:6);
     assert.match(trip.plan.researchNotes,/최종 요금은 확인되지/);assert(trip.plan.comparisonNote);assert.match(trip.plan.sourceUrl,/^https:\/\//);
     for(const reference of trip.plan.references){assert(reference.title);assert.match(reference.url,/^https:\/\//);}
     assert(![trip.startDate,trip.endDate,...trip.plan.stays.flatMap(s=>[s.checkIn,s.checkOut])].some(date=>date.startsWith('2027-05-')));

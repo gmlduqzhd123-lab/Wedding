@@ -9,16 +9,12 @@ const checked={
  bali:[2603400,1584721,'07:55','06-06','06-12'],
  nhatrang:[1610600,1435786,'07:25','06-06','06-12'],
  danang:[1159000,830097,'22:30','06-06','06-13'],
- lombok:[2508800,913202,'12:40','06-07','06-12'],
- samui:[2153000,1165266,'06:35','06-06','06-12'],
- kotakinabalu:[1173800,1494567,'13:55','06-06','06-12'],
  guam:[1450000,1658027+182383,'21:00','06-06','06-13'],
- bohol:[1407400,1328178+292199,'19:15','06-07','06-13'],
- hawaii:[2671800,2206721+983196,'17:45','06-06','06-12'],
- maldives:[3089400,2223007+800861,'07:45','06-07','06-12']
+ hawaii:[2671800,2206721+983196,'17:45','06-06','06-12']
 };
 test('published research matches date-specific quotes, local hotel nights and June 13 Korean arrivals',()=>{
  const data=validateContent(source);
+ assert.deepEqual(data.honeymoon.map(t=>t.id),Object.keys(checked));
  for(const trip of data.honeymoon){
   const [airfare,lodging,arrival,cin,cout]=checked[trip.id],p=trip.plan,q=p.quote;
   assert.equal(q.costs.airfare,airfare,trip.id);assert.equal(q.costs.lodging,lodging,trip.id);
@@ -44,8 +40,6 @@ test('unknown costs and taxes remain incomplete instead of being silently zeroed
   assert.match(trip.plan.budgetNotes,/기타 여행비.*안의 일부/);assert.match(trip.plan.transport,/실시간 환율.*아닙니다/);
  }
  const p=id=>source.honeymoon.find(t=>t.id===id).plan;
- assert.match(p('maldives').quote.flightSource,/위탁.*미확인/);
- assert.match(p('maldives').budgetNotes,/중복 지출하지 않습니다/);
- assert.match(p('kotakinabalu').quote.lodgingSource,/세금 총액 미확인/);
  assert.match(p('guam').budgetNotes,/182,383원|조회 소계/);
+ assert.match(p('hawaii').transport,/983,196원|리조트피/);
 });

@@ -7,11 +7,13 @@ import {validateContent,parseContent} from '../assets/js/content.js';
 const raw=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 test('climate badges and dry filters use reviewed month categories rather than negated or unrelated season words',()=>{
  const trips=validateContent(raw).honeymoon;
- assert.deepEqual(trips.filter(t=>climateBadgeInfo(t).dry).map(t=>t.id),['bali','nhatrang','lombok']);
+ assert.deepEqual(trips.filter(t=>climateBadgeInfo(t).dry).map(t=>t.id),['bali','nhatrang']);
  const find=id=>climateBadgeInfo(trips.find(t=>t.id===id));
  assert.match(find('nhatrang').label,/덥고 맑은/);assert.match(find('guam').label,/전환기/);
- for(const id of ['samui','kotakinabalu'])assert.match(find(id).label,/산발적 비/);
- const t=structuredClone(trips[0]);t.plan.climate='우기라는 말과 건기라는 말이 있어도 분류를 추측하지 않음';t.plan.climateSummary=null;
+ assert.match(find('danang').label,/더위 유의/);assert.match(find('hawaii').label,/여름철/);
+ const t=structuredClone(trips[0]);
+ t.plan.climateSummary={month:6,category:'variable'};assert.match(climateBadgeInfo(t).label,/산발적 비/);
+ t.plan.climate='우기라는 말과 건기라는 말이 있어도 분류를 추측하지 않음';t.plan.climateSummary=null;
  assert.equal(climateBadgeInfo(t).dry,false);assert.match(climateBadgeInfo(t).label,/미분류/);
  t.plan.climateSummary={month:6,category:'dry'};t.startDate='2027-07-06';assert.equal(climateBadgeInfo(t).dry,false);assert.match(climateBadgeInfo(t).label,/재확인/);
  t.startDate='2027-06-06';t.plan.climateMonth=7;assert.equal(climateBadgeInfo(t).dry,false);
