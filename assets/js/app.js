@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-34';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-34';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-34';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-34';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-34';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-34';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-34';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-35';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-35';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-35';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-35';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-35';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-35';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-35';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -492,23 +492,70 @@ function renderHomeChecklist(){
         })):E('p',{class:'small muted'},'이 단계의 남은 할 일이 없습니다. 🎉'));
     })));
 }
+function renderJourneyRibbon(info,dday){
+  if(guestMode)return null;
+  const selectedStudio=studios.find(s=>s.id===currentSelectedStudioId());
+  const shootSched=selectedStudio?.deepGuide?.schedule;
+  const selectedTrip=content.honeymoon.find(t=>t.id===prefs.tripSelected);
+  const trips=content.honeymoon||[];
+  const firstTrip=trips[0];
+  const uniformTripDates=trips.length>0&&firstTrip?.startDate&&firstTrip?.endDate&&trips.every(t=>t.startDate===firstTrip.startDate&&t.endDate===firstTrip.endDate);
+  const allDirect=trips.length>0&&trips.every(t=>tripFlightBadge(t).direct);
+  const step1Date=shootSched?.date?shootSched.date.replaceAll('-','.'):'스튜디오 준비';
+  const step1Title=selectedStudio?`${selectedStudio.name} 웨딩촬영`:(studiosStatus==='ready'?`스튜디오 ${studios.length}곳 비교`:'스튜디오 자료 준비 중');
+  const step1Sub=shootSched?`${shootSched.weekday||''} ${shootSched.time||''}${shootSched.date?` · ${weddingDday(shootSched.date)}`:''}`.trim():(selectedStudio?'선택한 스튜디오 안내·메모 확인':'마음에 드는 사진 무드 고르기');
+  const step2Date=info.date?info.date.replaceAll('-','.'):'예식 일정';
+  const step2Title=info.date?'본식 예식일':'예식 정보 준비 중';
+  const step2Sub=[info.venue,info.time,dday].filter(Boolean).join(' · ')||'예식 날짜와 장소를 입력해 주세요';
+  const step3Date=selectedTrip?.startDate?`${selectedTrip.startDate.replaceAll('-','.')}${selectedTrip.endDate?`~${selectedTrip.endDate.slice(5).replaceAll('-','.')}`:''}`:(uniformTripDates?`${firstTrip.startDate.replaceAll('-','.')}~${firstTrip.endDate.slice(5).replaceAll('-','.')}`:'허니문 준비');
+  const step3Title=selectedTrip?selectedTrip.title:(trips.length?(allDirect?`인천 직항 허니문 ${trips.length}곳`:`신혼여행 후보 ${trips.length}곳`):'첫 여행 후보 남기기');
+  const step3Sub=selectedTrip?`2인 계획예산 ${won(selectedTrip.budget)} · 최종 선택`:(trips.length?(allDirect?'전 노선 인천 직항 · 휴양 후보 비교 중':'일정·예산·기후 나란히 비교하기'):'가고 싶은 여행지부터 모아 보기');
+  return E('section',{class:'journey-ribbon','aria-label':'우리의 3단계 웨딩 여정 타임라인'},
+    E('p',{class:'journey-ribbon-head'},'✨ 우리의 3단계 웨딩 여정 타임라인'),
+    E('div',{class:'journey-ribbon-grid'},
+      E('a',{class:'journey-step is-studio',href:'#/studios'},
+        E('span',{class:'journey-step-tag'},`STEP 1 · ${step1Date}`),
+        E('strong',{class:'journey-step-title'},step1Title),
+        E('span',{class:'journey-step-sub'},step1Sub)),
+      E('a',{class:'journey-step is-ceremony',href:'#/invitation'},
+        E('span',{class:'journey-step-tag'},`STEP 2 · ${step2Date}`),
+        E('strong',{class:'journey-step-title'},step2Title),
+        E('span',{class:'journey-step-sub'},step2Sub)),
+      E('a',{class:'journey-step is-honeymoon',href:'#/honeymoon'},
+        E('span',{class:'journey-step-tag'},`STEP 3 · ${step3Date}`),
+        E('strong',{class:'journey-step-title'},step3Title),
+        E('span',{class:'journey-step-sub'},step3Sub))));
+}
 function renderHome() {
   const info=content.invitation;
   const names=[info.partner1,info.partner2].filter(Boolean).join(' & ');
+  const p1Clean=info.partner1?info.partner1.replace(/^신랑\s*/,''):'';
+  const p2Clean=info.partner2?info.partner2.replace(/^신부\s*/,''):'';
   const roleNames=[formatPartner(info.partner1,'신랑'),formatPartner(info.partner2,'신부')].filter(Boolean).join(' · ');
-  const hero=E('section',{class:'hero'},
-    E('div',{class:'hero-copy'},E('p',{class:'eyebrow'},roleNames?`${roleNames} · OUR NEXT CHAPTER`:'OUR NEXT CHAPTER'),E('div',{class:'hero-line'}),
-      E('h1',{},names?`${names},`:'함께 준비하는',E('br'),names?'우리의 다음 이야기':'우리의 다음 장'),
-      E('p',{},'소중한 분들을 초대하는 날부터 둘만의 첫 여행까지. 함께 고른 것과 오래 간직할 순간을 이곳에 모아요.'),
-      E('div',{class:'hero-actions'},linkButton(info.date||guestMode?'우리의 청첩장':'예식 정보 채우기','#/invitation'),linkButton('스튜디오 살펴보기','#/studios',true))),
-    E('div',{class:'hero-art','aria-hidden':'true'},E('div',{class:'art-arch'},E('span',{},'Our',E('br'),'story.')),E('div',{class:'art-note'},'Together,',E('br'),'one page at a time.')));
   const dday=weddingDday(info.date);
+  const datePillText=info.date?`${formatDate(info.date)}${info.time?` · ${info.time}`:''}`:(roleNames||'OUR WEDDING DIARY');
+  const archMeta=[dday,info.venue?info.venue.replace(/\s+\d+층$/,''):''].filter(Boolean).join(' · ')||(info.date?formatDate(info.date):'함께 써 내려가는 기록');
+  const hero=E('section',{class:'hero'},
+    E('div',{class:'hero-copy'},
+      E('div',{class:'hero-badges'},
+        E('span',{class:'hero-date-pill'},datePillText),
+        info.date&&roleNames?E('span',{class:'hero-role-caption'},roleNames):null),
+      E('h1',{},names?`${names},`:'함께 준비하는',E('br'),names?'따뜻한 계절을 닮은 우리의 시작':'우리의 다음 장'),
+      E('p',{},'소중한 분들을 초대하는 날부터 둘만의 첫 여행까지. 함께 고른 것과 오래 간직할 순간을 따뜻한 한지 일기장에 모아요.'),
+      E('div',{class:'hero-actions'},linkButton(info.date||guestMode?'모바일 청첩장 보기':'예식 정보 채우기','#/invitation'),linkButton(guestMode?'우리의 일대기 보기':'스튜디오 · 촬영 가이드',guestMode?'#/story':'#/studios',true))),
+    E('div',{class:'hero-art','aria-hidden':'true'},
+      E('div',{class:'art-arch promise-arch'},
+        E('span',{class:'arch-eyebrow'},'Our Promise'),
+        p1Clean&&p2Clean?E('strong',{class:'arch-couple'},p1Clean,E('em',{class:'arch-heart'},'♥'),p2Clean):E('strong',{class:'arch-couple'},names||'Our Story'),
+        E('span',{class:'arch-divider'}),
+        E('span',{class:'arch-meta'},archMeta)),
+      E('div',{class:'art-note'},'With love,',E('br'),'one page at a time.')));
   const overview=E('div',{class:'overview'},
     E('div',{},E('span',{class:'small muted'},'OUR DAY'),E('strong',{},info.date?`${formatDate(info.date).replace(/ \S+요일$/,'')}${dday?` · ${dday}`:''}`:'예식 일정 준비 중')),
     E('div',{},E('span',{class:'small muted'},'OUR MEMORIES'),E('strong',{},`이야기 ${content.stories.length} · 앨범 ${content.albums.length}`)),
     E('div',{},E('span',{class:'small muted'},'OUR CHOICES'),E('strong',{},`${studiosStatus==='ready'?`스튜디오 ${studios.length}곳`:'스튜디오 자료 준비 중'} · 여행 ${content.honeymoon.length}곳 · 정보 ${content.tips.length}건`)));
   const statuses={invitation:info.date?'예식 정보 등록됨':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:studiosStatus==='ready'?`${studios.length}곳 비교하기`:'자료 불러오기',honeymoon:`${content.honeymoon.length}개의 여행 후보`,tips:`${content.tips.length}개의 꿀팁 영상`};
-  return [hero,overview,renderHomeDashboard(),E('section',{},E('div',{class:'section-heading'},E('div',{},E('h2',{},'함께 채워 갈 이야기'),E('p',{},'필요한 순간에 하나씩, 우리의 속도로.'))),
+  return [hero,renderJourneyRibbon(info,dday),overview,renderHomeDashboard(),E('section',{},E('div',{class:'section-heading'},E('div',{},E('h2',{},'함께 채워 갈 이야기'),E('p',{},'필요한 순간에 하나씩, 우리의 속도로.'))),
     E('div',{class:'menu-grid'},menus.map(([route,title,description],index)=>E('a',{class:'menu-card',href:`#/${route}`},E('span',{class:'number'},`0${index+1}`),E('h3',{},title),E('p',{},description),E('div',{class:'card-tail'},E('span',{},statuses[route]),E('span',{'aria-hidden':'true'},'↗')))))),renderHomeChecklist()];
 }
 async function copyInvitationLink(){
@@ -676,10 +723,13 @@ function renderInvitation() {
   const actionButtons=[mapLink,kakaoLink,copyAddrBtn,gcalBtn,icsBtn].filter(Boolean);
   return [pageHeader('소중한 분들을 초대합니다.','우리의 마음과 예식 안내를 한 장에 담아요.',E('div',{class:'page-actions'},editButton('예식 정보 편집',()=>openEditor('invitation')),!guestMode?button('👀 하객 화면 미리보기',()=>toggleGuestPreview(true),'button quiet'):null,button('📱 QR 코드',openInvitationQrModal,'button quiet'),button('청첩장 공유하기',shareInvitationLink,'button quiet'),button('청첩장 링크 복사',copyInvitationLink,'button quiet')),'THE INVITATION'),
     renderInvitationReadiness(info),
-    hasContent?E('section',{class:'invitation'},E('p',{class:'eyebrow'},'WE ARE GETTING MARRIED'),E('div',{class:'invitation-title'},'With love, together.'),
+    hasContent?E('section',{class:'invitation'},
+      E('span',{class:'invitation-ribbon'},info.date?`${formatDate(info.date)}${info.time?` · ${info.time}`:''}`:'WE ARE GETTING MARRIED'),
+      E('div',{class:'invitation-title'},'소중한 분들을 초대합니다'),
+      E('p',{class:'invitation-sub'},'With love, together.'),
       (info.partner1||info.partner2)?E('h2',{class:'couple-names'},
         info.partner1?[E('small',{class:'role-label'},'신랑 '),info.partner1.replace(/^신랑\s*/,'')]:null,
-        info.partner1&&info.partner2?E('span',{},'&'):null,
+        info.partner1&&info.partner2?E('span',{class:'couple-heart'},'♥'):null,
         info.partner2?[E('small',{class:'role-label'},'신부 '),info.partner2.replace(/^신부\s*/,'')]:null):null,
       info.message?E('p',{class:'message'},info.message):null,
       E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
@@ -2438,6 +2488,10 @@ function render() {
   }
   for(const anchor of document.querySelectorAll('[data-route]')) {
     if(anchor.dataset.route===route)anchor.setAttribute('aria-current','page');else anchor.removeAttribute('aria-current');
+  }
+  const navBar=document.querySelector('.main-nav'),activeNav=navBar?.querySelector('[aria-current="page"]');
+  if(navBar&&activeNav&&navBar.scrollWidth>navBar.clientWidth){
+    navBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(navBar.clientWidth-activeNav.offsetWidth)/2);
   }
   document.title=(route==='home'?'우리의 결혼 기록':`${menus.find(m=>m[0]===route)?.[1]||''} · 우리의 결혼 기록`);
   $('#draft-banner').hidden=!isDraft||guestMode;
