@@ -75,8 +75,8 @@ try{
  assert.equal(contentData.honeymoon.find(t=>t.id==='bali').plan.climateSummary.category,'dry');assert.equal(contentData.honeymoon.find(t=>t.id==='nhatrang').plan.climateSummary,null);assert(!contentRaw.includes('venueSim'));
  await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'site.json',mimeType:'application/json',buffer:Buffer.from(contentRaw)});await closed(p);await p.reload();await ready(p);assert.match(await p.locator('[data-trip-id="nhatrang"] .trip-spec-chips').innerText(),/재확인/);
  await p.getByRole('button',{name:'내용 관리',exact:true}).click();await p.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();await closed(p);assert.equal(await p.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);assert.match(await p.locator('[data-trip-id="nhatrang"] .trip-spec-chips').innerText(),/덥고 맑은/);
- for(const route of ['home','invitation','story','albums','studios','honeymoon','tips']){await p.locator(`[data-route="${route}"]`).click();await ready(p);assert.equal(new URL(p.url()).hash,'#/'+route);}
- await p.goto(base+'?view=guest#/tips');await ready(p);assert.equal(await p.locator('.venue-sim-box').count(),0);
+ for(const route of ['home','invitation','story','albums','studios','honeymoon','ceremony','tips']){await p.locator(`[data-route="${route}"]`).click();await ready(p);assert.equal(new URL(p.url()).hash,'#/'+route);}
+ await p.goto(base+'?view=guest#/tips');await ready(p);assert.equal(await p.locator('.venue-sim-box').count(),0);assert.equal(await p.locator('[data-route="ceremony"]').isVisible(),false);
  assert.deepEqual(errors,[]);console.log('PASS five fixes: Google/ICS, reviewed climate filters and month invalidation, 19 unknown studio fees, partial/full venue costs and both import guards, dirty-close/save lock, backup/restore/JSON/reset/guest isolation, all menus and responsive layouts; zero browser errors');
  await guest.close();await context.close();
 }finally{await browser.close();}

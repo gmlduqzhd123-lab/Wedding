@@ -107,7 +107,7 @@ small, .small { font-size: 12px; }
   padding: 15px 28px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 .brand {
   display: flex;
@@ -145,7 +145,7 @@ small, .small { font-size: 12px; }
 }
 .main-nav {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   flex: 1;
   justify-content: center;
@@ -158,7 +158,7 @@ small, .small { font-size: 12px; }
   color: var(--muted);
   font-size: 13px;
   font-weight: 500;
-  padding: 7px 13px;
+  padding: 7px 11px;
   border-radius: 999px;
   transition: background 0.18s, color 0.18s, box-shadow 0.18s;
 }
@@ -272,14 +272,17 @@ small, .small { font-size: 12px; }
 
 .page-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px 24px;
   margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
 }
-.page-header p { margin-top: 10px; color: var(--muted); max-width: 650px; }
+.page-header > :first-child { flex: 1 1 320px; min-width: 0; }
+.page-header h1 { word-break: keep-all; overflow-wrap: anywhere; }
+.page-header p { margin-top: 10px; color: var(--muted); max-width: 720px; word-break: keep-all; overflow-wrap: anywhere; }
 
 /* Home Hero & Promise Arch */
 .hero {
@@ -506,13 +509,15 @@ small, .small { font-size: 12px; }
 
 .section-heading {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 20px;
+  gap: 14px 20px;
   margin-bottom: 20px;
 }
-.section-heading h2 { font-family: var(--serif); }
-.section-heading p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.section-heading > :first-child { flex: 1 1 280px; min-width: 0; }
+.section-heading h2 { font-family: var(--serif); word-break: keep-all; overflow-wrap: anywhere; }
+.section-heading p { font-size: 13px; color: var(--muted); margin-top: 6px; word-break: keep-all; overflow-wrap: anywhere; }
 
 .menu-grid {
   display: grid;
@@ -1736,15 +1741,23 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
 }
 
 /* Ceremony Timetable, Amor Hall Cue Sheet, Vows & Vendor Schedule */
-.invitation + .ceremony-planner,
-.empty-state + .ceremony-planner {
-  margin-top: 30px;
-}
 .ceremony-planner {
   min-width: 0;
 }
-.ceremony-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-width: 0; }
+.ceremony-top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.ceremony-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; min-width: 0; flex: 1 1 320px; }
 .ceremony-summary-chips .spec-chip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.ceremony-action-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .amor-cue-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2197,7 +2210,7 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
   .hero { padding-top: 24px; }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1080px) {
   .header-inner { gap: 14px; padding: 14px 22px; flex-wrap: wrap; }
   .brand { flex: 1; }
   .main-nav { order: 3; width: 100%; flex-basis: 100%; justify-content: center; gap: 6px; }
