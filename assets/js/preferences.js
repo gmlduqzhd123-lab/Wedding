@@ -1,8 +1,9 @@
-import { MAX_IMPORT_BYTES } from './content.js?v=wedding-features-30';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-31';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
 export const PACKING_CATEGORIES = ['📄 필수 서류·결제', '🔌 전자기기·통신', '🏖️ 의류·해변 용품', '💊 상비약·세면·기타'];
+export const VENDOR_CATEGORIES = ['📸 스튜디오', '🏛️ 웨딩홀', '👗 드레스', '💄 메이크업', '🎥 본식스냅·DVD', '💍 예물·예복·한복', '✈️ 신혼여행·기타'];
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 const validMoney = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000000000);
 const validGuestCount = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 10000);
@@ -68,6 +69,23 @@ export function validatePreferences(input) {
       if (!title || title.length > 160 || seen.has(item.id)) throw new Error('준비물 이름과 중복 여부를 확인해 주세요.');
       seen.add(item.id);
       return { id: item.id, category: item.category, title };
+    });
+  }
+  if (input.vendorSchedules !== undefined) {
+    if (!Array.isArray(input.vendorSchedules) || input.vendorSchedules.length > 60) throw new Error('업체 일정은 60개까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.vendorSchedules = input.vendorSchedules.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !VENDOR_CATEGORIES.includes(item.category) || typeof item.name !== 'string' || typeof item.done !== 'boolean') {
+        throw new Error('업체 일정 형식을 확인해 주세요.');
+      }
+      const name = item.name.trim();
+      if (!name || name.length > 120 || seen.has(item.id)) throw new Error('업체·일정 이름과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      const dateStr = item.date === undefined || item.date === null ? '' : String(item.date).trim();
+      if (dateStr && !validDate(dateStr)) throw new Error('업체 일정 날짜를 확인해 주세요.');
+      const note = item.note === undefined || item.note === null ? '' : item.note;
+      if (typeof note !== 'string' || note.length > 300) throw new Error('업체 일정 메모는 300자 이하로 입력해 주세요.');
+      return { id: item.id, category: item.category, name, date: dateStr, done: item.done, ...(note.trim() ? { note: note.trim() } : {}) };
     });
   }
   if (input.ceremonyPlan !== undefined) {

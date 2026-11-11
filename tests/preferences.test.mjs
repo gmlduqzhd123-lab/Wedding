@@ -40,6 +40,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     tripNotes:{bali:'풀빌라 2박 특전 확인'},
     tipNotes:{'tip-01':'드레스 피팅 시 촬영용 체크'},
     customChecklist:[{id:'custom-1',stage:'D-60 ~ D-30',title:'청첩장 모임 식당 예약'}],
+    vendorSchedules:[{id:'vsched-1',category:'📸 스튜디오',name:'라크마 스튜디오 웨딩촬영 (낮 12:00)',date:'2027-02-03',done:false,note:'062-714-1970 정오 자연광 촬영'}],
     budgetPlan:{venue:{planned:15000000,actual:14200000,note:'식대 포함'},sdm:{planned:3500000,actual:null}},
     venueSim:{mealPrice:55000,guestCount:250,minGuarantee:200,hallFee:2500000,deposit:1000000,note:'순천아모르웨딩컨벤션'},
     ceremonyPlan:{style:'noOfficiant',mc:'친구 김OO',song:'축가 미정',speech:'양가 아버님 덕담',note:'입장곡 체크'}
@@ -57,6 +58,9 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     {tripNotes:{'bad id!':'메모'}},
     {tipNotes:{'tip-01':'x'.repeat(501)}},
     {customChecklist:[{id:'custom-1',stage:'없는 시기',title:'할 일'}]},
+    {vendorSchedules:[{id:'vsched-1',category:'없는 분류',name:'라크마',date:'2027-02-03',done:false}]},
+    {vendorSchedules:[{id:'vsched-1',category:'📸 스튜디오',name:'라크마',date:'2027-02-30',done:false}]},
+    {vendorSchedules:[{id:'vsched-1',category:'📸 스튜디오',name:'',date:'2027-02-03',done:false}]},
     {budgetPlan:[]},
     {budgetPlan:{unknown:{planned:100}}},
     {budgetPlan:{venue:{planned:-1}}},

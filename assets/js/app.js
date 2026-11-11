@@ -1,9 +1,9 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-30';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES } from './preferences.js?v=wedding-features-30';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-30';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-30';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-features-30';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=wedding-features-30';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-31';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-31';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-31';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-31';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-features-31';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=wedding-features-31';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -18,6 +18,22 @@ const menus=[
   ['tips','결혼에 관한 모든 정보','상견례·웨딩홀·스드메·본식·혼수까지 결혼 준비 꿀팁 모음.','WEDDING GUIDE']
 ];
 let baseContent, content, studios=[], prefs={}, isDraft=false, toastTimer;
+const DEFAULT_STUDIO_ID='studio-09';
+const DEFAULT_VENDOR_SCHEDULES=[
+  {
+    id:'vsched-lachma-shoot',
+    category:'📸 스튜디오',
+    name:'라크마 스튜디오 웨딩촬영 (낮 12시)',
+    date:'2027-02-03',
+    done:false,
+    note:'2027년 2월 3일 수요일 12:00 촬영 확정 (연락처 062-714-1970) · 08:30 메이크업 샵 집결 · 생화 부케·한 입 간식·헬퍼비 봉투·예복 양말 준비'
+  }
+];
+const currentSelectedStudioId=()=>{
+  if(prefs.studioSelected==='none')return '';
+  return prefs.studioSelected||DEFAULT_STUDIO_ID;
+};
+const activeVendorSchedules=()=>prefs.vendorSchedules!==undefined?prefs.vendorSchedules:structuredClone(DEFAULT_VENDOR_SCHEDULES);
 let filter='', favoritesOnly=false, withPhoneOnly=false, withStudioNoteOnly=false, studioQuickFilter='all';
 let tripSort='recommended', tripFavoritesOnly=false, withTripNoteOnly=false, tripQuickFilter='all', overviewExpanded=false, packingExpanded=false;
 let tipFilter='', tipCategory='all', tipFavoritesOnly=false, withTipNoteOnly=false, redrawTips=()=>{};
@@ -213,12 +229,12 @@ function formatPartner(name,role){
 const WEDDING_CHECKLIST=[
   ['D-180 이전','웨딩홀 · 스드메 · 신혼여행 큰 틀 잡기',[
     ['d180-hall','예식장(순천아모르웨딩컨벤션) 홀·식대·보증인원 조건 정리'],
-    ['d180-sdm','스튜디오 30곳 후보 비교 및 드레스·메이크업 샵 결정'],
+    ['d180-sdm','스튜디오 최종 선택 (라크마 · 2027-02-03 수 12:00 촬영 확정) 및 드레스·메이크업 샵 결정'],
     ['d180-trip','신혼여행지 최종 선택 및 항공·숙박 일정 확보'],
     ['d180-budget','두 사람의 전체 결혼 예산 배분표 작성']
   ]],
   ['D-120 ~ D-90','웨딩 촬영 · 예복 · 예물 · 본식스냅',[
-    ['d120-shoot','웨딩 스튜디오 촬영 시안·소품·간식 준비'],
+    ['d120-shoot','라크마 스튜디오 웨딩촬영 (2027-02-03 수요일 12:00) 시안·간식·방한용품·예복 양말 준비'],
     ['d120-rings','웨딩밴드(예물)·예복·한복 맞춤 및 대여 결정'],
     ['d120-snap','본식 스냅·DVD·아이폰 스냅 업체 예약'],
     ['d120-passport','여권 만료일(6개월 이상) 확인 및 항공권 영문명 점검']
@@ -304,7 +320,7 @@ async function copyPreparationSummary(){
   const info=content.invitation||{};
   const names=[info.partner1,info.partner2].filter(Boolean).join(' & ')||'우리 커플';
   const dday=weddingDday(info.date);
-  const selectedStudio=studios.find(s=>s.id===prefs.studioSelected);
+  const selectedStudio=studios.find(s=>s.id===currentSelectedStudioId());
   const firstStudio=studios.find(s=>s.id===prefs.left)||studios.find(s=>s.name==='고유·써드 믹스')||studios[0];
   const secondStudio=studios.find(s=>s.id===prefs.right)||studios.find(s=>s.name==='그리프')||studios[1];
   const selectedTrip=content.honeymoon.find(t=>t.id===prefs.tripSelected);
@@ -316,13 +332,17 @@ async function copyPreparationSummary(){
   const checkedSet=new Set(prefs.checklist||[]);
   const doneCount=allItems.filter(it=>checkedSet.has(it.id)).length;
   const nextItem=allItems.find(it=>!checkedSet.has(it.id));
+  const vList=activeVendorSchedules().filter(v=>!v.done).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const nextVendor=vList[0];
+  const shootInfo=selectedStudio?.deepGuide?.schedule?` (${selectedStudio.deepGuide.schedule.label} 촬영 확정 · ${weddingDday(selectedStudio.deepGuide.schedule.date)})`:'';
   const lines=[
     `💍 [${names} 결혼 준비 현황 요약]`,
     `• 예식 일정: ${info.date?formatDate(info.date):'미정'}${info.time?` ${info.time}`:''}${dday?` (${dday})`:''}`,
     `• 예식 장소: ${info.venue||'미정'}`,
-    `• 스튜디오: ${selectedStudio?`최종 선택 - ${selectedStudio.name}`:(firstStudio&&secondStudio?`비교 중 (${firstStudio.name} vs ${secondStudio.name})`:'검토 중')} (관심 ${(prefs.favorites||[]).length}곳)`,
+    `• 스튜디오: ${selectedStudio?`최종 선택 - ${selectedStudio.name}${shootInfo}`:(firstStudio&&secondStudio?`비교 중 (${firstStudio.name} vs ${secondStudio.name})`:'검토 중')} (관심 ${(prefs.favorites||[]).length}곳)`,
     `• 신혼여행: ${selectedTrip?`${selectedTrip.title} (2인 계획예산 ${won(selectedTrip.budget)})`:`후보 검토 중 (관심 ${(prefs.tripFavorites||[]).length}곳)`}`,
     `• 통합 예산: ${bHas?`목표 ${budget.planned.known===null?'미입력':won(budget.planned.known)} / 실제·견적 ${budget.actual.known===null?'미입력':won(budget.actual.known)}`:'미입력'}`,
+    `• 다가오는 업체 일정: ${nextVendor?`${nextVendor.category} ${nextVendor.name}${nextVendor.date?` (${nextVendor.date} · ${weddingDday(nextVendor.date)})`:''}`:'등록된 미완료 일정 없음'}`,
     `• 체크리스트: 전체 ${allItems.length}개 중 ${doneCount}개 완료 (${Math.round((doneCount/allItems.length)*100)}%)`,
     `• 다음 할 일: ${nextItem?nextItem.label:'모든 할 일 완료 🎉'}`
   ];
@@ -331,13 +351,13 @@ async function copyPreparationSummary(){
     await navigator.clipboard.writeText(summaryText);
     toast('결혼 준비 현황 요약을 복사했습니다. 카카오톡 등에 붙여넣어 공유해 보세요.');
   }catch{
-    const ta=E('textarea',{rows:'9',readonly:true,'aria-label':'결혼 준비 현황 요약 텍스트'},summaryText);
+    const ta=E('textarea',{rows:'10',readonly:true,'aria-label':'결혼 준비 현황 요약 텍스트'},summaryText);
     showDialog('결혼 준비 현황 요약 복사',E('div',{},E('p',{},'아래 요약 내용을 선택해 복사해 주세요.'),ta));ta.focus();ta.select();
   }
 }
 function renderHomeDashboard(){
   if(guestMode)return null;
-  const selectedStudio=studios.find(s=>s.id===prefs.studioSelected);
+  const selectedStudio=studios.find(s=>s.id===currentSelectedStudioId());
   const firstStudio=studios.find(s=>s.id===prefs.left)||studios.find(s=>s.name==='고유·써드 믹스')||studios[0];
   const secondStudio=studios.find(s=>s.id===prefs.right)||studios.find(s=>s.name==='그리프')||studios[1];
   const studioFavCount=(prefs.favorites||[]).length;
@@ -352,6 +372,9 @@ function renderHomeDashboard(){
   const checkedSet=new Set(prefs.checklist||[]);
   const doneCount=allItems.filter(it=>checkedSet.has(it.id)).length;
   const nextItem=allItems.find(it=>!checkedSet.has(it.id));
+  const vList=activeVendorSchedules().filter(v=>!v.done).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const nextVendor=vList[0];
+  const shootSched=selectedStudio?.deepGuide?.schedule;
   return E('section',{class:'home-dashboard','aria-labelledby':'home-dashboard-title'},
     E('div',{class:'section-heading'},
       E('div',{},
@@ -364,9 +387,9 @@ function renderHomeDashboard(){
     E('div',{class:'dashboard-grid'},
       E('article',{class:'dashboard-card'},
         E('span',{class:'small muted'},'📸 스튜디오 픽'),
-        E('strong',{},selectedStudio?`⭐ 최종 선택: ${selectedStudio.name}`:(firstStudio&&secondStudio?`${firstStudio.name} vs ${secondStudio.name}`:'30곳 비교 대기 중')),
-        E('p',{class:'small muted'},`관심 ${studioFavCount}곳 · 상담 메모 ${studioNoteCount}곳`),
-        linkButton('스튜디오 비교 이동 →','#/studios',true)),
+        E('strong',{},selectedStudio?`⭐ 최종 선택: ${selectedStudio.name}${shootSched?' (2/3 수 12:00 촬영)':''}`:(firstStudio&&secondStudio?`${firstStudio.name} vs ${secondStudio.name}`:'30곳 비교 대기 중')),
+        E('p',{class:'small muted'},shootSched?`🗓️ ${shootSched.date} (${shootSched.weekday}) ${shootSched.time} (${weddingDday(shootSched.date)}) · 관심 ${studioFavCount}곳`:`관심 ${studioFavCount}곳 · 상담 메모 ${studioNoteCount}곳`),
+        linkButton('스튜디오·라크마 가이드 이동 →','#/studios',true)),
       E('article',{class:'dashboard-card'},
         E('span',{class:'small muted'},'✈️ 신혼여행 픽'),
         E('strong',{},selectedTrip?selectedTrip.title:'최종 후보 선택 전'),
@@ -379,9 +402,10 @@ function renderHomeDashboard(){
         bHas?E('p',{class:'small muted'},`미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개`):null,
         linkButton('예산 계산기 이동 →','#/tips',true)),
       E('article',{class:'dashboard-card'},
-        E('span',{class:'small muted'},'✅ 다음 준비 할 일'),
+        E('span',{class:'small muted'},'✅ 다음 준비 할 일 & 일정'),
         E('strong',{},nextItem?nextItem.label:'모든 할 일 완료 🎉'),
-        E('p',{class:'small muted'},`전체 ${allItems.length}개 중 ${doneCount}개 완료 (${Math.round((doneCount/allItems.length)*100)}%)`),
+        nextVendor?E('p',{class:'small'},`📅 다가오는 일정: ${nextVendor.name}${nextVendor.date?` (${nextVendor.date} · ${weddingDday(nextVendor.date)})`:''}`):null,
+        E('p',{class:'small muted'},`체크리스트 전체 ${allItems.length}개 중 ${doneCount}개 완료 (${Math.round((doneCount/allItems.length)*100)}%)`),
         button('체크리스트 보기 ↓',()=>$('#home-checklist-title')?.scrollIntoView({behavior:'smooth',block:'start'}),'button quiet'))));
 }
 function activeFocusStageName(stages,checkedSet){
@@ -927,7 +951,7 @@ function travelDetails(item){
 }
 function renderAlbums() {
   return [pageHeader('오래 간직할 우리의 순간','사진을 앨범으로 모으고, 그날의 이야기를 함께 남겨요.',editButton('앨범 추가',()=>openEditor('albums')),'PHOTO ALBUM'),
-    content.albums.length?E('section',{class:'album-grid'},content.albums.map(item=>E('article',{class:'album-card','data-record-id':item.id},item.images.length?image(item.images[0],item.title,{class:'album-cover'}):E('div',{class:'album-placeholder'},'Our memories'),
+    content.albums.length?E('section',{class:'album-grid'},content.albums.map(item=>E('article',{class:'album-card','data-record-id':item.id},item.images.length?E('button',{type:'button',class:'photo-open album-cover-open','aria-label':`${item.title} 앨범 사진 ${item.images.length}장 보기`,onclick:()=>openAlbum(item)},image(item.images[0],item.title,{class:'album-cover'})):E('div',{class:'album-placeholder'},'Our memories'),
       E('div',{class:'album-info'},E('p',{class:'record-date'},[item.date?formatDate(item.date):'',`사진 ${item.images.length}장`].filter(Boolean).join(' · ')),E('h2',{},item.title),E('p',{class:'record-body'},item.body),button('사진 보기',()=>openAlbum(item),'text-button'),recordActions('albums',item))))):
     empty('우리의 사진을 담을 첫 앨범','사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
@@ -1224,33 +1248,94 @@ function updateFavoriteButtons(studio){
 }
 function selectFinalStudio(id){
   if(guestMode)return;
-  const nextId=prefs.studioSelected===id?'':id;
+  const cur=currentSelectedStudioId();
+  const nextId=cur===id?'none':id;
   queuePreference(async()=>{
     const saved=await savePrefs({...prefs,studioSelected:nextId});
     if(saved){
       render();
-      toast(nextId?'최종 선택 스튜디오로 지정했습니다.':'최종 선택 스튜디오를 해제했습니다.');
+      toast(nextId!=='none'?'최종 선택 스튜디오로 지정했습니다.':'최종 선택 스튜디오를 해제했습니다.');
     }
     return saved;
   });
 }
+function copyLachmaGuideSummary(studio){
+  const g=studio?.deepGuide;
+  if(!g)return;
+  const lines=[
+    `📸 [웨딩 스튜디오 확정 & 촬영 브리핑] ${studio.name}`,
+    `· 촬영 일정: ${g.schedule?.label||'2027년 2월 3일 수요일 12:00 (낮 12시)'}`,
+    `· 상담·문의: ${studio.contact?.phone||'062-714-1970'} (${studio.contact?.note||''})`,
+    `· 핵심 스타일: ${studio.style}`,
+    `· 일정 포인트: ${g.schedule?.milestoneNote||''}`,
+    '',
+    '✨ 시그니처 4대 촬영 콘셉트',
+    ...(g.signatureScenes||[]).map((s,i)=>`${i+1}. ${s.title}: ${s.desc}`),
+    '',
+    '⏰ 촬영 당일 예상 타임테이블 (12:00 촬영 기준)',
+    ...(g.timetable||[]).map(t=>`- ${t.time} ${t.stage}: ${t.detail}`),
+    '',
+    '🎒 촬영 전 필수 준비물 요약',
+    ...(g.prepChecklist||[]).map(p=>`- [${p.category}] ${(p.items||[]).join(' / ')}`)
+  ];
+  const memo=!guestMode&&(prefs.notes?.[studio.id]||'').trim();
+  if(memo)lines.push('',`📝 우리의 상담 메모: ${memo}`);
+  copyTextToClipboard(lines.join('\n'),'라크마 촬영 브리핑·일정·타임테이블 요약을 복사했습니다.');
+}
+function renderLachmaDeepGuide(studio,compact=false){
+  const g=studio?.deepGuide;
+  if(!g)return null;
+  const sched=g.schedule||{};
+  const dday=sched.date?weddingDday(sched.date):null;
+  return E('div',{class:'lachma-deep-guide'+(compact?' compact':''),'aria-label':`${studio.name} 확정 촬영 일정 및 심층 가이드`},
+    E('div',{class:'lachma-schedule-banner'},
+      E('div',{class:'lachma-schedule-main'},
+        E('span',{class:'spec-chip highlight'},`🗓️ 촬영 확정: ${sched.label||'2027년 2월 3일 수요일 12:00 (낮 12시)'}`),
+        dday?E('span',{class:'spec-chip direct'},`⏳ 촬영일 ${dday}`):null,
+        E('span',{class:'spec-chip'},`📞 ${studio.contact?.phone||'062-714-1970'}`)),
+      sched.milestoneNote?E('p',{class:'small lachma-milestone-note'},`💡 ${sched.milestoneNote}`):null),
+    g.overview?E('p',{class:'record-body lachma-overview'},g.overview):null,
+    (g.signatureScenes||[]).length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'✨ 라크마 시그니처 4대 촬영 콘셉트 & 빛 활용법'),
+      E('div',{class:'lachma-scene-grid'},g.signatureScenes.map(scene=>E('article',{class:'lachma-scene-card'},
+        E('strong',{},scene.title),
+        E('p',{class:'small'},scene.desc))))):null,
+    (g.timetable||[]).length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'⏰ 2월 3일 (수) 12:00 촬영 당일 타임테이블'),
+      E('ol',{class:'timetable-list lachma-timetable'},g.timetable.map(row=>E('li',{class:'timetable-row'+(row.time.includes('12:00')?' highlight':'')},
+        E('strong',{class:'timetable-time'},row.time),
+        E('div',{class:'timetable-detail'},
+          E('strong',{},row.stage),
+          E('p',{class:'small muted'},row.detail)))))):null,
+    (g.prepChecklist||[]).length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'🎒 라크마 맞춤 촬영 준비물 & 2월 겨울 컨디션 체크'),
+      E('div',{class:'lachma-prep-grid'},g.prepChecklist.map(group=>E('article',{class:'lachma-prep-card'},
+        E('strong',{},group.category),
+        E('ul',{class:'lachma-prep-list'},(group.items||[]).map(item=>E('li',{class:'small'},item))))))):null,
+    g.collectionNotes?E('div',{class:'lachma-collection-note'},
+      E('strong',{class:'small'},'📌 제공 자료 및 공개 컬렉션 참고 안내'),
+      E('p',{class:'small muted'},g.collectionNotes)):null);
+}
 function selectedStudioSummary(){
   if(guestMode||studiosStatus!=='ready')return null;
-  const picked=studios.find(s=>s.id===prefs.studioSelected);
+  const picked=studios.find(s=>s.id===currentSelectedStudioId());
   if(!picked)return null;
   const memo=prefs.notes?.[picked.id]||'';
   return E('section',{class:'selected-studio-card','aria-label':'우리가 선택한 스튜디오'},
     E('div',{class:'selected-studio-head'},
       E('div',{},
-        E('p',{class:'eyebrow'},'OUR STUDIO PICK'),
-        E('h2',{},`📸 최종 선택 스튜디오: ${picked.name}`),
+        E('p',{class:'eyebrow'},'OUR CONFIRMED STUDIO & SHOOT GUIDE'),
+        E('h2',{},`📸 최종 선택 스튜디오: ${picked.name}${picked.deepGuide?.schedule?` (${picked.deepGuide.schedule.shortLabel||'2/3 수 12:00 촬영'})`:''}`),
         E('p',{class:'small muted'},picked.style)),
       E('div',{class:'page-actions'},
+        picked.deepGuide?button('📋 라크마 촬영 브리핑 복사',()=>copyLachmaGuideSummary(picked),'button quiet'):null,
         button('사진 크게 보기',()=>openPhotos(picked.name,picked.images.map(v=>v.src),0),'button quiet'),
+        button('비교 A에 놓기',()=>selectStudio('left',picked.id),'button quiet'),
         button('선택 해제',()=>selectFinalStudio(picked.id),'button quiet'))),
     studioSpecChips(picked),
     contactNode(picked),
-    memo?E('p',{class:'small checklist-item-note'},`📝 우리의 메모: ${memo}`):null);
+    memo?E('p',{class:'small checklist-item-note'},`📝 우리의 메모: ${memo}`):null,
+    renderLachmaDeepGuide(picked));
 }
 function matchesStudioQuickFilter(studio,key=studioQuickFilter){
   const text=`${studio.style||''} ${studio.pros||''} ${studio.fit||''}`;
@@ -1264,6 +1349,7 @@ function studioSpecChips(studio,compact=false){
   const fee=studioFeeInfo(studio),feeText=fee.label;
   const hasNote=!guestMode&&Boolean(prefs.notes?.[studio.id]?.trim());
   return E('div',{class:'trip-spec-chips studio-spec-chips','aria-label':`${studio.name} 핵심 요약`},
+    studio.deepGuide?.schedule?E('span',{class:'spec-chip direct'},`🗓️ ${studio.deepGuide.schedule.shortLabel||'2/3(수) 12:00 촬영 확정'}`):null,
     E('span',{class:'spec-chip'+(fee.unknown?'':' highlight')},feeText),
     E('span',{class:'spec-chip'},studio.contact?.phone?'📞 연락처 기재':'📞 연락처 미기재'),
     hasNote&&compact?E('span',{class:'spec-chip highlight'},'📝 메모 있음'):null,
@@ -1289,12 +1375,21 @@ function compareCard(studio) {
       else{
         for(const other of document.querySelectorAll('.compare-card textarea'))if(other!==memo&&other.getAttribute('aria-label')===memo.getAttribute('aria-label'))other.value=value;
         $('#selected-studio-region')?.replaceChildren(...[selectedStudioSummary()].filter(Boolean));
+        const memoRow=$('#studio-compare-memo-row');
+        if(memoRow){
+          const firstId=memoRow.dataset.firstId,secondId=memoRow.dataset.secondId;
+          memoRow.replaceChildren(
+            E('th',{scope:'row'},'우리의 상담 메모'),
+            E('td',{},(prefs.notes?.[firstId]||'').trim()||'작성한 메모 없음'),
+            E('td',{},(prefs.notes?.[secondId]||'').trim()||'작성한 메모 없음')
+          );
+        }
         redrawDirectory();
       }
       return saved;
     });
   });
-  const isSelected=prefs.studioSelected===studio.id;
+  const isSelected=currentSelectedStudioId()===studio.id;
   return E('article',{class:'compare-card'},
     E('div',{class:'card-heading'},
       E('div',{},E('p',{class:'record-date'},`${studio.zip}번 샘플`),E('h2',{},studio.name)),
@@ -1306,6 +1401,9 @@ function compareCard(studio) {
     E('div',{class:'studio-photos'},studio.images.map((im,index)=>E('button',{type:'button',class:'photo-open','aria-label':`${studio.name} 사진 ${index+1} 확대`,onclick:()=>openPhotos(studio.name,studio.images.map(value=>value.src),index)},image(im.src,`${studio.name} · ${im.file}`)))),
     studioProsCons(studio),
     contactNode(studio),
+    studio.deepGuide?E('details',{class:'disclosure lachma-card-details'},
+      E('summary',{},'📸 라크마 확정 일정(2/3 수 12시) · 시그니처 씬 · 당일 타임테이블 보기'),
+      renderLachmaDeepGuide(studio,true)):null,
     !guestMode?E('label',{class:'field'},E('span',{},'우리의 메모 ',E('span',{class:'muted small'},'· 이 기기에 저장')),memo):null);
 }
 async function selectStudio(side,id) {if(guestMode){prefs={...prefs,[side]:id};render();return;}if(!await savePrefs({...prefs,[side]:id}))return;render();$('#studio-comparison')?.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -1334,8 +1432,8 @@ function studioDirectory() {
     const filtered=studios.filter(s=>(!query||`${s.name} ${s.style}`.toLocaleLowerCase().includes(query))&&(!favoritesOnly||prefs.favorites?.includes(s.id))&&(!withPhoneOnly||Boolean(s.contact?.phone))&&(!withStudioNoteOnly||Boolean(prefs.notes?.[s.id]?.trim()))&&matchesStudioQuickFilter(s,studioQuickFilter));
     count.textContent=`${filtered.length}곳`;
     results.replaceChildren(...(filtered.length?filtered.map(studio=>{
-      const isSelected=prefs.studioSelected===studio.id;
-      return E('article',{class:'studio-tile'},image(studio.images[0].src,`${studio.name} 대표 샘플`),E('div',{class:'tile-body'},E('h3',{},studio.name),E('p',{class:'style'},studio.style),studioSpecChips(studio,true),contactNode(studio,true),E('div',{class:'tile-actions'},button('비교 A',()=>selectStudio('left',studio.id),'button quiet'),button('비교 B',()=>selectStudio('right',studio.id),'button quiet'),!guestMode?button(isSelected?'선택됨 ✓':'최종 선택',()=>selectFinalStudio(studio.id),isSelected?'button':'button quiet'):null,favoriteButton(studio))));
+      const isSelected=currentSelectedStudioId()===studio.id;
+      return E('article',{class:'studio-tile'+(isSelected?' studio-tile-selected':'')},image(studio.images[0].src,`${studio.name} 대표 샘플`),E('div',{class:'tile-body'},E('h3',{},studio.name),E('p',{class:'style'},studio.style),studioSpecChips(studio,true),contactNode(studio,true),E('div',{class:'tile-actions'},button('비교 A',()=>selectStudio('left',studio.id),'button quiet'),button('비교 B',()=>selectStudio('right',studio.id),'button quiet'),!guestMode?button(isSelected?'선택됨 ✓':'최종 선택',()=>selectFinalStudio(studio.id),isSelected?'button':'button quiet'):null,favoriteButton(studio))));
     }):[E('p',{class:'no-results'},'조건에 맞는 스튜디오가 없습니다.')]));
   };
   search.addEventListener('input',()=>{filter=search.value;draw();});checked.addEventListener('change',()=>{favoritesOnly=checked.checked;draw();});phoneChecked.addEventListener('change',()=>{withPhoneOnly=phoneChecked.checked;draw();});noteChecked.addEventListener('change',()=>{withStudioNoteOnly=noteChecked.checked;draw();});redrawDirectory=draw;draw();
@@ -1354,9 +1452,33 @@ async function loadStudios(){
   }catch(error){studiosStatus='error';studiosError=error.message;}
   if(content&&['home','studios'].includes(currentRoute()))render();
 }
+function copyStudioComparisonSummary(first,second){
+  const lines=[
+    `📸 [웨딩 스튜디오 A/B 비교 요약] ${first.name} vs ${second.name}`,
+    '',
+    `[A] ${first.name}${first.deepGuide?.schedule?` (${first.deepGuide.schedule.shortLabel})`:''}`,
+    `· 스타일: ${first.style}`,
+    `· 장점: ${first.pros}`,
+    `· 아쉬움: ${first.cons}`,
+    `· 잘 맞는 취향: ${first.fit}`,
+    `· 추가금 표기: ${first.fee}`,
+    `· 연락처: ${first.contact?.phone||'목록에 미기재'}`,
+    ...(!guestMode&&(prefs.notes?.[first.id]||'').trim()?[`· 우리의 메모: ${prefs.notes[first.id].trim()}`]:[]),
+    '',
+    `[B] ${second.name}${second.deepGuide?.schedule?` (${second.deepGuide.schedule.shortLabel})`:''}`,
+    `· 스타일: ${second.style}`,
+    `· 장점: ${second.pros}`,
+    `· 아쉬움: ${second.cons}`,
+    `· 잘 맞는 취향: ${second.fit}`,
+    `· 추가금 표기: ${second.fee}`,
+    `· 연락처: ${second.contact?.phone||'목록에 미기재'}`,
+    ...(!guestMode&&(prefs.notes?.[second.id]||'').trim()?[`· 우리의 메모: ${prefs.notes[second.id].trim()}`]:[])
+  ];
+  copyTextToClipboard(lines.join('\n'),'비교 중인 두 스튜디오 요약을 클립보드에 복사했습니다.');
+}
 function renderStudios() {
   if(studiosStatus!=='ready')return [pageHeader('우리에게 맞는 사진을 찾아요.','스튜디오 자료는 다른 메뉴와 별도로 불러옵니다.'),studiosStatus==='loading'?E('p',{role:'status'},'스튜디오 자료를 불러오는 중입니다.'):empty('스튜디오 자료를 불러오지 못했어요.',studiosError,'스튜디오 다시 불러오기',loadStudios,true)];
-  const first=studios.find(s=>s.id===prefs.left)||studios.find(s=>s.name==='고유·써드 믹스')||studios[0];
+  const first=studios.find(s=>s.id===prefs.left)||studios.find(s=>s.id===DEFAULT_STUDIO_ID)||studios.find(s=>s.name==='고유·써드 믹스')||studios[0];
   const second=studios.find(s=>s.id===prefs.right)||studios.find(s=>s.name==='그리프')||studios[1];
   const selector=(side,studio,label)=>{
     const select=E('select',{'aria-label':label},studios.map(s=>E('option',{value:s.id},s.name)));select.value=studio.id;
@@ -1367,10 +1489,20 @@ function renderStudios() {
   const fees=[['고유 · 베네치아 야외씬','11만 원'],['고유 · 야간','11만 원'],['클레+포에버마인 · 믹스 촬영','10만 원 추가'],['리썸 · 야간·야경','22만 원 추가'],['비마이 · 포토','20만 원 추가']];
   return [pageHeader('우리에게 맞는 사진을 찾아요.','사진 스타일부터 상담 연락처까지, 두 스튜디오를 나란히 비교해 보세요.',null,'PHOTO STUDIOS'),
     guestMode?null:E('div',{id:'selected-studio-region'},selectedStudioSummary()),
-    E('div',{class:'studio-intro'},E('span',{class:'badge'},'30개 비교 항목'),E('span',{class:'small muted'},'제공된 대표 샘플 기준 · 총비용과 실제 서비스는 별도 확인')),
+    E('div',{class:'studio-intro'},
+      E('span',{class:'badge'},'30개 비교 항목'),
+      E('span',{class:'small muted'},'제공된 대표 샘플 기준 · 총비용과 실제 서비스는 별도 확인'),
+      button('📋 비교 중인 두 곳 요약 복사',()=>copyStudioComparisonSummary(first,second),'button quiet')),
     E('section',{id:'studio-comparison'},E('div',{class:'compare-selectors'},selector('left',first,'비교할 스튜디오 A'),selector('right',second,'비교할 스튜디오 B')),
       E('div',{class:'compare-grid'},compareCard(first),compareCard(second)),
-      E('table',{class:'comparison-table','aria-label':`${first.name}와 ${second.name} 장단점 비교`},E('tbody',{},rows.map(([label,key])=>E('tr',{},E('th',{scope:'row'},label),E('td',{},first[key]),E('td',{},second[key])))))),
+      E('table',{class:'comparison-table','aria-label':`${first.name}와 ${second.name} 장단점 비교`},
+        E('tbody',{},
+          ...rows.map(([label,key])=>E('tr',{},E('th',{scope:'row'},label),E('td',{},first[key]),E('td',{},second[key]))),
+          E('tr',{},E('th',{scope:'row'},'상담 연락처'),E('td',{},contactNode(first,true)),E('td',{},contactNode(second,true))),
+          !guestMode?E('tr',{id:'studio-compare-memo-row','data-first-id':first.id,'data-second-id':second.id},
+            E('th',{scope:'row'},'우리의 상담 메모'),
+            E('td',{},(prefs.notes?.[first.id]||'').trim()||'작성한 메모 없음'),
+            E('td',{},(prefs.notes?.[second.id]||'').trim()||'작성한 메모 없음')):null))),
     E('details',{class:'disclosure'},E('summary',{},'자료에 표기된 추가금'),E('table',{class:'fee-table'},E('tbody',{},fees.map(([name,fee])=>E('tr',{},E('th',{scope:'row'},name),E('td',{},fee)))))),
     E('details',{class:'disclosure'},E('summary',{},'전체 연락처'),E('table',{class:'fee-table','aria-label':'전체 스튜디오 연락처'},E('tbody',{},studios.map(studio=>E('tr',{},E('th',{scope:'row'},studio.name),E('td',{},contactNode(studio))))))),
     E('details',{class:'disclosure'},E('summary',{},'자료 출처와 비교 범위'),E('div',{class:'source-notes'},
@@ -1586,6 +1718,106 @@ function renderBudgetCalculator(){
       E('p',{class:'small muted'},'아직 입력한 결혼 예산 항목이 없습니다. 오른쪽 위의 ‘첫 예산표 작성하기’ 버튼을 눌러 신혼여행 계획예산과 웨딩홀·스드메 예산을 함께 정리해 보세요.')),
     renderVenueSimulator());
 }
+function openVendorScheduleEditor(existing=null){
+  if(guestMode)return;
+  const isEdit=Boolean(existing&&existing.id);
+  const form=E('form',{class:'editor-form'});
+  form.append(E('p',{class:'form-note'},'업체 일정·촬영일·피팅·잔금 예정일은 이 기기의 개인 설정에만 저장되며 방문자용 화면이나 공개 저장소에는 노출되지 않습니다. 계좌번호·주민등록번호·비밀번호 등 민감 정보는 입력하지 마세요.'));
+  const catSelect=E('select',{id:'vendor-sched-cat'},VENDOR_CATEGORIES.map(c=>E('option',{value:c},c)));
+  if(isEdit&&VENDOR_CATEGORIES.includes(existing.category))catSelect.value=existing.category;
+  const nameInput=E('input',{type:'text',maxlength:'120',id:'vendor-sched-name',required:'true',placeholder:'예: 라크마 스튜디오 웨딩촬영 (낮 12시) / 드레스 가봉 / 본식스냅 잔금'});
+  nameInput.value=existing?.name||'';
+  const dateInput=E('input',{type:'date',id:'vendor-sched-date'});
+  dateInput.value=existing?.date||'';
+  const doneCheck=E('input',{type:'checkbox',id:'vendor-sched-done'});
+  doneCheck.checked=Boolean(existing?.done);
+  const noteInput=E('textarea',{rows:'3',maxlength:'500',id:'vendor-sched-note',placeholder:'예: 2/3(수) 12:00 촬영 · 08:30 메이크업 샵 집결 · 헬퍼비 봉투 및 생화 부케 지참'});
+  noteInput.value=existing?.note||'';
+  form.append(
+    E('div',{class:'field-row'},
+      E('label',{class:'field',for:catSelect.id},'일정·업체 분류',catSelect),
+      E('label',{class:'field',for:dateInput.id},'예정 날짜 (선택)',dateInput)),
+    E('label',{class:'field',for:nameInput.id},'업체·일정 이름',nameInput),
+    E('label',{class:'field',for:noteInput.id},'일정·준비물·정산 메모 (선택)',noteInput),
+    E('label',{class:'check-label',for:doneCheck.id},doneCheck,'완료됨 (촬영·투어·정산 완료 표시)'),
+    E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},isEdit?'일정 저장':'일정 추가'))
+  );
+  const submit=form.querySelector('[type="submit"]');let saving=false;
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();if(saving)return;
+    const name=nameInput.value.trim();if(!name)return;
+    const curList=activeVendorSchedules();
+    if(!isEdit&&curList.length>=60){toast('업체·촬영 일정은 60개까지 등록할 수 있습니다.',true);return;}
+    const id=isEdit?existing.id:'vsched-'+crypto.randomUUID().slice(0,8);
+    const entry={id,category:catSelect.value,name,date:dateInput.value||'',done:doneCheck.checked,note:noteInput.value.trim()};
+    const nextList=isEdit?curList.map(v=>v.id===id?entry:v):[...curList,entry];
+    saving=true;submit.disabled=true;
+    try{
+      const saved=await queuePreference(()=>savePrefs({...prefs,vendorSchedules:nextList}));
+      if(saved){closeDialog();render();toast(isEdit?'업체·촬영 일정을 수정했습니다.':'업체·촬영 일정을 추가했습니다.');}
+    }catch(error){toast(storageMessage(error),true);}finally{saving=false;submit.disabled=false;}
+  });
+  const snapshot=()=>JSON.stringify([catSelect.value,nameInput.value,dateInput.value,doneCheck.checked,noteInput.value]),initial=snapshot();
+  if(showDialog(isEdit?'주요 업체·촬영·잔금 일정 수정':'주요 업체·촬영·잔금 일정 추가',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
+}
+function renderVendorScheduleBoard(){
+  if(guestMode)return null;
+  const list=activeVendorSchedules();
+  const sorted=[...list].sort((a,b)=>{
+    if(a.done!==b.done)return a.done?1:-1;
+    if(a.date&&b.date)return a.date.localeCompare(b.date);
+    if(a.date)return -1;
+    if(b.date)return 1;
+    return 0;
+  });
+  const doneCount=list.filter(v=>v.done).length;
+  const toggleDone=(item,box)=>{
+    const nextList=activeVendorSchedules().map(v=>v.id===item.id?{...v,done:box.checked}:v);
+    queuePreference(async()=>{
+      const saved=await savePrefs({...prefs,vendorSchedules:nextList});
+      if(saved)render();
+      else box.checked=item.done;
+      return saved;
+    });
+  };
+  return E('section',{class:'vendor-schedule-board','aria-labelledby':'vendor-schedule-title'},
+    E('div',{class:'section-heading'},
+      E('div',{},
+        E('p',{class:'eyebrow'},'VENDOR & SHOOT SCHEDULE BOARD'),
+        E('h2',{id:'vendor-schedule-title'},'📅 주요 업체 일정 · 촬영 · 잔금 체크 보드'),
+        E('p',{},'스튜디오 촬영일(2/3 수 12:00 라크마 확정), 드레스 피팅·가봉, 웨딩홀 시식·최종 보증인원 확정, 본식스냅 잔금 등 주요 일정을 날짜순으로 관리합니다. (이 기기에만 저장 · 계좌번호·주민번호 등 민감 정보 입력 금지)')),
+      E('div',{class:'page-actions'},
+        E('span',{class:'badge'},`${doneCount}/${list.length} 완료`),
+        button('+ 일정 추가',()=>openVendorScheduleEditor(),'button quiet'))),
+    sorted.length?E('ul',{class:'vendor-schedule-list'},sorted.map(item=>{
+      const dday=item.date?weddingDday(item.date):null;
+      const box=E('input',{type:'checkbox','aria-label':`${item.name} 완료 표시`});
+      box.checked=Boolean(item.done);
+      box.addEventListener('change',()=>toggleDone(item,box));
+      return E('li',{class:'vendor-schedule-item'+(item.done?' done':'')},
+        E('div',{class:'vendor-schedule-main'},
+          E('label',{class:'vendor-schedule-check'},box),
+          E('div',{class:'vendor-schedule-info'},
+            E('div',{class:'vendor-schedule-top'},
+              E('span',{class:'spec-chip'},item.category),
+              item.date?E('span',{class:'spec-chip highlight'},`🗓️ ${formatDate(item.date)}`):E('span',{class:'spec-chip'},'날짜 미정'),
+              dday&&!item.done?E('span',{class:'spec-chip direct'},`⏳ ${dday}`):null,
+              item.done?E('span',{class:'spec-chip'},'✓ 완료'):null),
+            E('strong',{class:'vendor-schedule-name'},item.name),
+            item.note?E('p',{class:'small muted vendor-schedule-note'},item.note):null)),
+        E('div',{class:'vendor-schedule-actions'},
+          button('수정',()=>openVendorScheduleEditor(item),'checklist-note-btn'),
+          button('삭제',()=>{
+            if(!confirm(`‘${item.name}’ 일정을 삭제할까요?`))return;
+            queuePreference(async()=>{
+              const nextList=activeVendorSchedules().filter(v=>v.id!==item.id);
+              const saved=await savePrefs({...prefs,vendorSchedules:nextList});
+              if(saved){render();toast('일정을 삭제했습니다.');}
+              return saved;
+            });
+          },'checklist-note-btn danger-text')));
+    })):E('p',{class:'small muted'},'등록된 업체·촬영 일정이 없습니다. 오른쪽 위 ‘+ 일정 추가’ 버튼으로 주요 일정을 기록해 보세요.'));
+}
 function shiftTime(hhmm,deltaMinutes){
   const m=/^(\d{2}):(\d{2})$/.exec(hhmm||'');
   if(!m)return null;
@@ -1636,6 +1868,23 @@ function openCeremonyEditor(){
   const snapshot=()=>JSON.stringify([styleSelect.value,mcInput.value,songInput.value,speechInput.value,noteInput.value]),initial=snapshot();
   if(showDialog('본식 식순·담당자 플래너 편집',form))editorState={isDirty:()=>saving||snapshot()!==initial,isSaving:()=>saving};
 }
+function copyCeremonyPlanText(timeline,orderSteps,cPlan,inv,baseTime,isNoOfficiant){
+  const lines=[
+    `🔔 [본식 당일 타임테이블 & 식순 공유] ${inv.partner1||'신랑'} ♥ ${inv.partner2||'신부'}`,
+    `· 일시: ${inv.date?formatDate(inv.date):'예식일'} ${baseTime}`,
+    `· 장소: ${inv.venue||'웨딩홀'}`,
+    `· 예식 형태: ${isNoOfficiant?'주례 없는 예식':'일반 예식'}`,
+    `· 사회자: ${cPlan.mc||'미정'} / 축가: ${cPlan.song||'미정'} / 덕담·축사: ${cPlan.speech||'미정'}`,
+    '',
+    '⏰ [당일 타임테이블]',
+    ...timeline.map(([t,title,desc])=>`- ${t} ${title}: ${desc}`),
+    '',
+    `📋 [${isNoOfficiant?'주례 없는 예식':'일반 예식'} 식순]`,
+    ...orderSteps
+  ];
+  if(cPlan.note)lines.push('',`🎼 [BGM·진행 메모]\n${cPlan.note}`);
+  copyTextToClipboard(lines.join('\n'),'본식 타임테이블·식순 요약을 클립보드에 복사했습니다.');
+}
 function renderCeremonyPlanner(){
   if(guestMode)return null;
   const inv=content.invitation||{};
@@ -1676,6 +1925,7 @@ function renderCeremonyPlanner(){
         E('h2',{id:'ceremony-planner-title'},'본식 당일 타임테이블 & 식순 플래너'),
         E('p',{},`${inv.date||'예식일'} ${baseTime} (${inv.venue||'웨딩홀'}) 기준 당일 시간표와 ${isNoOfficiant?'주례 없는 예식':'일반 예식'} 표준 식순입니다.`)),
       E('div',{class:'page-actions'},
+        button('📋 타임테이블·식순 복사',()=>copyCeremonyPlanText(timeline,orderSteps,cPlan,inv,baseTime,isNoOfficiant),'button quiet'),
         button('🖨️ 인쇄 / PDF',()=>window.print(),'button quiet'),
         button('식순·사회·축가 편집',openCeremonyEditor,'button quiet'))),
     E('div',{class:'ceremony-summary-chips'},
@@ -1784,6 +2034,7 @@ function renderTips(){
   redrawTips=draw;draw();
   return [pageHeader('결혼에 관한 모든 정보','상견례·웨딩홀·스드메·본식부터 예산·신혼집까지, 꼭 알아두면 좋은 결혼식 꿀팁 유튜브 영상과 핵심 요약을 모았어요.',editButton('꿀팁 추가',()=>openEditor('tips')),'WEDDING GUIDE'),
     renderBudgetCalculator(),
+    renderVendorScheduleBoard(),
     renderCeremonyPlanner(),
     content.tips.length?E('section',{class:'tips-directory'},
       catBar,
@@ -1991,19 +2242,32 @@ function openEditor(type,item=null) {
       ['따뜻한 감성형','함께 있을 때 가장 나다운 모습이 되고,\n함께일 때 내일이 더 기대되는 사람을 만났습니다.\n풋풋한 설렘으로 시작해 믿음으로 깊어진 저희 두 사람,\n이제 부부라는 이름으로 첫걸음을 내딛습니다.\n소중한 걸음으로 따뜻한 축복을 더해 주세요.'],
       ['담백한 현대형','평생을 함께하고 싶은 사람을 만나\n새로운 시작을 하려 합니다.\n귀한 걸음으로 오셔서\n저희의 기쁜 날을 함께 축복해 주시면\n더없는 기쁨으로 간직하겠습니다.']
     ];
+    const presetMessages=new Set(templates.map(([,t])=>t));
     const defaultTransit='· 자가용: 내비게이션 ‘순천아모르웨딩컨벤션’ 또는 ‘압곡길 94’ 검색 (웨딩홀 전용 주차장 이용)\n· KTX/기차: 순천역 하차 후 택시 이용\n· 고속/시외버스: 순천종합버스터미널 하차 후 택시 이용';
+    const defaultNotice='· 식사 안내: 예식 시작 30분 전부터 연회장에서 식사가 가능합니다.\n· 주차 안내: 웨딩홀 전용 주차장을 무료로 이용하실 수 있습니다.\n· 화환 안내: 축하 화환은 정중히 사양하며 따뜻한 마음만 감사히 받겠습니다.';
     form.appendChild(E('div',{class:'greeting-templates'},
-      E('span',{class:'small muted'},'✨ 초대 인사 추천 문구 및 교통 안내 빠른 채우기:'),
+      E('span',{class:'small muted'},'✨ 초대 인사 추천 문구 및 교통·예식 안내 빠른 채우기:'),
       E('div',{class:'greeting-template-buttons'},
         ...templates.map(([label,text])=>button(label,()=>{
+          const cur=fields.message.value.trim();
+          if(cur&&!presetMessages.has(cur)&&!confirm('현재 입력된 초대 인사를 선택한 추천 문구로 바꿀까요?'))return;
           fields.message.value=text;
           fields.message.focus({preventScroll:true});
           toast(`‘${label}’ 문구를 초대 인사 입력란에 채웠습니다. 자유롭게 다듬어 보세요.`);
         },'button quiet')),
         button('🚗 순천아모르웨딩컨벤션 기본 교통·주차 문구 채우기',()=>{
+          const cur=fields.transit.value.trim();
+          if(cur&&cur!==defaultTransit&&!confirm('현재 입력된 교통·주차 안내를 기본 문구로 바꿀까요?'))return;
           fields.transit.value=defaultTransit;
           fields.transit.focus({preventScroll:true});
           toast('기본 교통·주차 안내 문구를 입력란에 채웠습니다.');
+        },'button quiet'),
+        button('📌 기본 식사·예식 안내 예시 채우기',()=>{
+          const cur=fields.notice.value.trim();
+          if(cur&&cur!==defaultNotice&&!confirm('현재 입력된 예식 안내 메모를 기본 예시 문구로 바꿀까요?'))return;
+          fields.notice.value=defaultNotice;
+          fields.notice.focus({preventScroll:true});
+          toast('기본 식사·예식 안내 예시 문구를 채웠습니다. 예식홀 조건에 맞게 수정해 주세요.');
         },'button quiet'))));
   }
   let editedPlan,stayFields,quoteFields,extraFields;
@@ -2185,15 +2449,19 @@ function downloadContent(){return downloadSaved(DRAFT_KEY);}
 function downloadPrivate(){return downloadSaved(PREF_KEY);}
 function openManager() {
   if(guestMode)return;
-  const managerBase=structuredClone(content),managerRaw=readStorage(DRAFT_KEY);
+  const managerBase=structuredClone(content),managerRaw=readStorage(DRAFT_KEY),prefRaw=readStorage(PREF_KEY);
+  const byteLen=str=>str?new TextEncoder().encode(str).length:0;
+  const draftBytes=byteLen(managerRaw),prefBytes=byteLen(prefRaw),totalBytes=draftBytes+prefBytes;
+  const maxQuota=5*1024*1024,pct=Math.min(100,Math.max(totalBytes>0?1:0,Math.round((totalBytes/maxQuota)*100)));
+  const fmtSize=b=>b>=1024*1024?`${(b/(1024*1024)).toFixed(2)} MB`:`${(b/1024).toFixed(1)} KB`;
   const personal=E('input',{type:'file',accept:'.json,application/json',class:'file-input','aria-label':'개인 메모·선택 백업 선택'});
   personal.addEventListener('change',async()=>{
     const selected=personal.files?.[0];if(!selected)return;
     try{
       if(selected.size>MAX_IMPORT_BYTES)throw new Error('개인 백업은 8MB 이하로 선택해 주세요.');
       const next=parsePreferencesBackup(await selected.text());
-      if(!confirm('이 기기의 스튜디오·여행 선택과 개인 메모, 체크리스트, 통합 예산, 웨딩홀 시뮬레이터, 본식 식순, 신혼여행 준비물을 백업 내용으로 바꿀까요?'))return;
-      if(await savePrefs(next,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·식순 설정을 복원했습니다.');}
+      if(!confirm('이 기기의 스튜디오·여행·꿀팁 선택과 개인 메모, 체크리스트, 통합 예산, 웨딩홀 시뮬레이터, 업체 일정 보드, 본식 식순, 신혼여행 준비물을 백업 내용으로 바꿀까요?'))return;
+      if(await savePrefs(next,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·일정·식순 설정을 복원했습니다.');}
     }catch(error){toast(error.message,true);}finally{personal.value='';}
   });
 
@@ -2216,7 +2484,12 @@ function openManager() {
     }catch(error){toast(error.message,true);}finally{file.value='';}
   });
   showDialog('내용 관리',E('div',{},E('p',{class:'form-note'},'공개본은 저장소의 콘텐츠입니다. 여기서 편집한 내용은 이 기기에만 저장되며 자동으로 공개되지 않습니다.'),
-    E('section',{class:'manager-section'},E('h3',{},'개인 메모·선택 백업'),E('p',{},'스튜디오 메모와 관심·비교 선택, 여행 관심·비교·최종 선택, 관심 꿀팁, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·본식 식순·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),button('개인 백업 저장',downloadPrivate,'button quiet'),personal),
+    E('section',{class:'manager-section storage-meter-section'},
+      E('h3',{},'브라우저 저장 공간 현황'),
+      E('p',{class:'small muted'},`현재 사용량 약 ${fmtSize(totalBytes)} / 권장 한도 5.00 MB (${pct}%) · 초안 ${fmtSize(draftBytes)} · 개인 설정·메모 ${fmtSize(prefBytes)}`),
+      E('div',{class:'checklist-progress-track storage-meter-track','aria-hidden':'true'},
+        E('span',{class:'checklist-progress-fill',style:`width:${pct}%`}))),
+    E('section',{class:'manager-section'},E('h3',{},'개인 메모·선택 백업'),E('p',{},'스튜디오 메모와 관심·비교·최종 선택, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀 시뮬레이터·주요 업체 일정 보드·본식 식순·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),button('개인 백업 저장',downloadPrivate,'button quiet'),personal),
     E('section',{class:'manager-section'},E('h3',{},'방문자용 보기'),E('p',{},'방문자용 링크는 공개본만 표시하며 편집 버튼과 이 기기의 개인 메모를 숨깁니다. 접근 권한을 제한하는 기능은 아닙니다.'),linkButton('방문자용 청첩장 열기','?view=guest#/invitation',true)),
     isDraft&&draftRevision!==baseRevision?E('section',{class:'manager-section'},E('h3',{},'새 공개본 확인'),E('p',{},'현재 초안을 파일로 백업한 후 새 공개본을 확인하세요. 공개본으로 돌아가면 초안을 지우며 자동으로 합치지 않습니다.'),button('현재 초안 백업',downloadContent,'button quiet'),linkButton('새 공개본 미리보기','?view=guest#/home',true)):null,
     E('section',{class:'manager-section'},E('h3',{},'기본 정보'),E('p',{},'이름, 예식 일정과 장소, 청첩장 인사를 채워요.'),editButton('예식 정보 편집',()=>openEditor('invitation'),'button quiet')),
@@ -2231,6 +2504,10 @@ function openManager() {
         });
         content=structuredClone(baseContent);isDraft=false;draftRevision=baseRevision;closeDialog();render();toast('공개본으로 돌아왔습니다.');
       }catch(error){toast(error.message||'초안을 지우지 못했습니다.',true);}
+    },'button danger')),
+    E('section',{class:'manager-section'},E('h3',{},'개인 설정·메모 초기화'),E('p',{},'이 기기에 저장된 스튜디오·여행·꿀팁 관심 및 메모, 체크리스트, 통합 예산, 웨딩홀 시뮬레이터, 업체 일정, 본식 식순을 초기 상태(라크마 기본 선택)로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),button('개인 설정·메모 초기화',async()=>{
+      if(!confirm('이 기기의 모든 개인 메모·관심 선택·예산·체크리스트·식순 설정을 초기화할까요?'))return;
+      if(await savePrefs(validatePreferences({}),validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('이 기기의 개인 설정과 메모를 초기화했습니다.');}
     },'button danger'))));
 }
 function syncDraftFromStorage(){
