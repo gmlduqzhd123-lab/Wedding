@@ -63,7 +63,7 @@ export function validatePreferences(input) {
     });
   }
   if (input.customPackingList !== undefined) {
-    if (!Array.isArray(input.customPackingList) || input.customPackingList.length > 50) throw new Error('직접 추가한 준비물은 50개까지 보관할 수 있습니다.');
+    if (!Array.isArray(input.customPackingList) || input.customPackingList.length > 80) throw new Error('직접 추가한 준비물은 80개까지 보관할 수 있습니다.');
     const seen = new Set();
     result.customPackingList = input.customPackingList.map(item => {
       if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !PACKING_CATEGORIES.includes(item.category) || typeof item.title !== 'string') throw new Error('직접 추가한 준비물 형식을 확인해 주세요.');
@@ -86,7 +86,7 @@ export function validatePreferences(input) {
       const dateStr = item.date === undefined || item.date === null ? '' : String(item.date).trim();
       if (dateStr && !validDate(dateStr)) throw new Error('업체 일정 날짜를 확인해 주세요.');
       const note = item.note === undefined || item.note === null ? '' : item.note;
-      if (typeof note !== 'string' || note.length > 300) throw new Error('업체 일정 메모는 300자 이하로 입력해 주세요.');
+      if (typeof note !== 'string' || note.length > 500) throw new Error('업체 일정 메모는 500자 이하로 입력해 주세요.');
       return { id: item.id, category: item.category, name, date: dateStr, done: item.done, ...(note.trim() ? { note: note.trim() } : {}) };
     });
   }

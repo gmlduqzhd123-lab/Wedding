@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-36';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-36';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-36';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-36';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-36';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-36';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-36';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-37';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-37';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-37';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-37';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-37';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-37';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-37';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -106,11 +106,12 @@ function toast(message,error=false) {
 function describeValue(value,path=''){
   if(value===undefined)return '삭제됨';
   if(value===null)return '미입력';
-  if(value&&typeof value==='object'&&!Array.isArray(value)&&/^(venueSim|budgetPlan|ceremonyPlan)(\.|$)/.test(path)){
+  if(value&&typeof value==='object'&&!Array.isArray(value)&&/^(venueSim|sdmSim|budgetPlan|ceremonyPlan)(\.|$)/.test(path)){
     return Object.entries(value).map(([key,entry])=>`${conflictLabel(key)}: ${describeValue(entry,`${path}.${key}`)}`).join('\n');
   }
-  if(typeof value==='number'&&/\.(mealPrice|hallFee|deposit|planned|actual)$/.test(path))return `${value.toLocaleString('ko-KR')}원`;
+  if(typeof value==='number'&&/\.(mealPrice|hallFee|deposit|packageFee|helperFee|extraFee|planned|actual)$/.test(path))return `${value.toLocaleString('ko-KR')}원`;
   if(typeof value==='number'&&/\.(guestCount|minGuarantee)$/.test(path))return `${value.toLocaleString('ko-KR')}명`;
+  if(typeof value==='boolean')return value?'적용 · 완료':'미적용 · 미완료';
   if(path==='ceremonyPlan.style')return value==='officiant'?'일반 예식 (주례사 중심)':'주례 없는 예식';
   const text=typeof value==='string'?value:JSON.stringify(value);
   return text.includes('data:image/')?'사진이 포함된 내용':text.slice(0,300)||'비어 있음';
@@ -121,9 +122,9 @@ function conflictDetails(error){
     E('p',{},'서로 다른 항목의 변경은 함께 보존됩니다.'));
 }
 function conflictLabel(path){
-  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처·마음 전하실 곳 안내',notes:'스튜디오 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',shootChecklist:'촬영 준비 체크리스트',ceremonyChecks:'본식 식순 체크리스트',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',ceremonyPlan:'본식 식순 플래너',venueSim:'웨딩홀 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
-  const planningLabels={planned:'목표 예산',actual:'실제 지출·계약 견적',mealPrice:'1인 식대',guestCount:'예상 하객 수',minGuarantee:'최소 보증인원',hallFee:'대관료·연출료',deposit:'기납부 계약금',note:'메모',style:'예식 진행 형태',mc:'사회자',song:'축가',speech:'축사·덕담·주례',banquetFloor:'연회홀 층수',vows:'혼인서약서 문안',declaration:'성혼선언문 문안',sdm:'스튜디오·드레스·메이크업',snap:'본식 촬영·진행',rings:'예물·예복·한복·예단',living:'혼수·가전·가구'};
-  return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||planningLabels[key]||studios.find(item=>item.id===key)?.name||'기록').join(' · ');
+  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처·마음 전하실 곳 안내',notes:'스튜디오 메모',tripNotes:'여행지 개인 메모',tipNotes:'꿀팁 영상 개인 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',shootChecklist:'촬영 준비 체크리스트',ceremonyChecks:'본식 식순 체크리스트',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',vendorSchedules:'주요 업체 일정',ceremonyPlan:'본식 식순 플래너',venueSim:'웨딩홀 비용 시뮬레이터',sdmSim:'스드메 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'신혼여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
+  const planningLabels={planned:'목표 예산',actual:'실제 지출·계약 견적',mealPrice:'1인 식대',guestCount:'예상 하객 수',minGuarantee:'최소 보증인원',hallFee:'대관료·연출료',deposit:'기납부 계약금',packageFee:'스드메 패키지 기본가',helperFee:'당일 헬퍼비',extraFee:'기타 추가금',roadScene:'로드씬 옵션',nightShoot:'야간씬 옵션',name:'일정 이름',done:'완료 여부',note:'메모',style:'예식 진행 형태',mc:'사회자',song:'축가',speech:'축사·덕담·주례',banquetFloor:'연회홀 층수',vows:'혼인서약서 문안',declaration:'성혼선언문 문안',sdm:'스튜디오·드레스·메이크업',snap:'본식 촬영·진행',rings:'예물·예복·한복·예단',living:'혼수·가전·가구'};
+  return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||planningLabels[key]||studios.find(item=>item.id===key)?.name||content?.honeymoon?.find(item=>item.id===key)?.title||content?.tips?.find(item=>item.id===key)?.title||activeVendorSchedules().find(item=>item.id===key)?.name||'기록').join(' · ');
 }
 function storageMessage(error){
   if(error.name==='QuotaExceededError')return '저장 공간이 부족합니다. 초안을 백업하고 사진 수나 용량을 줄여 주세요.';
@@ -284,8 +285,9 @@ function openCustomChecklistEditor(existing=null){
     try{
       const title=titleInput.value.trim(),note=noteInput.value.trim(),stage=stageSelect.value;
       if(!title)throw new Error('할 일 내용을 입력해 주세요.');
-      const id=isEdit?existing.id:'custom-'+crypto.randomUUID().slice(0,8);
       const curList=[...(prefs.customChecklist||[])];
+      if(!isEdit&&curList.length>=50)throw new Error('직접 추가한 할 일은 50개까지 보관할 수 있습니다.');
+      const id=isEdit?existing.id:'custom-'+crypto.randomUUID().slice(0,8);
       const nextCustom=isEdit?curList.map(c=>c.id===id?{id,stage,title}:c):[...curList,{id,stage,title}];
       const nextNotes={...(prefs.checklistNotes||{})};
       if(note)nextNotes[id]=note;else delete nextNotes[id];
@@ -2202,13 +2204,18 @@ function renderVendorScheduleBoard(){
       const box=E('input',{type:'checkbox','aria-label':`${item.name} 완료 표시`});
       box.checked=Boolean(item.done);
       box.addEventListener('change',()=>toggleDone(item,box));
+      const isLachmaShoot=item.id==='vsched-lachma-shoot';
       const calSpec=item.date?{
         uid:item.id||'vendor',
         summary:`[결혼준비] ${item.name}`,
         date:item.date,
-        time:item.id==='vsched-lachma-shoot'?'12:00':'',
-        location:item.id==='vsched-lachma-shoot'?'광주광역시 동구 서석로85번길 8-12 (라크마 스튜디오)':'',
-        description:[`분류: ${item.category}`,item.note||''].filter(Boolean).join('\n')
+        time:isLachmaShoot?'12:00':'',
+        location:isLachmaShoot?'광주광역시 남구 중앙로 117 라크마 스튜디오':'',
+        description:[
+          `분류: ${item.category}`,
+          isLachmaShoot&&!(item.note||'').includes('중앙로 117')?'STEP 1 루나메이크업(광주 남구 천변좌로 432 1층) → STEP 2 라크마 스튜디오(광주 남구 중앙로 117, 예약 5~10분 전 도착 필수)':'',
+          item.note||''
+        ].filter(Boolean).join('\n')
       }:null;
       const gcalUrl=calSpec?scheduleGoogleCalendarUrl(calSpec):null;
       return E('li',{class:'vendor-schedule-item'+(item.done?' done':'')},
@@ -2298,7 +2305,10 @@ function defaultAmorVowsText(inv={}){
 function defaultAmorDeclarationText(inv={},cPlan={}){
   const groom=ceremonyCleanName(inv.partner1,'신랑');
   const bride=ceremonyCleanName(inv.partner2,'신부');
-  const mcName=(cPlan.mc||'').trim()||'(사회자 성함)';
+  const isOfficiant=cPlan.style==='officiant';
+  const speakerLine=isOfficiant
+    ?`주례자 : ${(cPlan.speech||'').trim()||'(주례 선생님 성함)'}`
+    :`사회자 : ${(cPlan.mc||'').trim()||'(사회자 성함)'}`;
   return [
     '성 혼 선 언 문',
     '',
@@ -2314,7 +2324,7 @@ function defaultAmorDeclarationText(inv={},cPlan={}){
     '엄숙히 선언합니다.',
     '',
     ceremonyDateLabel(inv.date),
-    `사회자 : ${mcName}`
+    speakerLine
   ].join('\n');
 }
 function buildAmorMcSteps(inv={},cPlan={}){
@@ -2424,9 +2434,9 @@ function openCeremonyEditor(focusField=''){
   },'checklist-note-btn');
   const fillDeclBtn=button('↺ 아모르 기본 성혼선언문 채우기',()=>{
     if(declInput.value.trim()&&!confirm('현재 작성된 성혼선언문 문구를 기본 예문으로 바꿀까요?'))return;
-    declInput.value=defaultAmorDeclarationText(inv,{...current,mc:mcInput.value.trim()});
+    declInput.value=defaultAmorDeclarationText(inv,{...current,style:styleSelect.value==='officiant'?'officiant':'noOfficiant',mc:mcInput.value.trim(),speech:speechInput.value.trim()});
     declInput.focus({preventScroll:true});
-    toast('사회자용 기본 성혼선언문 예문을 채웠습니다.');
+    toast('기본 성혼선언문 예문을 채웠습니다.');
   },'button quiet small-copy-btn');
   const clearDeclBtn=button('기본값 자동 연동으로 비우기',()=>{
     declInput.value='';
@@ -2448,7 +2458,7 @@ function openCeremonyEditor(focusField=''){
       vowsInput),
     E('div',{class:'ceremony-editor-doc-block'},
       E('div',{class:'ceremony-editor-doc-head'},
-        E('strong',{class:'small'},'📜 성혼선언문 문안 (비워 두면 아모르 사회자용 기본 예문 + 이름·사회자 자동 적용)'),
+        E('strong',{class:'small'},'📜 성혼선언문 문안 (비워 두면 아모르 기본 예문 + 이름·사회자/주례자 자동 적용)'),
         E('div',{class:'lachma-official-links'},fillDeclBtn,clearDeclBtn)),
       declInput),
     E('div',{class:'form-actions'},button('취소',requestClose,'button quiet'),E('button',{class:'button',type:'submit'},'식순 플래너 저장'))
@@ -2478,13 +2488,23 @@ function openCeremonyEditor(focusField=''){
     else if(focusField==='declaration')setTimeout(()=>declInput.focus(),30);
   }
 }
+function printCeremonyPapersOnly(){
+  document.body.classList.add('print-ceremony-papers');
+  const cleanup=()=>{
+    document.body.classList.remove('print-ceremony-papers');
+    window.removeEventListener('afterprint',cleanup);
+  };
+  window.addEventListener('afterprint',cleanup,{once:true});
+  window.print();
+  setTimeout(cleanup,1500);
+}
 function copyCeremonyPlanText(timeline,orderSteps,cPlan,inv,baseTime,isNoOfficiant){
   const lines=[
     `🔔 [본식 당일 타임테이블 & 식순 요약] ${inv.partner1||'신랑'} ♥ ${inv.partner2||'신부'}`,
     `· 일시: ${inv.date?formatDate(inv.date):'예식일'} ${baseTime}`,
     `· 장소: ${inv.venue||'순천아모르웨딩컨벤션'}${cPlan.banquetFloor?` (피로연 연회홀: ${cPlan.banquetFloor})`:''}`,
-    `· 예식 형태: ${isNoOfficiant?'주례 없는 예식 (순천아모르 12단계 기준)':'일반 예식'}`,
-    `· 사회자: ${cPlan.mc||'미정'} / 축가: ${cPlan.song||'미정'} / 덕담·축사: ${cPlan.speech||'생략·미정'}`,
+    `· 예식 형태: ${isNoOfficiant?'주례 없는 예식 (순천아모르 12단계 기준)':'일반 예식 (주례사 중심)'}`,
+    `· 사회자: ${cPlan.mc||'미정'} / 축가: ${cPlan.song||'미정'} / 덕담·축사·주례: ${cPlan.speech||'생략·미정'}`,
     '· 홀 좌석 방향: 사회자 단상이 있는 쪽 = 신랑 측 / 반대쪽 = 신부 측',
     '',
     '⏰ [당일 타임테이블]',
@@ -2500,7 +2520,7 @@ function copyAmorMcScript(inv,cPlan){
   const mcSteps=buildAmorMcSteps(inv,cPlan);
   const declText=(cPlan.declaration||'').trim()||defaultAmorDeclarationText(inv,cPlan);
   const lines=[
-    `🎤 [사회자 진행 대본 · 큐시트] ${inv.partner1||'신랑'} ♥ ${inv.partner2||'신부'} 주례 없는 결혼식`,
+    `🎤 [사회자 진행 대본 · 큐시트] ${inv.partner1||'신랑'} ♥ ${inv.partner2||'신부'} ${cPlan.style==='officiant'?'결혼식 (아모르 기본 큐시트 참고)':'주례 없는 결혼식'}`,
     `· 일시: ${inv.date?formatDate(inv.date):'예식일'} ${inv.time||'15:00'}`,
     `· 장소: ${inv.venue||'순천아모르웨딩컨벤션'}`,
     `· 사회자: ${cPlan.mc||'미정'} / 축가: ${cPlan.song||'미정'} / 연회홀: ${cPlan.banquetFloor||'층수 확인 필요'}`,
@@ -2509,7 +2529,7 @@ function copyAmorMcScript(inv,cPlan){
       `[${no}. ${title}]`,
       `  * 현장 체크: ${cue}`,
       ...scripts.map(s=>`  "${s}"`),
-      ...(no==='08'?['','  --- [사회자 성혼선언문 낭독문] ---',  ...declText.split('\n').map(l=>`  ${l}`),  '  ---------------------------------']:[]),
+      ...(no==='08'?['','  --- [성혼선언문 낭독문] ---',  ...declText.split('\n').map(l=>`  ${l}`),  '  ---------------------------']:[]),
       ''
     ]),
     '※ 본 대본은 두 사람의 예식 진행을 위해 정리한 개인 준비본입니다.'
@@ -2527,7 +2547,7 @@ function renderCeremonyPlanner(){
     [shiftTime(baseTime,-90)||'13:30','웨딩홀 도착·신부대기실 입장',`${inv.venue||'순천아모르웨딩컨벤션'} 도착 · 스냅 촬영 시작 · 혼주 코사지 확인`],
     [shiftTime(baseTime,-60)||'14:00','하객 맞이·좌석/접수대 점검','축의대·식권 확인 · 사회자 단상 쪽(신랑 측) / 반대쪽(신부 측) 안내 점검'],
     [shiftTime(baseTime,-20)||'14:40','입장 동선·사회자 최종 리허설','개식 예고 · 신랑 버진로드 대기 · 신부 2단계 입장 · 혼인서약서/성혼선언문 단상 체크'],
-    [baseTime,'본식 개식 (주례 없는 예식 12단계)','개식사 → 화촉점화 → 신랑·신부 입장 → 맞절 → 혼인서약 → 성혼선언 → 혼주·내빈 인사 → 축가 → 행진 → 폐식'],
+    [baseTime,isNoOfficiant?'본식 개식 (주례 없는 예식 12단계)':'본식 개식 (일반 예식)',isNoOfficiant?'개식사 → 화촉점화 → 신랑·신부 입장 → 맞절 → 혼인서약 → 성혼선언 → 혼주·내빈 인사 → 축가 → 행진 → 폐식':'개식 선언 → 화촉점화 → 신랑·신부 입장 → 맞절·혼인서약 → 성혼선언·주례사 → 혼주·내빈 인사 → 축가 → 행진 → 폐식'],
     [shiftTime(baseTime,50)||'15:50','원판 기념촬영','폐회식 직후 양가 가족·친지·우정 사진 촬영'],
     [shiftTime(baseTime,80)||'16:20',`연회홀(${cPlan.banquetFloor||'층수 확인'}) 피로연 인사`,'환복 후 연회홀 하객 감사 인사 및 본식 정산 마무리']
   ];
@@ -2573,14 +2593,15 @@ function renderCeremonyPlanner(){
       E('div',{},
         E('p',{class:'eyebrow'},'AMOR WEDDING HALL · CEREMONY & VOWS STUDIO'),
         E('h2',{id:'ceremony-planner-title'},'순천아모르 본식 타임테이블 · 식순 & 낭독 예문'),
-        E('p',{},`${inv.date||'예식일'} ${baseTime} (${inv.venue||'순천아모르웨딩컨벤션'}) 기준 주례 없는 예식 12단계 식순, 사회자 진행 멘트, 혼인서약서·성혼선언문입니다.`)),
+        E('p',{},`${inv.date||'예식일'} ${baseTime} (${inv.venue||'순천아모르웨딩컨벤션'}) 기준 ${isNoOfficiant?'주례 없는 예식 12단계 식순, 사회자 진행 멘트, 혼인서약서·성혼선언문입니다.':'일반 예식(주례사 중심) 식순 가이드와 현장 동선 큐시트, 혼인서약서·성혼선언문입니다.'}`)),
       E('div',{class:'page-actions'},
         button('📋 타임테이블·식순 복사',()=>copyCeremonyPlanText(timeline,orderSteps,cPlan,inv,baseTime,isNoOfficiant),'button quiet'),
         button('🎤 사회자 대본 복사',()=>copyAmorMcScript(inv,cPlan),'button quiet'),
-        button('🖨️ 인쇄 / PDF',()=>window.print(),'button quiet'),
+        button('🖨️ 서약서·선언문 인쇄',printCeremonyPapersOnly,'button quiet'),
+        button('🖨️ 전체 인쇄 / PDF',()=>window.print(),'button quiet'),
         button('식순·사회·낭독문 편집',()=>openCeremonyEditor(),'button quiet'))),
     E('div',{class:'ceremony-summary-chips'},
-      E('span',{class:'spec-chip highlight'},`🔔 예식 형태: ${isNoOfficiant?'주례 없는 예식 (아모르 12단계)':'일반 예식'}`),
+      E('span',{class:'spec-chip highlight'},`🔔 예식 형태: ${isNoOfficiant?'주례 없는 예식 (아모르 12단계)':'일반 예식 (주례사 중심)'}`),
       E('span',{class:'spec-chip'},`🎤 사회자: ${cPlan.mc||'미정'}`),
       E('span',{class:'spec-chip'},`🎵 축가: ${cPlan.song||'미정'}`),
       E('span',{class:'spec-chip'+(cPlan.banquetFloor?' direct':' highlight')},`🍽️ 연회홀: ${cPlan.banquetFloor||'층수 확인 필요'}`),
@@ -2619,7 +2640,7 @@ function renderCeremonyPlanner(){
         E('p',{class:'small muted'},'‘식순·사회·낭독문 편집’ 버튼에서 사회자·축가·연회홀 층수·BGM과 서약서 문구를 다듬을 수 있어요.'))),
     E('div',{class:'ceremony-docs-stack'},
       E('details',{class:'disclosure ceremony-doc-details'},
-        E('summary',{},`🎤 [사회자 진행 대본] 주례 없는 결혼식순 12단계 멘트 & 동선 큐시트 (${inv.partner1||'신랑'} · ${inv.partner2||'신부'} 자동 반영)`),
+        E('summary',{},`🎤 [사회자 진행 대본] ${isNoOfficiant?'주례 없는 결혼식순 12단계 멘트 & 동선 큐시트':'아모르 홀 기본 12단계 멘트 & 동선 참고 큐시트'} (${inv.partner1||'신랑'} · ${inv.partner2||'신부'} 자동 반영)`),
         E('div',{class:'ceremony-doc-body'},
           E('div',{class:'ceremony-doc-toolbar'},
             E('span',{class:'small muted'},'사회자에게 전달하기 전 성함·축가자·연회홀 층수를 확인해 주세요. 복사 시 8번 순서에 성혼선언문이 함께 포함됩니다.'),
@@ -2645,8 +2666,8 @@ function renderCeremonyPlanner(){
         E('article',{class:'ceremony-paper-card'},
           E('div',{class:'ceremony-paper-head'},
             E('div',{},
-              E('span',{class:'lachma-step-badge'},cPlan.declaration?'직접 다듬은 문안':'사회자 낭독용 기본 예문'),
-              E('h3',{},'📜 성혼선언문 (사회자용)')),
+              E('span',{class:'lachma-step-badge'},cPlan.declaration?'직접 다듬은 문안':(isNoOfficiant?'사회자 낭독용 기본 예문':'주례·사회 낭독용 기본 예문')),
+              E('h3',{},isNoOfficiant?'📜 성혼선언문 (사회자용)':'📜 성혼선언문 (주례·사회자용)')),
             E('div',{class:'lachma-official-links'},
               button('📋 복사',()=>copyTextToClipboard(declText,'성혼선언문 문안을 복사했습니다.'),'button quiet small-copy-btn'),
               button('✏️ 문구 수정',()=>openCeremonyEditor('declaration'),'button quiet small-copy-btn'))),
@@ -3183,7 +3204,7 @@ function openManager() {
     try{
       if(selected.size>MAX_IMPORT_BYTES)throw new Error('개인 백업은 8MB 이하로 선택해 주세요.');
       const next=parsePreferencesBackup(await selected.text());
-      if(!confirm('이 기기의 스튜디오·여행·꿀팁 선택과 개인 메모, 체크리스트, 통합 예산, 웨딩홀 시뮬레이터, 업체 일정 보드, 본식 식순, 신혼여행 준비물을 백업 내용으로 바꿀까요?'))return;
+      if(!confirm('이 기기의 스튜디오·여행·꿀팁 선택과 개인 메모, 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정 보드, 본식 식순·낭독문 체크, 신혼여행 준비물을 백업 내용으로 바꿀까요?'))return;
       if(await savePrefs(next,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·일정·식순 설정을 복원했습니다.');}
     }catch(error){toast(error.message,true);}finally{personal.value='';}
   });

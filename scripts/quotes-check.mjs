@@ -12,7 +12,7 @@ try{
  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true}),p=await context.newPage();
  p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await p.goto(base+'?view=guest#/honeymoon');await p.locator('#main[aria-busy="false"]').waitFor();
- assert.equal(await p.locator('.travel-card').count(),10);
+ assert.equal(await p.locator('.travel-card').count(),data.honeymoon.length);
  for(const trip of data.honeymoon){
   const c=p.locator(`[data-trip-id="${trip.id}"]`),q=trip.plan.quote;
   for(const key of ['all','quote','stays','costs','sources'])await open(p,trip.id,key);
@@ -36,6 +36,6 @@ try{
  assert.equal(new URL(await p.getByRole('link',{name:'Google 캘린더에 추가',exact:true}).getAttribute('href')).searchParams.get('dates'),'20270605T060000Z/20270605T060000Z');
  const download=p.waitForEvent('download');await p.getByRole('button',{name:'일정 파일(.ics) 다운로드',exact:true}).click();const ics=(await readFile(await(await download).path(),'utf8')).replace(/\r\n /g,'');
  assert.match(ics,/DTSTART:20270605T060000Z/);assert(!ics.includes('DTEND:'));
- assert.deepEqual(errors,[]);console.log('PASS actual 10 dated flight/room quotes, June 13 Korean arrivals, local nights, price breakdowns/source links, incomplete-cost boundaries, 320–1440px layouts, registered invitation/empty optional fields and Google/ICS payload; zero browser errors');
+ assert.deepEqual(errors,[]);console.log('PASS actual 5 dated direct-flight/room quotes, June 13 Korean arrivals, local nights, price breakdowns/source links, incomplete-cost boundaries, 320–1440px layouts, registered invitation/empty optional fields and Google/ICS payload; zero browser errors');
  await context.close();
 }finally{await browser.close();}

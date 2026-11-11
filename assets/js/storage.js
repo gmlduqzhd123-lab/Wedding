@@ -16,7 +16,7 @@ export function mergeChanges(base,local,remote,{preferLocal=false}={}) {
         .map(key=>[key,merge(before[key],next[key],current[key],path?`${path}.${key}`:key)]).filter(([,value])=>value!==undefined));
     }
     if([before,next,current].every(Array.isArray)){
-      if(['stories','albums','honeymoon','tips','customChecklist','customPackingList'].includes(path)){
+      if(['stories','albums','honeymoon','tips','customChecklist','customPackingList','vendorSchedules'].includes(path)){
         const index=items=>Object.fromEntries(items.map(item=>[item.id,item]));
         const merged=merge(index(before),index(next),index(current),`${path}.records`);
         const reordered=!same(next.map(item=>item.id),before.map(item=>item.id))&&same(current.map(item=>item.id),before.map(item=>item.id));

@@ -17,7 +17,7 @@ try{
   p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});p.on('dialog',d=>d.accept());
   const response=await p.request.get(new URL('data/site.json?qa='+Date.now(),base).href);assert(response.ok());assert.deepEqual(await response.json(),expected);
   await p.goto(base+'#/honeymoon');await ready(p);
-  assert.equal(await p.locator('.travel-card').count(),10);assert.equal(await p.locator('.travel-overview li').count(),10);
+  assert.equal(await p.locator('.travel-card').count(),expected.honeymoon.length);assert.equal(await p.locator('.travel-overview li').count(),expected.honeymoon.length);
   for(const trip of expected.honeymoon){
     const c=card(p,trip.id);assert.equal(await c.locator('h2').innerText(),trip.title);
     assert.match(await c.locator(':scope > dl').innerText(),/2027-06-06[\s\S]*2027-06-13/);
@@ -36,7 +36,7 @@ try{
   await p.setViewportSize({width:390,height:844});await p.locator('.travel-overview').screenshot({path:'work/june-beaches-qa/overview-mobile.png'});
   await p.locator('.overview-disclosure > summary').click();await p.locator('.travel-overview').getByRole('button',{name:expected.honeymoon.at(-1).title,exact:true}).click();
   assert.equal(await p.evaluate(()=>document.activeElement.textContent),expected.honeymoon.at(-1).title);assert.equal(new URL(p.url()).hash,'#/honeymoon');
-  console.log('PASS actual 10 June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts');
+  console.log('PASS actual 5 Incheon direct-flight June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts');
 
   for(const id of ['bali','nhatrang']){await card(p,id).getByRole('button',{name:'비교 선택',exact:true}).click();await p.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences'))?.tripCompare?.includes(id),id);}
   const comparison=await p.locator('.travel-comparison').innerText();for(const trip of expected.honeymoon.slice(0,2))assert(comparison.includes(trip.budget.toLocaleString('ko-KR')+'원'));assert(comparison.includes('6월 기준'));assert(!comparison.includes('5월 기준'));
@@ -47,12 +47,12 @@ try{
   assert.deepEqual(backup.honeymoon[0].plan,validateContent(expected).honeymoon[0].plan);assert.equal(backup.honeymoon[0].body,'이번 기기에서만 저장한 검증 메모');assert(!JSON.stringify(backup).includes('tripSelected'));
   await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'june-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});await p.waitForFunction(()=>!document.querySelector('dialog').open);
   await open(p,'bali','all');await open(p,'bali','sources');assert.match(await p.locator('[data-view-key="bali:sources"]').innerText(),/2026-11-09 항공·숙박 날짜 지정 조회/);
-  await p.goto(base+'?view=guest#/honeymoon');await ready(p);assert.equal(await p.locator('.travel-card').count(),10);assert.equal(await p.locator('.trip-controls,#selected-trip-region').count(),0);assert(!(await p.locator('#main').innerText()).includes('이번 기기에서만 저장한 검증 메모'));
-  await p.reload();await ready(p);assert.equal(await p.locator('.travel-card').count(),10);
-  for(const route of ['home','invitation','story','albums','studios','honeymoon']){await p.locator(`[data-route="${route}"]`).click();await ready(p);assert.equal(new URL(p.url()).hash,'#/'+route);}
-  await p.goto(base+'?view=guest#/invitation');await ready(p);assert.match(await p.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.equal(await p.locator('.couple-names,.invitation .message,.place p').count(),0);
+  await p.goto(base+'?view=guest#/honeymoon');await ready(p);assert.equal(await p.locator('.travel-card').count(),expected.honeymoon.length);assert.equal(await p.locator('.trip-controls,#selected-trip-region').count(),0);assert(!(await p.locator('#main').innerText()).includes('이번 기기에서만 저장한 검증 메모'));
+  await p.reload();await ready(p);assert.equal(await p.locator('.travel-card').count(),expected.honeymoon.length);
+  for(const route of ['home','invitation','story','albums','studios','honeymoon','tips']){await p.locator(`[data-route="${route}"]`).click();await ready(p);assert.equal(new URL(p.url()).hash,'#/'+route);}
+  await p.goto(base+'?view=guest#/invitation');await ready(p);assert.match(await p.locator('.invitation-date').innerText(),/2027년 6월 5일.*15:00/);assert.equal(await p.locator('.invitation .message,.invitation-extra-guides,.invitation-contacts-box').count(),0);
   await p.goto(base+'#/honeymoon');await ready(p);await p.getByRole('button',{name:'내용 관리',exact:true}).click();await p.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();await p.waitForFunction(()=>!document.querySelector('dialog').open);
   assert.equal(await p.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);await open(p,'bali','all');await open(p,'bali','sources');assert.match(await p.locator('[data-view-key="bali:sources"]').innerText(),/최종 요금은 확인되지/);
-  assert.deepEqual(errors,[]);console.log('PASS actual candidate comparison, local draft reload/export/import/reset, guest isolation, menus/refresh and blank invitation fields; zero console/page errors');
+  assert.deepEqual(errors,[]);console.log('PASS actual candidate comparison, local draft reload/export/import/reset, guest isolation, menus/refresh and blank optional invitation fields; zero console/page errors');
   await context.close();
 }finally{await browser.close();}

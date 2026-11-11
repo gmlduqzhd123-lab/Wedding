@@ -77,8 +77,16 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     {ceremonyPlan:{style:'invalid'}},
     {ceremonyPlan:{banquetFloor:'x'.repeat(41)}},
     {ceremonyPlan:{vows:'x'.repeat(3001)}},
-    {ceremonyPlan:{declaration:'x'.repeat(2001)}}
+    {ceremonyPlan:{declaration:'x'.repeat(2001)}},
+    {vendorSchedules:[{id:'vsched-1',category:'📸 스튜디오',name:'라크마',date:'2027-02-03',done:false,note:'x'.repeat(501)}]},
+    {customPackingList:Array.from({length:81},(_,i)=>({id:`cp-${i}`,category:'📄 필수 서류·결제',title:`준비물 ${i}`}))}
   ]){
     assert.throws(()=>validatePreferences(bad));
   }
+  const okLimits=validatePreferences({
+    vendorSchedules:[{id:'vsched-1',category:'📸 스튜디오',name:'라크마',date:'2027-02-03',done:false,note:'메'.repeat(450)}],
+    customPackingList:Array.from({length:80},(_,i)=>({id:`cp-${i}`,category:'📄 필수 서류·결제',title:`준비물 ${i}`}))
+  });
+  assert.equal(okLimits.vendorSchedules[0].note.length,450);
+  assert.equal(okLimits.customPackingList.length,80);
 });

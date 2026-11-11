@@ -18,9 +18,18 @@ test('same-field edits, photo reorders, and delete-versus-edit need review',()=>
   assert(mergeChanges(base,{albums:[{id:'a',title:'앨범',images:['2','1','3']}]},{albums:[{id:'a',title:'앨범',images:['3','2','1']}]}).conflicts.length);
   assert(mergeChanges(base,{albums:[]},{albums:[{id:'a',title:'바뀐 앨범',images:['1','2','3']}]}).conflicts.length);
 });
-test('independent private memos and favorite additions are preserved',()=>{
-  const result=mergeChanges({notes:{},favorites:[]},{notes:{a:'메모 A'},favorites:['a']},{notes:{b:'메모 B'},favorites:['b']});
-  assert.deepEqual(result.conflicts,[]);assert.deepEqual(result.value.notes,{a:'메모 A',b:'메모 B'});assert.deepEqual(new Set(result.value.favorites),new Set(['a','b']));
+test('independent private memos, favorite additions, and vendor schedule updates are preserved',()=>{
+  const base={notes:{},favorites:[],vendorSchedules:[{id:'v1',name:'촬영',done:false},{id:'v2',name:'가봉',done:false}]};
+  const tabA={notes:{a:'메모 A'},favorites:['a'],vendorSchedules:[{id:'v1',name:'촬영',done:true},{id:'v2',name:'가봉',done:false}]};
+  const tabB={notes:{b:'메모 B'},favorites:['b'],vendorSchedules:[{id:'v1',name:'촬영',done:false},{id:'v2',name:'가봉 완료',done:true},{id:'v3',name:'시식',done:false}]};
+  const result=mergeChanges(base,tabA,tabB);
+  assert.deepEqual(result.conflicts,[]);
+  assert.deepEqual(result.value.notes,{a:'메모 A',b:'메모 B'});
+  assert.deepEqual(new Set(result.value.favorites),new Set(['a','b']));
+  assert.equal(result.value.vendorSchedules.find(v=>v.id==='v1').done,true);
+  assert.equal(result.value.vendorSchedules.find(v=>v.id==='v2').name,'가봉 완료');
+  assert.equal(result.value.vendorSchedules.find(v=>v.id==='v3').name,'시식');
+  assert(mergeChanges(base,{...base,vendorSchedules:[{id:'v1',name:'촬영 A',done:false}]},{...base,vendorSchedules:[{id:'v1',name:'촬영 B',done:false}]}).conflicts.length);
 });
 test('locked writes serialize parallel edits and do not write unreviewed conflicts',async()=>{
   let queue=Promise.resolve();const locks={request(_name,fn){const result=queue.then(fn);queue=result.catch(()=>{});return result;}};

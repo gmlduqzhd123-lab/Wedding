@@ -77,7 +77,7 @@ try{
  // Input protection, saving lock and retry on both newly protected dialogs.
  let discard=false,confirmations=0;p.on('dialog',async d=>{confirmations++;if(discard)await d.accept();else await d.dismiss();});
  const dialogs=[
-  {route:'tips',open:async()=>p.getByRole('button',{name:'식순·사회·축가 편집',exact:true}).click(),field:'#ceremony-mc',save:'식순 플래너 저장',read:v=>v.ceremonyPlan.mc},
+  {route:'tips',open:async()=>p.getByRole('button',{name:'식순·사회·낭독문 편집',exact:true}).click(),field:'#ceremony-mc',save:'식순 플래너 저장',read:v=>v.ceremonyPlan.mc},
   {route:'honeymoon',open:async()=>{const section=p.locator('.honeymoon-packing');if(!await section.evaluate(n=>n.open))await section.locator(':scope > summary').click();await p.getByRole('button',{name:'+ 우리만의 준비물 추가',exact:true}).click();},field:'#custom-pack-title',save:'준비물 추가',read:v=>v.customPackingList.at(-1).title}
  ];
  for(const d of dialogs){
