@@ -228,22 +228,55 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .album-cover-open{display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer;text-align:left}
 .album-cover-open:hover .album-cover{filter:brightness(1.03)}
 .studio-tile-selected{border-color:rgba(63,93,72,.58);box-shadow:0 8px 22px rgba(45,70,54,.12)}
-.lachma-deep-guide{margin-top:10px;padding:18px 20px;border-radius:16px;background:rgba(255,255,255,.68);border:1px solid var(--line);display:grid;gap:16px}
+.lachma-deep-guide{margin-top:10px;padding:18px 20px;border-radius:16px;background:rgba(255,255,255,.68);border:1px solid var(--line);display:grid;gap:16px;min-width:0}
 .lachma-deep-guide.compact{margin-top:8px;padding:14px 16px;gap:12px}
 .lachma-card-details{margin:12px 0}
-.lachma-schedule-banner{padding:12px 14px;border-radius:12px;background:rgba(218,236,223,.52);border:1px solid rgba(63,93,72,.3);display:grid;gap:8px}
-.lachma-schedule-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lachma-schedule-banner{padding:12px 14px;border-radius:12px;background:rgba(218,236,223,.52);border:1px solid rgba(63,93,72,.3);display:grid;gap:8px;min-width:0}
+.lachma-schedule-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.lachma-schedule-main .spec-chip,.studio-spec-chips .spec-chip{max-width:100%;overflow-wrap:anywhere}
 .lachma-milestone-note{margin:0;color:var(--green-dark);font-weight:500;line-height:1.55}
+.lachma-official-links,.lachma-loc-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.small-copy-btn{padding:5px 10px;min-height:30px;font-size:12px;border-radius:8px}
 .lachma-overview{font-size:13.8px;line-height:1.7}
-.lachma-section{display:grid;gap:10px}
+.lachma-section{display:grid;gap:10px;min-width:0}
 .lachma-subtitle{font-size:15px;margin:0;color:var(--green-dark)}
+.lachma-location-warning{padding:11px 14px;border-radius:12px;background:rgba(249,226,219,.84);border:1px solid rgba(182,78,60,.38);color:#6c281c;font-size:13px;font-weight:600;line-height:1.55}
+.lachma-location-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.lachma-location-card{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.84);border:1px solid var(--line);display:grid;gap:5px;align-content:start;min-width:0}
+.lachma-location-card.is-reference{background:rgba(246,244,240,.72);border-style:dashed}
+.lachma-step-badge{display:inline-flex;width:fit-content;max-width:100%;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(63,93,72,.13);color:var(--green-dark)}
+.lachma-location-card.is-reference .lachma-step-badge{background:rgba(160,92,74,.15);color:#7b3b2c}
+.lachma-loc-name{font-size:14.2px;color:var(--ink)}
+.lachma-loc-addr{margin:0;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.lachma-loc-subnote{margin:0;color:#7b3b2c;font-weight:500;line-height:1.48;overflow-wrap:anywhere}
+.lachma-loc-parking{margin:0;line-height:1.48;overflow-wrap:anywhere}
+.map-preview-open{margin-top:6px;padding:7px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.94);cursor:pointer;display:grid;gap:5px;text-align:center;width:100%;transition:border-color .18s,transform .18s}
+.map-preview-open:hover{border-color:rgba(63,93,72,.52);transform:translateY(-1px)}
+.luna-map-thumb{width:100%;max-height:175px;object-fit:contain;border-radius:7px;background:#faf8f5;display:block}
+.map-preview-caption{font-size:11.8px;font-weight:600;color:var(--green-dark)}
+.lachma-cash-banner{padding:10px 14px;border-radius:11px;background:rgba(218,236,223,.68);border:1px solid rgba(63,93,72,.35);color:var(--green-dark);font-size:13.2px;font-weight:700;line-height:1.5}
+.lachma-notice-list{margin:0;padding-left:18px;display:grid;gap:6px;line-height:1.55;padding-top:2px}
+.lachma-notice-list li.is-critical{color:#72281d;font-weight:600}
 .lachma-scene-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.lachma-scene-card,.lachma-prep-card{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.78);border:1px solid var(--line);display:grid;gap:6px;align-content:start}
+.lachma-scene-card,.lachma-prep-card{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.78);border:1px solid var(--line);display:grid;gap:6px;align-content:start;min-width:0}
 .lachma-scene-card strong,.lachma-prep-card strong{font-size:13.8px;color:var(--green-dark)}
 .lachma-prep-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .lachma-prep-list{margin:0;padding-left:16px;display:grid;gap:5px;line-height:1.5}
-.lachma-collection-note{padding:12px 14px;border-radius:12px;background:rgba(246,227,218,.48);border:1px solid var(--line);display:grid;gap:4px}
+.lachma-policy-details{margin:0}
+.lachma-policy-body{margin-top:10px;display:grid;gap:12px;min-width:0}
+.lachma-penalty-block{display:grid;gap:8px;min-width:0}
+.lachma-penalty-block p,.lachma-collection-note p,.studio-official-loc p,.lachma-partnership-box p{margin:0;line-height:1.55;overflow-wrap:anywhere}
+.lachma-penalty-table-wrap{width:100%;overflow-x:auto}
+.lachma-penalty-table{width:100%;border-collapse:collapse;font-size:12.6px;background:rgba(255,255,255,.86);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.lachma-penalty-table th,.lachma-penalty-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+.lachma-penalty-table thead th{background:rgba(63,93,72,.1);color:var(--green-dark);font-weight:700}
+.lachma-penalty-table tbody th{font-weight:600;color:var(--ink);background:rgba(255,255,255,.58)}
+.lachma-partnership-box,.studio-official-loc{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.78);border:1px solid var(--line);display:grid;gap:6px;margin-top:6px;min-width:0}
+.lachma-partnership-box strong,.studio-official-loc strong{color:var(--green-dark)}
+.lachma-collection-note{padding:12px 14px;border-radius:12px;background:rgba(246,227,218,.48);border:1px solid var(--line);display:grid;gap:5px}
+.fee-extra-note{margin:8px 0 0;line-height:1.5}
 .lachma-timetable .timetable-row{grid-template-columns:110px 1fr}
+.lachma-deep-guide.compact .lachma-location-grid,.lachma-deep-guide.compact .lachma-prep-grid,.lachma-deep-guide.compact .lachma-scene-grid{grid-template-columns:1fr}
 .vendor-schedule-board{margin-bottom:32px;padding:26px;border-radius:18px;background:var(--surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line);box-shadow:var(--glass-shadow);display:grid;gap:14px}
 .vendor-schedule-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .vendor-schedule-item{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.68);border:1px solid var(--line)}
@@ -257,8 +290,9 @@ h1,h2,h3,p,dd,a,.couple-names{overflow-wrap:anywhere}
 .vendor-schedule-note{margin:0;line-height:1.55}
 .vendor-schedule-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .storage-meter-track{margin-top:8px}
+@media(max-width:960px){.lachma-location-grid{grid-template-columns:1fr}}
 @media(max-width:860px){.budget-category-grid,.venue-sim-grid,.lachma-prep-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:680px){.budget-legend,.budget-legend-6{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons,.checklist-grid,.budget-summary-cards,.budget-category-grid,.dashboard-grid,.ceremony-grid,.venue-sim-grid,.lachma-scene-grid,.lachma-prep-grid{grid-template-columns:1fr}.lachma-timetable .timetable-row{grid-template-columns:1fr}.travel-overview,.home-checklist,.wedding-budget-calc,.home-dashboard,.ceremony-planner,.selected-studio-card,.vendor-schedule-board,.lachma-deep-guide{padding:18px 16px}.vendor-schedule-item{flex-direction:column}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}}
+@media(max-width:680px){.budget-legend,.budget-legend-6{grid-template-columns:repeat(2,minmax(0,1fr))}.trip-pros-cons,.checklist-grid,.budget-summary-cards,.budget-category-grid,.dashboard-grid,.ceremony-grid,.venue-sim-grid,.lachma-scene-grid,.lachma-prep-grid,.lachma-location-grid{grid-template-columns:1fr}.lachma-timetable .timetable-row{grid-template-columns:1fr}.travel-overview,.home-checklist,.wedding-budget-calc,.home-dashboard,.ceremony-planner,.selected-studio-card,.vendor-schedule-board,.lachma-deep-guide{padding:18px 16px}.vendor-schedule-item{flex-direction:column}.overview-head p{margin-top:4px}.overview-stats .spec-chip{font-size:11px;padding:3px 8px}.lachma-penalty-table{font-size:11.8px}.lachma-penalty-table th,.lachma-penalty-table td{padding:6px 5px}}
 @media print{
   body{background:#fff!important;color:#111!important}
   .site-header,.skip-link,.draft-banner,.guest-preview-bar,.story-toolbar,.site-footer,.page-actions,.record-actions,.trip-controls,.directory-controls,.trip-quick-filters,.travel-tools,.toast,dialog{display:none!important}

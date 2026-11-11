@@ -1,9 +1,9 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-31';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-31';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-31';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-31';
-import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-features-31';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=wedding-features-31';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-32';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-32';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-32';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-32';
+import {invitationCalendar,googleCalendarUrl} from './calendar.js?v=wedding-features-32';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary} from './planning.js?v=wedding-features-32';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -26,7 +26,7 @@ const DEFAULT_VENDOR_SCHEDULES=[
     name:'라크마 스튜디오 웨딩촬영 (낮 12시)',
     date:'2027-02-03',
     done:false,
-    note:'2027년 2월 3일 수요일 12:00 촬영 확정 (연락처 062-714-1970) · 08:30 메이크업 샵 집결 · 생화 부케·한 입 간식·헬퍼비 봉투·예복 양말 준비'
+    note:'2027년 2월 3일 수요일 12:00 확정 (062-714-1970~1 · 월·화 휴무) · STEP1 루나메이크업(광주 남구 천변좌로 432 1층) → STEP2 라크마 스튜디오(광주 남구 중앙로 117, 예약 5~10분 전 도착 필수) · 당일 현금 헬퍼비 25만 원·실리콘 누브라·검정 긴 양말·어두운 구두·한 입 간식 준비'
   }
 ];
 const currentSelectedStudioId=()=>{
@@ -234,7 +234,7 @@ const WEDDING_CHECKLIST=[
     ['d180-budget','두 사람의 전체 결혼 예산 배분표 작성']
   ]],
   ['D-120 ~ D-90','웨딩 촬영 · 예복 · 예물 · 본식스냅',[
-    ['d120-shoot','라크마 스튜디오 웨딩촬영 (2027-02-03 수요일 12:00) 시안·간식·방한용품·예복 양말 준비'],
+    ['d120-shoot','라크마 스튜디오 웨딩촬영 (2027-02-03 수 12:00 · 루나메이크업→중앙로 117 이동) 헬퍼비 현금 25만 원·시안·누브라·긴 양말·간식 준비'],
     ['d120-rings','웨딩밴드(예물)·예복·한복 맞춤 및 대여 결정'],
     ['d120-snap','본식 스냅·DVD·아이폰 스냅 업체 예약'],
     ['d120-passport','여권 만료일(6개월 이상) 확인 및 항공권 영문명 점검']
@@ -1262,59 +1262,141 @@ function selectFinalStudio(id){
 function copyLachmaGuideSummary(studio){
   const g=studio?.deepGuide;
   if(!g)return;
+  const info=g.officialInfo||{};
   const lines=[
-    `📸 [웨딩 스튜디오 확정 & 촬영 브리핑] ${studio.name}`,
-    `· 촬영 일정: ${g.schedule?.label||'2027년 2월 3일 수요일 12:00 (낮 12시)'}`,
-    `· 상담·문의: ${studio.contact?.phone||'062-714-1970'} (${studio.contact?.note||''})`,
+    `📸 [웨딩 스튜디오 확정 & 공식 촬영 안내] ${info.brandTitle||studio.name}`,
+    `· 촬영 일정: ${g.schedule?.label||'2027년 2월 3일 수요일 12:00 (예약 5~10분 전 도착 필수)'}`,
+    `· 대표번호 / 운영시간: ${info.phone||studio.contact?.phone||'062-714-1970~1'} / ${info.hours||'AM 09:00 ~ PM 06:30 (매주 월·화 정기휴무)'}`,
+    ...(info.guideUrl?[`· 공식 촬영 안내·확인서: ${info.guideUrl}`]:[]),
+    ...(info.lacmaInstaLabel?[`· 인스타그램: 라크마(${info.lacmaInstaLabel}) · 줄리의정원(${info.julieInstaLabel||'@julie_s_garden_amuse'})`]:[]),
     `· 핵심 스타일: ${studio.style}`,
-    `· 일정 포인트: ${g.schedule?.milestoneNote||''}`,
+    ...(g.schedule?.milestoneNote?[`· 일정 체크: ${g.schedule.milestoneNote}`]:[]),
+    ...(g.locations?.length?[
+      '',
+      '🗺️ 당일 방문 동선 · 위치 · 주차 안내',
+      ...(g.locationWarning?[g.locationWarning]:[]),
+      ...g.locations.map(loc=>`- [${loc.step}] ${loc.name}: ${loc.address}${loc.subAddress?` (${loc.subAddress})`:''} / 주차: ${loc.parking||'현장 확인'}`)
+    ]:[]),
+    ...(g.officialNotices?.items?.length?[
+      '',
+      '🚨 촬영 및 방문 필독사항 · 당일 현금 비용',
+      ...(g.officialNotices.cashBanner?[g.officialNotices.cashBanner]:[]),
+      ...g.officialNotices.items.map(item=>`- ${item}`)
+    ]:[]),
     '',
-    '✨ 시그니처 4대 촬영 콘셉트',
-    ...(g.signatureScenes||[]).map((s,i)=>`${i+1}. ${s.title}: ${s.desc}`),
+    '🎒 신랑 & 신부 필수 준비사항',
+    ...(g.prepChecklist||[]).map(p=>`- [${p.category}] ${(p.items||[]).join(' / ')}`),
     '',
-    '⏰ 촬영 당일 예상 타임테이블 (12:00 촬영 기준)',
+    '⏰ 2월 3일(수) 12:00 촬영 당일 타임테이블',
     ...(g.timetable||[]).map(t=>`- ${t.time} ${t.stage}: ${t.detail}`),
-    '',
-    '🎒 촬영 전 필수 준비물 요약',
-    ...(g.prepChecklist||[]).map(p=>`- [${p.category}] ${(p.items||[]).join(' / ')}`)
+    ...(g.penaltyPolicy?.rows?.length?[
+      '',
+      `📜 취소·변경 위약금 기준: ${g.penaltyPolicy.rows.map(([d,c,r])=>`${d}(취소 ${c}/변경 ${r})`).join(' · ')}`
+    ]:[])
   ];
   const memo=!guestMode&&(prefs.notes?.[studio.id]||'').trim();
   if(memo)lines.push('',`📝 우리의 상담 메모: ${memo}`);
-  copyTextToClipboard(lines.join('\n'),'라크마 촬영 브리핑·일정·타임테이블 요약을 복사했습니다.');
+  copyTextToClipboard(lines.join('\n'),'라크마 공식 촬영 안내·루나메이크업 동선·준비물 요약을 복사했습니다.');
+}
+function renderStudioOfficialLocation(studio){
+  const loc=studio?.officialLocation;
+  if(!loc)return null;
+  const actions=[
+    externalLink('네이버 지도 ↗',loc.naverMapUrl,'button quiet small-copy-btn'),
+    externalLink('카카오맵 ↗',loc.kakaoMapUrl,'button quiet small-copy-btn'),
+    loc.address?button('주소 복사',()=>copyVenueAddress(loc.address,`${loc.studioName||studio.name} 주소`),'button quiet small-copy-btn'):null,
+    externalLink('공식 촬영 안내 ↗',loc.guideUrl,'button quiet small-copy-btn')
+  ].filter(Boolean);
+  return E('div',{class:'studio-official-loc','aria-label':`${studio.name} 공식 위치 및 운영 안내`},
+    E('strong',{class:'small'},`📍 공식 위치 · 운영 안내 (${loc.studioName||studio.name})`),
+    E('p',{class:'small lachma-loc-addr'},loc.address),
+    loc.parking?E('p',{class:'small muted'},`🚗 주차: ${loc.parking}`):null,
+    loc.hours?E('p',{class:'small muted'},`🕒 운영시간: ${loc.hours}`):null,
+    loc.note?E('p',{class:'small lachma-loc-subnote'},loc.note):null,
+    actions.length?E('div',{class:'lachma-loc-actions'},...actions):null);
 }
 function renderLachmaDeepGuide(studio,compact=false){
   const g=studio?.deepGuide;
   if(!g)return null;
   const sched=g.schedule||{};
+  const info=g.officialInfo||{};
   const dday=sched.date?weddingDday(sched.date):null;
-  return E('div',{class:'lachma-deep-guide'+(compact?' compact':''),'aria-label':`${studio.name} 확정 촬영 일정 및 심층 가이드`},
+  const officialLinks=[
+    externalLink('📄 공식 촬영 안내·확인서 ↗',info.guideUrl,'button quiet small-copy-btn'),
+    info.lacmaInstaUrl?externalLink(`📷 라크마 (${info.lacmaInstaLabel||'@lacma_studio_gwangju'}) ↗`,info.lacmaInstaUrl,'button quiet small-copy-btn'):null,
+    info.julieInstaUrl?externalLink(`🌿 줄리의정원 (${info.julieInstaLabel||'@julie_s_garden_amuse'}) ↗`,info.julieInstaUrl,'button quiet small-copy-btn'):null
+  ].filter(Boolean);
+  const notesList=Array.isArray(g.collectionNotes)?g.collectionNotes:(g.collectionNotes?[g.collectionNotes]:[]);
+  return E('div',{class:'lachma-deep-guide'+(compact?' compact':''),'aria-label':`${studio.name} 확정 촬영 일정 및 공식 촬영 안내`},
     E('div',{class:'lachma-schedule-banner'},
       E('div',{class:'lachma-schedule-main'},
         E('span',{class:'spec-chip highlight'},`🗓️ 촬영 확정: ${sched.label||'2027년 2월 3일 수요일 12:00 (낮 12시)'}`),
         dday?E('span',{class:'spec-chip direct'},`⏳ 촬영일 ${dday}`):null,
-        E('span',{class:'spec-chip'},`📞 ${studio.contact?.phone||'062-714-1970'}`)),
-      sched.milestoneNote?E('p',{class:'small lachma-milestone-note'},`💡 ${sched.milestoneNote}`):null),
+        E('span',{class:'spec-chip'},`📞 ${info.phone||studio.contact?.phone||'062-714-1970~1'}`),
+        info.hours?E('span',{class:'spec-chip'},`🕒 ${info.hours}`):null),
+      sched.milestoneNote?E('p',{class:'small lachma-milestone-note'},`💡 ${sched.milestoneNote}`):null,
+      officialLinks.length?E('div',{class:'lachma-official-links'},...officialLinks):null),
     g.overview?E('p',{class:'record-body lachma-overview'},g.overview):null,
-    (g.signatureScenes||[]).length?E('div',{class:'lachma-section'},
-      E('h3',{class:'lachma-subtitle'},'✨ 라크마 시그니처 4대 촬영 콘셉트 & 빛 활용법'),
-      E('div',{class:'lachma-scene-grid'},g.signatureScenes.map(scene=>E('article',{class:'lachma-scene-card'},
-        E('strong',{},scene.title),
-        E('p',{class:'small'},scene.desc))))):null,
+    (g.locations||[]).length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'🗺️ 당일 방문 동선 · 위치 · 주차 안내 (루나메이크업 → 라크마 스튜디오)'),
+      g.locationWarning?E('div',{class:'lachma-location-warning',role:'note'},g.locationWarning):null,
+      E('div',{class:'lachma-location-grid'},g.locations.map(loc=>{
+        const locActions=[
+          externalLink('네이버 지도 ↗',loc.naverMapUrl,'button quiet small-copy-btn'),
+          externalLink('카카오맵 ↗',loc.kakaoMapUrl,'button quiet small-copy-btn'),
+          loc.address?button('주소 복사',()=>copyVenueAddress(loc.address,`${loc.name} 주소`),'button quiet small-copy-btn'):null
+        ].filter(Boolean);
+        return E('article',{class:'lachma-location-card'+(loc.isReference?' is-reference':'')},
+          E('span',{class:'lachma-step-badge'},loc.step),
+          E('strong',{class:'lachma-loc-name'},loc.name),
+          E('p',{class:'small lachma-loc-addr'},loc.address),
+          loc.subAddress?E('p',{class:'small lachma-loc-subnote'},loc.subAddress):null,
+          loc.parking?E('p',{class:'small muted lachma-loc-parking'},`🚗 주차: ${loc.parking}`):null,
+          locActions.length?E('div',{class:'lachma-loc-actions'},...locActions):null,
+          loc.mapImage?E('button',{type:'button',class:'map-preview-open','aria-label':`${loc.name} 약도 크게 보기`,onclick:()=>openPhotos(`${loc.name} 위치 안내 약도`,[loc.mapImage],0)},
+            image(loc.mapImage,loc.mapImageAlt||`${loc.name} 위치 안내 약도`,{class:'luna-map-thumb'}),
+            E('span',{class:'map-preview-caption'},'🗺️ 루나메이크업 위치 약도 크게 보기')):null);
+      }))):null,
+    g.officialNotices?.items?.length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'🚨 촬영 및 방문 필독사항 · 당일 현금 비용'),
+      g.officialNotices.cashBanner?E('div',{class:'lachma-cash-banner'},g.officialNotices.cashBanner):null,
+      E('ul',{class:'lachma-notice-list'},g.officialNotices.items.map(item=>E('li',{class:'small'+(/\[필독\]|★/.test(item)?' is-critical':'')},item)))):null,
+    (g.prepChecklist||[]).length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'🎒 신랑 & 신부 필수 준비사항 (공식 안내 & 2월 겨울 대비)'),
+      E('div',{class:'lachma-prep-grid'},g.prepChecklist.map(group=>E('article',{class:'lachma-prep-card'},
+        E('strong',{},group.category),
+        E('ul',{class:'lachma-prep-list'},(group.items||[]).map(item=>E('li',{class:'small'},item))))))):null,
     (g.timetable||[]).length?E('div',{class:'lachma-section'},
-      E('h3',{class:'lachma-subtitle'},'⏰ 2월 3일 (수) 12:00 촬영 당일 타임테이블'),
+      E('h3',{class:'lachma-subtitle'},'⏰ 2월 3일 (수) 12:00 촬영 당일 동선 타임테이블'),
       E('ol',{class:'timetable-list lachma-timetable'},g.timetable.map(row=>E('li',{class:'timetable-row'+(row.time.includes('12:00')?' highlight':'')},
         E('strong',{class:'timetable-time'},row.time),
         E('div',{class:'timetable-detail'},
           E('strong',{},row.stage),
           E('p',{class:'small muted'},row.detail)))))):null,
-    (g.prepChecklist||[]).length?E('div',{class:'lachma-section'},
-      E('h3',{class:'lachma-subtitle'},'🎒 라크마 맞춤 촬영 준비물 & 2월 겨울 컨디션 체크'),
-      E('div',{class:'lachma-prep-grid'},g.prepChecklist.map(group=>E('article',{class:'lachma-prep-card'},
-        E('strong',{},group.category),
-        E('ul',{class:'lachma-prep-list'},(group.items||[]).map(item=>E('li',{class:'small'},item))))))):null,
-    g.collectionNotes?E('div',{class:'lachma-collection-note'},
-      E('strong',{class:'small'},'📌 제공 자료 및 공개 컬렉션 참고 안내'),
-      E('p',{class:'small muted'},g.collectionNotes)):null);
+    (g.signatureScenes||[]).length?E('div',{class:'lachma-section'},
+      E('h3',{class:'lachma-subtitle'},'✨ 라크마 시그니처 4대 촬영 콘셉트 & 빛 활용법'),
+      E('div',{class:'lachma-scene-grid'},g.signatureScenes.map(scene=>E('article',{class:'lachma-scene-card'},
+        E('strong',{},scene.title),
+        E('p',{class:'small'},scene.desc))))):null,
+    (g.penaltyPolicy||g.partnership)?E('details',{class:'disclosure lachma-policy-details'},
+      E('summary',{},'📜 취소·변경 위약금 규정 · 촬영 확인서 · 바이가미 제휴 혜택 보기'),
+      E('div',{class:'lachma-policy-body'},
+        g.penaltyPolicy?E('div',{class:'lachma-penalty-block'},
+          g.penaltyPolicy.intro?E('p',{class:'small muted'},g.penaltyPolicy.intro):null,
+          E('div',{class:'lachma-penalty-table-wrap'},
+            E('table',{class:'lachma-penalty-table'},
+              E('thead',{},E('tr',{},E('th',{scope:'col'},'구분 (촬영일 기준)'),E('th',{scope:'col'},'취소 위약금'),E('th',{scope:'col'},'변경 위약금'))),
+              E('tbody',{},(g.penaltyPolicy.rows||[]).map(([period,cancelFee,changeFee])=>E('tr',{},
+                E('th',{scope:'row'},period),
+                E('td',{},cancelFee),
+                E('td',{},changeFee))))))):null,
+        g.partnership?E('div',{class:'lachma-partnership-box'},
+          E('strong',{class:'small'},`💍 ${g.partnership.title}`),
+          E('p',{class:'small'},g.partnership.summary),
+          info.guideUrl?externalLink('📄 공식 촬영 안내 페이지에서 확인서 제출하기 ↗',info.guideUrl,'button quiet small-copy-btn'):null):null)):null,
+    notesList.length?E('div',{class:'lachma-collection-note'},
+      E('strong',{class:'small'},'📌 공식 촬영 안내 및 웨딩홀 제공 자료 출처 구분'),
+      ...notesList.map(note=>E('p',{class:'small muted'},note))):null);
 }
 function selectedStudioSummary(){
   if(guestMode||studiosStatus!=='ready')return null;
@@ -1324,18 +1406,19 @@ function selectedStudioSummary(){
   return E('section',{class:'selected-studio-card','aria-label':'우리가 선택한 스튜디오'},
     E('div',{class:'selected-studio-head'},
       E('div',{},
-        E('p',{class:'eyebrow'},'OUR CONFIRMED STUDIO & SHOOT GUIDE'),
+        E('p',{class:'eyebrow'},'OUR CONFIRMED STUDIO & OFFICIAL SHOOT GUIDE'),
         E('h2',{},`📸 최종 선택 스튜디오: ${picked.name}${picked.deepGuide?.schedule?` (${picked.deepGuide.schedule.shortLabel||'2/3 수 12:00 촬영'})`:''}`),
         E('p',{class:'small muted'},picked.style)),
       E('div',{class:'page-actions'},
         picked.deepGuide?button('📋 라크마 촬영 브리핑 복사',()=>copyLachmaGuideSummary(picked),'button quiet'):null,
+        picked.deepGuide?.officialInfo?.guideUrl?externalLink('📄 공식 안내 원문 ↗',picked.deepGuide.officialInfo.guideUrl,'button quiet'):null,
         button('사진 크게 보기',()=>openPhotos(picked.name,picked.images.map(v=>v.src),0),'button quiet'),
         button('비교 A에 놓기',()=>selectStudio('left',picked.id),'button quiet'),
         button('선택 해제',()=>selectFinalStudio(picked.id),'button quiet'))),
     studioSpecChips(picked),
     contactNode(picked),
     memo?E('p',{class:'small checklist-item-note'},`📝 우리의 메모: ${memo}`):null,
-    renderLachmaDeepGuide(picked));
+    picked.deepGuide?renderLachmaDeepGuide(picked):renderStudioOfficialLocation(picked));
 }
 function matchesStudioQuickFilter(studio,key=studioQuickFilter){
   const text=`${studio.style||''} ${studio.pros||''} ${studio.fit||''}`;
@@ -1351,6 +1434,7 @@ function studioSpecChips(studio,compact=false){
   return E('div',{class:'trip-spec-chips studio-spec-chips','aria-label':`${studio.name} 핵심 요약`},
     studio.deepGuide?.schedule?E('span',{class:'spec-chip direct'},`🗓️ ${studio.deepGuide.schedule.shortLabel||'2/3(수) 12:00 촬영 확정'}`):null,
     E('span',{class:'spec-chip'+(fee.unknown?'':' highlight')},feeText),
+    !compact&&studio.deepGuide?.officialNotices?E('span',{class:'spec-chip highlight'},'🙌 헬퍼비 25만(당일 현금·안내문 기준)'):null,
     E('span',{class:'spec-chip'},studio.contact?.phone?'📞 연락처 기재':'📞 연락처 미기재'),
     hasNote&&compact?E('span',{class:'spec-chip highlight'},'📝 메모 있음'):null,
     !compact&&studio.fit?E('span',{class:'spec-chip'},'🎯 '+studio.fit):null);
@@ -1402,8 +1486,8 @@ function compareCard(studio) {
     studioProsCons(studio),
     contactNode(studio),
     studio.deepGuide?E('details',{class:'disclosure lachma-card-details'},
-      E('summary',{},'📸 라크마 확정 일정(2/3 수 12시) · 시그니처 씬 · 당일 타임테이블 보기'),
-      renderLachmaDeepGuide(studio,true)):null,
+      E('summary',{},'📸 라크마 공식 촬영 안내 · 루나메이크업 동선 · 준비물 · 위약금 보기'),
+      renderLachmaDeepGuide(studio,true)):renderStudioOfficialLocation(studio),
     !guestMode?E('label',{class:'field'},E('span',{},'우리의 메모 ',E('span',{class:'muted small'},'· 이 기기에 저장')),memo):null);
 }
 async function selectStudio(side,id) {if(guestMode){prefs={...prefs,[side]:id};render();return;}if(!await savePrefs({...prefs,[side]:id}))return;render();$('#studio-comparison')?.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -1503,11 +1587,12 @@ function renderStudios() {
             E('th',{scope:'row'},'우리의 상담 메모'),
             E('td',{},(prefs.notes?.[first.id]||'').trim()||'작성한 메모 없음'),
             E('td',{},(prefs.notes?.[second.id]||'').trim()||'작성한 메모 없음')):null))),
-    E('details',{class:'disclosure'},E('summary',{},'자료에 표기된 추가금'),E('table',{class:'fee-table'},E('tbody',{},fees.map(([name,fee])=>E('tr',{},E('th',{scope:'row'},name),E('td',{},fee)))))),
+    E('details',{class:'disclosure'},E('summary',{},'자료에 표기된 추가금'),E('table',{class:'fee-table'},E('tbody',{},fees.map(([name,fee])=>E('tr',{},E('th',{scope:'row'},name),E('td',{},fee))))),E('p',{class:'small muted fee-extra-note'},'※ 공식 촬영 안내문 별도 확인(줄리의정원·라크마): 헬퍼비 별도 25만 원(당일 현금), 로드씬·야간촬영 선택 시 각 17만 원 추가, 원본·보정본 별도 구매.')),
     E('details',{class:'disclosure'},E('summary',{},'전체 연락처'),E('table',{class:'fee-table','aria-label':'전체 스튜디오 연락처'},E('tbody',{},studios.map(studio=>E('tr',{},E('th',{scope:'row'},studio.name),E('td',{},contactNode(studio))))))),
     E('details',{class:'disclosure'},E('summary',{},'자료 출처와 비교 범위'),E('div',{class:'source-notes'},
       E('p',{},'사용자가 제공한 8개 ZIP의 JPG 파일 2,885개 중 40개 폴더에서 대표 썸네일 940개를 추출해 비교했습니다. 앨범 편집·중복·기존 샘플이 포함되며 사진 전체의 정밀 평가가 아닙니다.'),
       E('p',{},'연락처는 아모르웨딩홀의 ★ 포토스튜디오 리스트.png 기준입니다. 목록의 공동 표기를 따랐으며 별도 번호가 없는 8개 항목은 미기재로 남겼습니다. 포에버마인 번호는 목록에 지점 구분이 없습니다.'),
+      E('p',{},'라크마(studio-09) 및 줄리(studio-07)의 방문 주소·루나메이크업 위치 약도·현장 현금 비용·준비물·위약금 안내 등은 사용자가 별도로 제공한 ‘줄리의정원 & 라크마 스튜디오 공식 촬영 안내(juliesgarden-lacmaguide.vercel.app)’ 및 ‘루나메이크업 위치 안내’ 자료를 구분해 반영했습니다.'),
       E('p',{},'추가금은 제공 자료의 표기이며 최신 견적을 의미하지 않습니다. 기본 상품, 보정, 앨범과 촬영 조건은 업체에 확인해 주세요. 해밀 샘플의 워터마크는 liberte로 표기돼 있습니다.'),
       E('p',{},'사진은 각 스튜디오의 제공 샘플입니다. 두 사람의 개인 포토 앨범과는 별도로 구분됩니다.'))),studioDirectory()];
 }

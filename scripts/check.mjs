@@ -18,6 +18,7 @@ for(const studio of studios){
   for(const field of ['name','style','pros','cons','fit','fee'])assert.equal(typeof studio[field],'string');
   assert.equal(studio.images.length,2);
   for(const image of studio.images)await access(new URL(image.src.replace(/^\.\//,''),root));
+  for(const loc of studio.deepGuide?.locations||[])if(loc.mapImage)await access(new URL(loc.mapImage.replace(/^\.\//,''),root));
   if(studio.contact.phone)assert(/^[0-9-]+$/.test(studio.contact.phone));
 }
 const html=await readFile(new URL('index.html',root),'utf8');
