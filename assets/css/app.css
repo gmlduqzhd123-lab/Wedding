@@ -853,7 +853,7 @@ small, .small { font-size: 12px; }
 }
 .compare-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px; }
 .field { display: grid; gap: 7px; color: var(--ink); font-size: 13px; font-weight: 500; min-width: 0; }
-input, select, textarea {
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   width: 100%;
   min-width: 0;
   border: 1px solid #e2cdc0;
@@ -863,6 +863,13 @@ input, select, textarea {
   padding: 10px 13px;
   font-size: 15px;
   box-shadow: inset 0 1px 2px rgba(74, 42, 32, 0.04);
+}
+input[type="checkbox"], input[type="radio"] {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--terracotta);
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--terracotta);
@@ -1689,15 +1696,54 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
   border: 1px solid var(--blush-line);
 }
 
-/* Ceremony Timetable & Vendor Schedule */
-.ceremony-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.ceremony-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
-.ceremony-box { padding: 18px 20px; border-radius: 18px; background: var(--surface-tint); border: 1px solid var(--line); }
+/* Ceremony Timetable, Amor Hall Cue Sheet, Vows & Vendor Schedule */
+.invitation + .ceremony-planner,
+.empty-state + .ceremony-planner {
+  margin-top: 30px;
+}
+.ceremony-planner {
+  min-width: 0;
+}
+.ceremony-summary-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-width: 0; }
+.ceremony-summary-chips .spec-chip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.amor-cue-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.amor-cue-card {
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+.amor-cue-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--terracotta-dark);
+}
+.amor-cue-card strong {
+  font-size: 13.5px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.amor-cue-card p {
+  margin: 0;
+  line-height: 1.48;
+  overflow-wrap: anywhere;
+}
+.ceremony-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 16px; min-width: 0; }
+.ceremony-box { padding: 18px 20px; border-radius: 18px; background: var(--surface-tint); border: 1px solid var(--line); min-width: 0; }
 .ceremony-box h3 { font-size: 15.5px; margin-bottom: 12px; color: var(--terracotta-dark); }
 .timetable-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .timetable-row {
   display: grid;
-  grid-template-columns: 58px 1fr;
+  grid-template-columns: 58px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
   padding: 9px 11px;
@@ -1708,9 +1754,108 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
 .timetable-row.highlight { background: var(--blush); border-color: #dfa693; }
 .timetable-time { font-size: 13.5px; color: var(--terracotta-dark); font-variant-numeric: tabular-nums; }
 .timetable-detail strong { display: block; font-size: 13.5px; margin-bottom: 2px; }
-.ceremony-order-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.55; }
+.ceremony-order-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 13.2px; line-height: 1.55; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.ceremony-order-list li { padding: 6px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
 .ceremony-note-box { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--blush); border: 1px solid var(--blush-line); }
 .ceremony-note-box strong { display: block; margin-bottom: 4px; color: var(--terracotta-dark); }
+
+.ceremony-docs-stack { margin-top: 18px; display: grid; gap: 16px; min-width: 0; }
+.ceremony-doc-details { margin: 0; min-width: 0; }
+.ceremony-doc-body { margin-top: 12px; display: grid; gap: 12px; min-width: 0; }
+.ceremony-doc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--blush);
+  border: 1px solid var(--blush-line);
+}
+.mc-script-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.mc-step-card {
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.mc-step-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.mc-step-title { font-size: 14.2px; color: var(--ink); }
+.mc-step-cue { color: var(--terracotta-dark); font-weight: 600; overflow-wrap: anywhere; }
+.mc-step-lines { display: grid; gap: 5px; padding-left: 4px; border-left: 2.5px solid var(--blush-line); padding-left: 11px; }
+.mc-script-line { margin: 0; font-size: 13.2px; line-height: 1.65; color: var(--ink); overflow-wrap: anywhere; }
+
+.ceremony-papers-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; min-width: 0; }
+.ceremony-paper-card {
+  position: relative;
+  padding: 22px 22px 20px;
+  border-radius: 26px 26px 18px 18px;
+  background: linear-gradient(180deg, #fffdfb 0%, #fcf5ee 100%);
+  border: 1.5px solid #e6c6b8;
+  box-shadow: var(--card-shadow);
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+.ceremony-paper-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.ceremony-paper-head h3 { font-family: var(--serif); font-size: 17px; margin: 6px 0 0; color: var(--ink); }
+.ceremony-paper-text {
+  margin: 0;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: rgba(255, 253, 251, 0.88);
+  border: 1px dashed #e2c5b7;
+  font-family: var(--serif);
+  font-size: 13.6px;
+  line-height: 1.95;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.ceremony-prep-box {
+  margin-top: 16px;
+  padding: 15px 18px;
+  border-radius: 18px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.ceremony-prep-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.ceremony-editor-doc-block {
+  display: grid;
+  gap: 7px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+.ceremony-editor-doc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ceremony-hall-disclaimer {
+  margin: 14px 0 0;
+  line-height: 1.55;
+}
 
 .honeymoon-packing { margin-bottom: 22px; }
 .packing-body { padding-top: 12px; display: grid; gap: 14px; }
@@ -2027,7 +2172,8 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
 }
 
 @media (max-width: 960px) {
-  .lachma-location-grid, .journey-ribbon-grid { grid-template-columns: 1fr; }
+  .lachma-location-grid, .journey-ribbon-grid, .ceremony-papers-grid { grid-template-columns: 1fr; }
+  .amor-cue-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 860px) {
@@ -2141,12 +2287,17 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
   .budget-category-grid,
   .dashboard-grid,
   .ceremony-grid,
+  .amor-cue-grid,
+  .ceremony-papers-grid,
+  .ceremony-prep-list,
   .venue-sim-grid,
   .lachma-scene-grid,
   .lachma-prep-grid,
   .lachma-location-grid {
     grid-template-columns: 1fr;
   }
+  .ceremony-paper-card { padding: 18px 16px; }
+  .ceremony-paper-text { padding: 14px 12px; font-size: 13px; }
   .lachma-timetable .timetable-row { grid-template-columns: 1fr; }
   .travel-overview ol { columns: 1; }
   .travel-overview,
@@ -2185,7 +2336,7 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
     display: none !important;
   }
   .main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .invitation, .travel-card, .compare-card, .checklist-stage-card, .dashboard-card, .ceremony-box, .selected-studio-card, .venue-sim-box, .sdm-sim-box, .vendor-schedule-board, .lachma-deep-guide, .invitation-readiness-card, .journey-ribbon {
+  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .ceremony-paper-card, .invitation, .travel-card, .compare-card, .checklist-stage-card, .dashboard-card, .ceremony-box, .selected-studio-card, .venue-sim-box, .sdm-sim-box, .vendor-schedule-board, .lachma-deep-guide, .invitation-readiness-card, .journey-ribbon {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;

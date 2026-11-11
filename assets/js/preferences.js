@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-33';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-36';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -23,6 +23,7 @@ export function validatePreferences(input) {
   if (input.checklist !== undefined) result.checklist = ids(input.checklist);
   if (input.packingList !== undefined) result.packingList = ids(input.packingList);
   if (input.shootChecklist !== undefined) result.shootChecklist = ids(input.shootChecklist);
+  if (input.ceremonyChecks !== undefined) result.ceremonyChecks = ids(input.ceremonyChecks);
   if (input.checklistNotes !== undefined) {
     if (!input.checklistNotes || typeof input.checklistNotes !== 'object' || Array.isArray(input.checklistNotes) || Object.keys(input.checklistNotes).length > 200) throw new Error('체크리스트 메모 형식을 확인해 주세요.');
     const cNotes = {};
@@ -94,9 +95,10 @@ export function validatePreferences(input) {
     const style = input.ceremonyPlan.style ?? 'noOfficiant';
     if (!['noOfficiant', 'officiant'].includes(style)) throw new Error('예식 형태를 확인해 주세요.');
     const cPlan = { style };
-    for (const key of ['mc', 'song', 'speech', 'note']) {
+    const limits = [['mc', 500], ['song', 500], ['speech', 500], ['banquetFloor', 40], ['note', 1000], ['vows', 3000], ['declaration', 2000]];
+    for (const [key, maxLen] of limits) {
       const val = input.ceremonyPlan[key] ?? '';
-      if (typeof val !== 'string' || val.length > 500) throw new Error('식순 메모는 500자 이하로 입력해 주세요.');
+      if (typeof val !== 'string' || val.length > maxLen) throw new Error(`식순·낭독문 설정(${key}) 길이를 확인해 주세요.`);
       if (val.trim()) cPlan[key] = val.trim();
     }
     result.ceremonyPlan = cPlan;

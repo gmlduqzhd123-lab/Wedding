@@ -23,7 +23,7 @@ export function mergeChanges(base,local,remote,{preferLocal=false}={}) {
         const ordered=reordered?[...next,...current]:[...current,...next];
         return [...new Set(ordered.map(item=>item.id))].filter(id=>merged[id]).map(id=>merged[id]);
       }
-      if(['favorites','tripFavorites','tipFavorites','checklist','packingList'].includes(path)){
+      if(['favorites','tripFavorites','tipFavorites','checklist','packingList','shootChecklist','ceremonyChecks'].includes(path)){
         const removed=before.filter(id=>!next.includes(id)),added=next.filter(id=>!before.includes(id));
         return [...new Set([...current.filter(id=>!removed.includes(id)),...added])];
       }

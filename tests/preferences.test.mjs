@@ -36,6 +36,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     checklist:['d180-hall','d120-dress','custom-1'],
     packingList:['pack-passport','pack-cards','cpack-1'],
     shootChecklist:['shoot-0-0','shoot-1-2'],
+    ceremonyChecks:['cchk-mc','cchk-vows'],
     customPackingList:[{id:'cpack-1',category:'📄 필수 서류·결제',title:'영문 가족관계증명서'}],
     checklistNotes:{'d180-hall':'순천아모르 1층 예약 확인'},
     tripNotes:{bali:'풀빌라 2박 특전 확인'},
@@ -45,7 +46,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     budgetPlan:{venue:{planned:15000000,actual:14200000,note:'식대 포함'},sdm:{planned:3500000,actual:null}},
     venueSim:{mealPrice:55000,guestCount:250,minGuarantee:200,hallFee:2500000,deposit:1000000,note:'순천아모르웨딩컨벤션'},
     sdmSim:{packageFee:2800000,helperFee:250000,extraFee:330000,deposit:500000,roadScene:true,nightShoot:false,note:'라크마 2/3 촬영'},
-    ceremonyPlan:{style:'noOfficiant',mc:'친구 김OO',song:'축가 미정',speech:'양가 아버님 덕담',note:'입장곡 체크'}
+    ceremonyPlan:{style:'noOfficiant',mc:'친구 김OO',song:'축가 미정',speech:'양가 아버님 덕담',banquetFloor:'2층',note:'입장곡 체크',vows:'첫 번째, 사랑하겠습니다.',declaration:'이 결혼이 진실하게 이루어졌음을 선언합니다.'}
   });
   const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
   assert.deepEqual(parsePreferencesBackup(raw),prefs);
@@ -56,6 +57,7 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     {checklist:['bad id!']},
     {packingList:['bad id!']},
     {shootChecklist:['bad id!']},
+    {ceremonyChecks:['bad id!']},
     {customPackingList:[{id:'cpack-1',category:'없는 분류',title:'준비물'}]},
     {checklistNotes:{'bad id!':'메모'}},
     {tripNotes:{'bad id!':'메모'}},
@@ -72,7 +74,10 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
     {venueSim:{guestCount:20000}},
     {sdmSim:{packageFee:-100}},
     {sdmSim:{roadScene:'yes'}},
-    {ceremonyPlan:{style:'invalid'}}
+    {ceremonyPlan:{style:'invalid'}},
+    {ceremonyPlan:{banquetFloor:'x'.repeat(41)}},
+    {ceremonyPlan:{vows:'x'.repeat(3001)}},
+    {ceremonyPlan:{declaration:'x'.repeat(2001)}}
   ]){
     assert.throws(()=>validatePreferences(bad));
   }
