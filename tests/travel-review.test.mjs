@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {validateContent,parseContent} from '../assets/js/content.js';
-import {emptyQuote,quoteBasis,quoteReview,currentBudgetText} from '../assets/js/travel.js';
+import {emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText} from '../assets/js/travel.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 function quoted(){const trip=validateContent(original).honeymoon[0];trip.plan.stays=[{region:'시험 숙소 1',nights:2,checkIn:'',checkOut:''},{region:'시험 숙소 2',nights:4,checkIn:'',checkOut:''}];trip.plan.quote={...emptyQuote(),costs:{airfare:2200000,lodging:3000000,other:1500000},checkedOn:'2026-11-08',flightSource:'시험용 항공 견적 근거',lodgingSource:'시험용 숙박 견적 근거',departureAt:'2027-06-06T12:00',arrivalAt:'2027-06-13T08:00',includesRequiredCosts:true,basis:quoteBasis(trip)};return trip;}
 test('unknown quote never establishes actual budget or flight dates; complete input includes reserve',()=>{
@@ -37,7 +37,14 @@ test('quote/schema roundtrip preserves evidence, rejects invalid prices and inst
   assert.deepEqual(validateContent(data).honeymoon[0].plan.quote,emptyQuote());assert.equal(validateContent(data).honeymoon[0].plan.narrativeVersion,1);
 });
 test('dated research snapshots are labelled separately; generated text follows current costs and nights',()=>{
-  for(const trip of original.honeymoon){assert.equal(trip.plan.narrativeVersion,2);for(const field of ['itinerary','lodgingNotes','budgetNotes'])assert.match(trip.plan[field],/^2026-11-09 (조회|조사 당시)/,trip.id+':'+field);}
+  for(const trip of original.honeymoon){assert.equal(trip.plan.narrativeVersion,2);for(const field of ['itinerary','lodgingNotes','budgetNotes'])assert.match(trip.plan[field],/^2026-11-(09|16) (조회|조사 당시)/,trip.id+':'+field);}
   const trip=quoted();trip.plan.costs.airfare=2700000;trip.plan.stays[0].nights=3;
   const text=currentBudgetText(trip);assert.match(text,/항공 2,700,000원/);assert.match(text,/현재 7박/);assert(!text.includes('2,200,000원'));
+  assert.equal(isBundledPackageTrip(trip),false);
+  trip.plan.costs.airfare=0;assert.equal(formatCostAllocation(trip,'airfare'),'0원');
+  const pkg=validateContent(original).honeymoon.find(t=>t.id==='pkg-bali-hanatour');
+  assert.equal(isBundledPackageTrip(pkg),true);
+  assert.equal(formatCostAllocation(pkg,'airfare'),'패키지 통합 포함 (0원)');
+  assert.match(currentBudgetText(pkg),/항공 패키지 통합 포함 \(0원\)/);
+  assert.equal(isBundledPackageTrip({id:'custom-1',title:'[팜투어] 푸꾸옥 풀빌라 5박 7일'}),true);
 });

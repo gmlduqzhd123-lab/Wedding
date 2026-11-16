@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-38';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-38';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-38';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-38';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-38';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-38';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-38';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-40';
+import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-40';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-40';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-40';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-40';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-40';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-40';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -37,7 +37,7 @@ const currentSelectedStudioId=()=>{
 };
 const activeVendorSchedules=()=>prefs.vendorSchedules!==undefined?prefs.vendorSchedules:structuredClone(DEFAULT_VENDOR_SCHEDULES);
 let filter='', favoritesOnly=false, withPhoneOnly=false, withStudioNoteOnly=false, studioQuickFilter='all';
-let tripSort='recommended', tripFavoritesOnly=false, withTripNoteOnly=false, tripQuickFilter='all', overviewExpanded=false, packingExpanded=false;
+let tripSort='recommended', tripFavoritesOnly=false, withTripNoteOnly=false, tripQuickFilter='all', tripRegionFilter='all', tripAgencyFilter='all', tripSearchQuery='', overviewExpanded=false, packingExpanded=false;
 let tipFilter='', tipCategory='all', tipFavoritesOnly=false, withTipNoteOnly=false, redrawTips=()=>{};
 let checklistIncompleteOnly=false, slideshowTimer=null, storySort='asc';
 const urlGuestMode=new URLSearchParams(location.search).get('view')==='guest';
@@ -889,12 +889,42 @@ function openAlbum(album) {
   else showDialog(album.title,E('p',{},'아직 등록된 사진이 없습니다.'));
 }
 const won=value=>value===null?'미확인':`${value.toLocaleString('ko-KR')}원`;
+function tripStyleInfo(item){
+  const title=(item.title||'').trim(),id=item.id||'';
+  const bracketMatch=title.match(/^\[([^\]]{1,24})\]/);
+  if(bracketMatch||/^pkg-/.test(id)||/(패키지|세미패키지|올인클루시브)/.test(title)){
+    const rawTag=bracketMatch?bracketMatch[1].trim():'';
+    let agencyKey='package',agencyLabel='패키지';
+    if(rawTag.startsWith('하나투어')||/-hanatour$/.test(id)){agencyKey='hanatour';agencyLabel='하나투어';}
+    else if(rawTag.startsWith('모두투어')||/-modetour$/.test(id)){agencyKey='modetour';agencyLabel='모두투어';}
+    else if(rawTag.includes('인터파크')||/-interpark$/.test(id)){agencyKey='interpark';agencyLabel='NOL 인터파크투어';}
+    else if(rawTag.startsWith('노랑풍선')||/-ybtour$/.test(id)){agencyKey='ybtour';agencyLabel='노랑풍선';}
+    else if(rawTag.startsWith('교원투어')||rawTag.includes('여행이지')||/-kyowon$/.test(id)){agencyKey='kyowon';agencyLabel='교원투어 여행이지';}
+    else if(rawTag){
+      const brand=rawTag.replace(/\s*(허니문|시그니처|세미패키지|패키지|직판|특전|단독|TOP\s*PICK).*$/i,'').trim()||rawTag;
+      agencyKey=`custom:${brand}`;
+      agencyLabel=brand;
+    }
+    const subType=/세미패키지|반자유|우리끼리/.test(title)?'반자유·세미패키지':/올인클루시브/.test(title)?'올인클루시브 패키지':'허니문 패키지';
+    return {isPackage:true,agencyKey,agencyLabel,subType,shortBadge:`📦 ${agencyLabel}`,badge:`📦 ${agencyLabel} · ${subType}`};
+  }
+  return {isPackage:false,agencyKey:'fit',agencyLabel:'자유여행',subType:'직접 구성 가안',shortBadge:'🧳 자유여행 가안',badge:'🧳 자유여행 · 날짜지정 직접조회'};
+}
+function tripRegionKey(item){
+  const text=`${item.id||''} ${item.title||''} ${item.country||''}`;
+  if(/bali|발리|짐바란|누사두아|우붓|스미냑/i.test(text))return 'bali';
+  if(/nhatrang|나트랑|깜라인|깜란/i.test(text))return 'nhatrang';
+  if(/danang|다낭|호이안|미케/i.test(text))return 'danang';
+  if(/guam|괌|투몬/i.test(text))return 'guam';
+  if(/hawaii|하와이|와이키키|오아후/i.test(text))return 'hawaii';
+  return 'other';
+}
 function tripFlightBadge(item){
   const line=(item.plan?.transport||'').split(/\r?\n/)[0]||'';
-  const cleaned=line.replace(/^\d{4}-\d{2}-\d{2}\s*조회 항공:\s*/,'').replace(/\s*Economy\s*(Standard|Saver)/i,'').replace(/\s*\([^)]*\)/g,'').trim();
+  const cleaned=line.replace(/^\d{4}-\d{2}-\d{2}\s*(조회|조사(?:\s*당시)?)\s*항공:\s*/,'').replace(/\s*직항\s*기준\s*패키지\s*구성\.?$/,'').replace(/\s*Economy\s*(Standard|Saver)/i,'').replace(/\s*\([^)]*\)/g,'').trim();
   const text=`${line} ${item.plan?.itinerary||''} ${item.plan?.quote?.flightSource||''}`;
   if(/직항/.test(text)&&!/경유/.test(line)){
-    const airline=cleaned.split('.')[0]?.trim();
+    const airline=cleaned.split('.')[0]?.replace(/\s*직항$/,'').trim();
     return {direct:true,short:'✈️ 직항',detail:airline?`✈️ ${airline} · 직항`:'✈️ 인천 출발 직항'};
   }
   if(/경유/.test(text)){
@@ -908,16 +938,53 @@ function tripClimateBadge(item){
   return climateBadgeInfo(item).label;
 }
 function matchesTripQuickFilter(item,key=tripQuickFilter){
+  if(key==='package')return tripStyleInfo(item).isPackage;
+  if(key==='fit')return !tripStyleInfo(item).isPackage;
   if(key==='direct')return tripFlightBadge(item).direct;
   if(key==='dry')return climateBadgeInfo(item).dry;
   if(key==='under6m')return item.budget!==null&&item.budget<=6000000;
+  if(key==='poolvilla')return /풀빌라/.test(`${item.title} ${(item.plan?.stays||[]).map(s=>s.region).join(' ')} ${item.plan?.lodgingNotes||''}`);
+  if(key==='noshopping')return /노쇼핑|노옵션/.test(`${item.title} ${item.pros||''} ${item.plan?.lodgingNotes||''} ${item.plan?.transport||''}`);
   if(key==='longstay')return stayReview(item).nights>=6;
   return true;
 }
+function matchesTripAgency(item,agencyFilter=tripAgencyFilter){
+  if(agencyFilter==='all')return true;
+  const style=tripStyleInfo(item);
+  if(agencyFilter==='fit')return !style.isPackage;
+  if(agencyFilter==='package-all')return style.isPackage;
+  return style.agencyKey===agencyFilter;
+}
+function hasActiveTripFilters(){
+  return Boolean(tripFavoritesOnly||withTripNoteOnly||tripQuickFilter!=='all'||tripRegionFilter!=='all'||tripAgencyFilter!=='all'||tripSearchQuery.trim());
+}
+function resetTripFilters(){
+  tripFavoritesOnly=false;withTripNoteOnly=false;tripQuickFilter='all';tripRegionFilter='all';tripAgencyFilter='all';tripSearchQuery='';
+}
+function matchesTripPool(item,omitKey=''){
+  if(omitKey!=='favorites'&&tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id))return false;
+  if(omitKey!=='notes'&&withTripNoteOnly&&!prefs.tripNotes?.[item.id]?.trim())return false;
+  if(omitKey!=='quick'&&!matchesTripQuickFilter(item,tripQuickFilter))return false;
+  if(omitKey!=='region'&&tripRegionFilter!=='all'&&tripRegionKey(item)!==tripRegionFilter)return false;
+  if(omitKey!=='agency'&&!matchesTripAgency(item,tripAgencyFilter))return false;
+  if(omitKey!=='search'){
+    const q=tripSearchQuery.trim().toLocaleLowerCase();
+    if(q){
+      const hay=`${item.title} ${item.country||''} ${item.pros||''} ${item.cons||''} ${(item.plan?.stays||[]).map(s=>s.region).join(' ')} ${item.plan?.lodgingNotes||''} ${item.plan?.experiences||''}`.toLocaleLowerCase();
+      if(!hay.includes(q))return false;
+    }
+  }
+  return true;
+}
+function matchesAllTripFilters(item){
+  return matchesTripPool(item,'');
+}
 function tripQuickSpecs(item){
   const flight=tripFlightBadge(item);
+  const style=tripStyleInfo(item);
   const hasNote=!guestMode&&Boolean(prefs.tripNotes?.[item.id]?.trim());
   return E('div',{class:'trip-spec-chips','aria-label':`${item.title} 핵심 조건 요약`},
+    E('span',{class:'spec-chip'+(style.isPackage?' highlight':'')},style.shortBadge),
     E('span',{class:'spec-chip'+(flight.direct?' direct':'')},flight.detail),
     E('span',{class:'spec-chip'},'🏨 '+staySummary(item)),
     E('span',{class:'spec-chip'},tripClimateBadge(item)),
@@ -927,6 +994,7 @@ function tripQuickSpecs(item){
 function tripBudgetBar(item){
   const costs=item.plan?.costs;
   if(!costs)return null;
+  const isPkgBundled=tripStyleInfo(item).isPackage&&costs.airfare===0&&(costs.lodging||0)>0;
   const entries=[
     ['airfare','항공','seg-airfare'],
     ['lodging','숙박·패키지','seg-lodging'],
@@ -948,7 +1016,7 @@ function tripBudgetBar(item){
       entries.map(e=>E('span',{class:'legend-item'},
         E('span',{class:`legend-dot ${e.cls}`,'aria-hidden':'true'}),
         E('span',{class:'legend-label'},e.label),
-        E('strong',{class:'legend-val'},costs[e.key]===null?'미정':`${Math.round(e.val/10000).toLocaleString('ko-KR')}만`)))));
+        E('strong',{class:'legend-val'},costs[e.key]===null?'미정':e.key==='airfare'&&isPkgBundled?'패키지포함':`${Math.round(e.val/10000).toLocaleString('ko-KR')}만`)))));
 }
 function tripProsCons(item){
   const prosLines=(item.pros||'아직 기록이 없어요.').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -999,7 +1067,7 @@ function selectedTripSummary(){
     E('div',{class:'selected-trip-status'},tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item)),
     note?E('p',{class:'checklist-item-note small'},`📝 우리의 상담 메모: ${note}`):null,
     E('p',{class:'small muted'},'이 기기에 저장한 선택입니다. 예약 확정을 의미하지 않습니다.'),button('선택한 계획 보기',()=>{
-      if((tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id))||(withTripNoteOnly&&!prefs.tripNotes?.[item.id]?.trim())||!matchesTripQuickFilter(item,tripQuickFilter)){tripFavoritesOnly=false;withTripNoteOnly=false;tripQuickFilter='all';render();}
+      if(!matchesAllTripFilters(item)){resetTripFilters();render();}
       const card=[...main.querySelectorAll('[data-trip-id]')].find(node=>node.dataset.tripId===item.id);
       if(!card)return;const details=card.querySelector('.travel-details');if(details)details.open=true;
       const heading=card.querySelector('h2');heading.tabIndex=-1;heading.focus({preventScroll:true});card.scrollIntoView({block:'start'});
@@ -1054,9 +1122,9 @@ function tripComparison() {
   if(guestMode)return null;
   const items=(prefs.tripCompare||[]).map(id=>content.honeymoon.find(item=>item.id===id)).filter(Boolean);
   if(!items.length)return null;
-  const fields=[['나라·지역',item=>item.country||'미정'],['한국 출발·도착',item=>[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'],
+  const fields=[['여행 형태·구분',item=>tripStyleInfo(item).badge],['나라·지역',item=>item.country||'미정'],['한국 출발·도착',item=>[item.startDate,item.endDate].filter(Boolean).join(' ~ ')||'미정'],
     ['2인 계획예산',item=>won(item.budget)],['비용 배분 합계',item=>{const state=budgetSummary(item);return state.known===null?'입력된 배분 없음':won(state.known);}],
-    ['실제 견적·귀국 확인',item=>quoteReview(item).message],['숙박 가안',staySummary],['숙박·날짜 검토',item=>stayReview(item).message],...Object.entries(COST_LABELS).map(([key,label])=>[label+' 배분',item=>won(item.plan?.costs[key]??null)]),
+    ['실제 견적·귀국 확인',item=>quoteReview(item).message],['숙박 가안',staySummary],['숙박·날짜 검토',item=>stayReview(item).message],...Object.entries(COST_LABELS).map(([key,label])=>[label+' 배분',item=>formatCostAllocation(item,key)]),
     ['계획상 이동',item=>item.plan?.transport||'별도 확인 필요'],['기후 유의점',item=>climateReview(item).summary],
     ['좋은 점',item=>item.pros||'미기재'],['고민할 점',item=>item.cons||'미기재'],
     ['우리의 상담 메모',item=>prefs.tripNotes?.[item.id]||'미입력']];
@@ -1071,7 +1139,7 @@ function planReference(plan,text){
   return text?E('div',{class:'plan-reference'},E('p',{class:'small muted'},plan.narrativeVersion===2?'참고 설명 · 직접 작성한 문장의 날짜·금액·박 수는 자동 갱신되지 않습니다.':'이전 계획의 참고 설명 · 아래 원문은 현재 입력값으로 자동 갱신되지 않습니다.'),E('p',{},text)):null;
 }
 function tripQuoteDetails(item){
-  const q=item.plan.quote||emptyQuote(),state=quoteReview(item),rows=Object.entries(q.costs).map(([key,value])=>[COST_LABELS[key]+' 실제 견적',won(value)]);
+  const q=item.plan.quote||emptyQuote(),state=quoteReview(item),rows=Object.entries(q.costs).map(([key,value])=>[COST_LABELS[key]+' 실제 견적',key==='airfare'&&value===0&&(q.costs.lodging||0)>0&&isBundledPackageTrip(item)?'패키지 통합 포함 (0원)':won(value)]);
   rows.push(['입력 견적 소계',won(state.known)],['현재 계획의 예비비',won(item.plan.costs.reserve)],['입력 견적 + 기입 예비비',won(state.assessed)],['확인 조건을 갖춘 합계',won(state.total)],['조회일',q.checkedOn||'미입력'],['한국 출발 시각',q.departureAt.replace('T',' ')||'미입력'],['한국 도착 시각',q.arrivalAt.replace('T',' ')||'미입력']);
   return travelSection(item,'quote','실제 견적·항공편 확인',tripQuoteStatus(item,true),E('dl',{class:'quote-breakdown'},rows.map(([label,value])=>[E('dt',{},label),E('dd',{},value)])),
     E('p',{},'성인 2명·인천·일반석·객실 1실 기준입니다. 공개 조사 금액은 날짜를 지정한 조회 화면의 표시가이며, 항공사·호텔의 결제 직전 최종 요금이나 예약 확정 금액이 아닙니다. 이동·세금의 공시요금, 환산 가정과 추가 확인 사항은 비용 배분·이동비·예비비 항목에서 확인하세요. 일부 견적만 입력해도 소계와 기입된 예비비 합계를 표시하며, 전체 견적 확인은 모든 필수 비용과 현재 여행·숙박 조건을 확인한 뒤에만 표시합니다.'),
@@ -1081,7 +1149,7 @@ function travelDetails(item){
   const plan=item.plan;
   if(!plan)return item.body||item.url?E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'직접 작성한 메모·참고 링크'),item.body?E('p',{class:'record-body'},item.body):null,externalLink('직접 입력한 참고 링크 ↗',item.url)):null;
   const state=budgetSummary(item);
-  const costRows=Object.entries(COST_LABELS).map(([key,label])=>[label,won(plan.costs[key])]);
+  const costRows=Object.entries(COST_LABELS).map(([key,label])=>[label,formatCostAllocation(item,key)]);
   costRows.push(['입력된 배분 소계',state.known===null?'입력된 배분 없음':won(state.known)],['2인 계획 총액',won(item.budget)],['항목 미배분',state.unallocated===null?'판단 보류':state.unallocated>=0?won(state.unallocated):`배분 초과 ${won(-state.unallocated)}`]);
   const climate=climateReview(item);
   return E('details',{class:'travel-details','data-view-key':`${item.id}:all`},E('summary',{},'일정·숙박·비용 상세'),
@@ -1112,23 +1180,64 @@ function renderAlbums() {
     empty(guestMode?'웨딩 포토 앨범을 준비하고 있습니다.':'우리의 사진을 담을 첫 앨범',guestMode?'2027년 2월 스튜디오 촬영 이후 두 사람의 소중한 사진들이 이곳에 채워질 예정입니다.':'사진을 직접 선택하거나 사진 주소를 입력해 앨범 초안을 만들 수 있어요.','첫 앨범 만들기',()=>openEditor('albums'))];
 }
 function sortedTrips(){
-  const trips=content.honeymoon.filter(item=>(!tripFavoritesOnly||prefs.tripFavorites?.includes(item.id))&&(!withTripNoteOnly||Boolean(prefs.tripNotes?.[item.id]?.trim()))&&matchesTripQuickFilter(item,tripQuickFilter));
+  const trips=content.honeymoon.filter(matchesAllTripFilters);
   return tripSort==='recommended'?trips:trips.sort((a,b)=>a.budget===null?(b.budget===null?0:1):b.budget===null?-1:(a.budget-b.budget)*(tripSort==='budget-high'?-1:1));
 }
 function tripSortControl(){
   const select=E('select',{id:'trip-sort','aria-label':'여행 후보 정렬'},[['recommended','추천순'],['budget-low','계획예산 낮은 순'],['budget-high','계획예산 높은 순']].map(([value,label])=>E('option',{value},label)));
   select.value=tripSort;
   select.addEventListener('change',()=>{const before=select.getBoundingClientRect().top;tripSort=select.value;render();const target=$('#trip-sort');target.focus({preventScroll:true});window.scrollBy(0,target.getBoundingClientRect().top-before);});
+  const agencyPool=content.honeymoon.filter(item=>matchesTripPool(item,'agency'));
+  const regionPool=content.honeymoon.filter(item=>matchesTripPool(item,'region'));
+  const quickPool=content.honeymoon.filter(item=>matchesTripPool(item,'quick'));
+  const knownAgencyKeys=new Set(['fit','hanatour','modetour','interpark','ybtour','kyowon']);
+  const extraAgencies=[];
+  for(const item of content.honeymoon){
+    const style=tripStyleInfo(item);
+    if(style.isPackage&&!knownAgencyKeys.has(style.agencyKey)&&!extraAgencies.some(([k])=>k===style.agencyKey)){
+      extraAgencies.push([style.agencyKey,style.agencyKey==='package'?'기타 패키지':style.agencyLabel]);
+    }
+  }
+  const agencyOptions=[
+    ['all',`전체 형태·여행사 (${agencyPool.length})`],
+    ['package-all',`📦 종합여행사 패키지 전체 (${agencyPool.filter(item=>tripStyleInfo(item).isPackage).length})`],
+    ['fit',`🧳 자유여행 직접구성 (${agencyPool.filter(item=>!tripStyleInfo(item).isPackage).length})`],
+    ['hanatour',`📦 하나투어 (${agencyPool.filter(item=>tripStyleInfo(item).agencyKey==='hanatour').length})`],
+    ['modetour',`📦 모두투어 (${agencyPool.filter(item=>tripStyleInfo(item).agencyKey==='modetour').length})`],
+    ['interpark',`📦 NOL 인터파크투어 (${agencyPool.filter(item=>tripStyleInfo(item).agencyKey==='interpark').length})`],
+    ['ybtour',`📦 노랑풍선 (${agencyPool.filter(item=>tripStyleInfo(item).agencyKey==='ybtour').length})`],
+    ['kyowon',`📦 교원투어 여행이지 (${agencyPool.filter(item=>tripStyleInfo(item).agencyKey==='kyowon').length})`],
+    ...extraAgencies.map(([key,label])=>[key,`📦 ${label} (${agencyPool.filter(item=>tripStyleInfo(item).agencyKey===key).length})`])
+  ].filter(([key])=>key==='all'||tripAgencyFilter===key||content.honeymoon.some(item=>matchesTripAgency(item,key)));
+  const agencySelect=E('select',{id:'trip-agency-filter','aria-label':'여행 형태 및 여행사 필터'},agencyOptions.map(([value,label])=>E('option',{value},label)));
+  agencySelect.value=agencyOptions.some(([v])=>v===tripAgencyFilter)?tripAgencyFilter:'all';
+  agencySelect.addEventListener('change',()=>{const before=agencySelect.getBoundingClientRect().top;tripAgencyFilter=agencySelect.value;render();const target=$('#trip-agency-filter');target?.focus({preventScroll:true});if(target)window.scrollBy(0,target.getBoundingClientRect().top-before);});
+  const searchInput=E('input',{type:'search',id:'trip-search',placeholder:'리조트·풀빌라·여행사·특전 검색 (예: 아야나, 노쇼핑, 스냅, 골드패스)','aria-label':'신혼여행 후보 검색'});
+  searchInput.value=tripSearchQuery;
+  searchInput.addEventListener('input',()=>{
+    const before=searchInput.getBoundingClientRect().top,start=searchInput.selectionStart,end=searchInput.selectionEnd;
+    tripSearchQuery=searchInput.value;
+    render();
+    const target=$('#trip-search');
+    if(target){target.focus({preventScroll:true});try{target.setSelectionRange(start,end);}catch{}window.scrollBy(0,target.getBoundingClientRect().top-before);}
+  });
   const favCheck=E('input',{type:'checkbox',id:'trip-favorites-only'});favCheck.checked=tripFavoritesOnly;
   favCheck.addEventListener('change',()=>{const before=favCheck.getBoundingClientRect().top;tripFavoritesOnly=favCheck.checked;render();const target=$('#trip-favorites-only');target?.focus({preventScroll:true});if(target)window.scrollBy(0,target.getBoundingClientRect().top-before);});
   const noteCheck=E('input',{type:'checkbox',id:'trip-notes-only'});noteCheck.checked=withTripNoteOnly;
   noteCheck.addEventListener('change',()=>{const before=noteCheck.getBoundingClientRect().top;withTripNoteOnly=noteCheck.checked;render();const target=$('#trip-notes-only');target?.focus({preventScroll:true});if(target)window.scrollBy(0,target.getBoundingClientRect().top-before);});
+  const hasPackages=content.honeymoon.some(item=>matchesTripQuickFilter(item,'package'));
   const quickFilters=[
-    ['all',`전체 (${content.honeymoon.length})`],
-    ['direct',`✈️ 직항 노선 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'direct')).length})`],
-    ['dry',`☀️ 건기·맑은 시기 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'dry')).length})`],
-    ['under6m',`💸 600만 원 이하 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'under6m')).length})`],
-    ['longstay',`🏖️ 6~7박 일정 (${content.honeymoon.filter(item=>matchesTripQuickFilter(item,'longstay')).length})`]
+    ['all',`전체 (${quickPool.length})`],
+    ...(hasPackages?[
+      ['package',`📦 패키지·반자유 (${quickPool.filter(item=>matchesTripQuickFilter(item,'package')).length})`],
+      ['fit',`🧳 자유여행 (${quickPool.filter(item=>matchesTripQuickFilter(item,'fit')).length})`]
+    ]:[]),
+    ['direct',`✈️ 직항 노선 (${quickPool.filter(item=>matchesTripQuickFilter(item,'direct')).length})`],
+    ['dry',`☀️ 건기·맑은 시기 (${quickPool.filter(item=>matchesTripQuickFilter(item,'dry')).length})`],
+    ['under6m',`💸 600만 원 이하 (${quickPool.filter(item=>matchesTripQuickFilter(item,'under6m')).length})`],
+    ...(content.honeymoon.some(item=>matchesTripQuickFilter(item,'poolvilla'))||tripQuickFilter==='poolvilla'?[['poolvilla',`🏡 풀빌라 포함 (${quickPool.filter(item=>matchesTripQuickFilter(item,'poolvilla')).length})`]]:[]),
+    ...(content.honeymoon.some(item=>matchesTripQuickFilter(item,'noshopping'))||tripQuickFilter==='noshopping'?[['noshopping',`🚫 노쇼핑·노옵션 (${quickPool.filter(item=>matchesTripQuickFilter(item,'noshopping')).length})`]]:[]),
+    ['longstay',`🏖️ 6~7박 일정 (${quickPool.filter(item=>matchesTripQuickFilter(item,'longstay')).length})`]
   ];
   const filterBar=E('div',{class:'trip-quick-filters',role:'group','aria-label':'여행지 핵심 조건 빠른 필터'},
     quickFilters.map(([key,label])=>E('button',{type:'button',class:'button quiet trip-filter-chip','data-trip-filter':key,'aria-pressed':String(tripQuickFilter===key),onclick:()=>{
@@ -1136,8 +1245,27 @@ function tripSortControl(){
       render();
       main.querySelector(`[data-trip-filter="${tripQuickFilter}"]`)?.focus({preventScroll:true});
     }},label)));
+  const regionDefs=[
+    ['all','🌏 전체 지역',regionPool.length],
+    ['bali','🇮🇩 발리',regionPool.filter(item=>tripRegionKey(item)==='bali').length],
+    ['nhatrang','🇻🇳 나트랑',regionPool.filter(item=>tripRegionKey(item)==='nhatrang').length],
+    ['danang','🇻🇳 다낭·호이안',regionPool.filter(item=>tripRegionKey(item)==='danang').length],
+    ['guam','🇬🇺 괌',regionPool.filter(item=>tripRegionKey(item)==='guam').length],
+    ['hawaii','🇺🇸 하와이',regionPool.filter(item=>tripRegionKey(item)==='hawaii').length],
+    ['other','✈️ 기타 지역',regionPool.filter(item=>tripRegionKey(item)==='other').length]
+  ].filter(([key])=>key==='all'||tripRegionFilter===key||content.honeymoon.some(item=>tripRegionKey(item)===key));
+  const regionBar=regionDefs.length>2?E('div',{class:'trip-quick-filters trip-region-filters',role:'group','aria-label':'신혼여행 지역별 모아보기'},
+    regionDefs.map(([key,label,cnt])=>E('button',{type:'button',class:'button quiet trip-filter-chip','data-trip-region':key,'aria-pressed':String(tripRegionFilter===key),onclick:()=>{
+      tripRegionFilter=tripRegionFilter===key&&key!=='all'?'all':key;
+      render();
+      main.querySelector(`[data-trip-region="${tripRegionFilter}"]`)?.focus({preventScroll:true});
+    }},`${label} (${cnt})`))):null;
+  const visibleCount=sortedTrips().length;
+  const resetBtn=hasActiveTripFilters()?button('필터 초기화',()=>{resetTripFilters();render();$('#trip-sort')?.focus({preventScroll:true});},'text-button'):null;
   return E('div',{class:'travel-tools'},
-    E('div',{class:'travel-tools-row'},E('label',{for:'trip-sort'},'후보 정렬'),select,guestMode?null:E('label',{class:'check-label',for:'trip-favorites-only'},favCheck,'관심 여행지만 보기'),guestMode?null:E('label',{class:'check-label',for:'trip-notes-only'},noteCheck,'📝 메모 남긴 여행지만 보기'),E('p',{class:'small muted'},'정렬·필터는 화면 표시만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.')),
+    E('div',{class:'travel-search-row'},searchInput,agencySelect),
+    E('div',{class:'travel-tools-row'},E('label',{for:'trip-sort'},'후보 정렬'),select,guestMode?null:E('label',{class:'check-label',for:'trip-favorites-only'},favCheck,'관심 여행지만 보기'),guestMode?null:E('label',{class:'check-label',for:'trip-notes-only'},noteCheck,'📝 메모 남긴 여행지만 보기'),E('span',{class:'small muted trip-result-count','aria-live':'polite'},`표시 ${visibleCount} / 전체 ${content.honeymoon.length}곳`),resetBtn,E('p',{class:'small muted'},'정렬·필터는 화면 표시만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.')),
+    regionBar,
     filterBar,E('p',{class:'small muted'},'기후 필터는 확인된 기준 월의 계절 경향입니다. 여행 월이 달라지거나 요약 분류가 미입력인 후보는 제외하며 해당 기간의 날씨를 보장하지 않습니다.'));
 }
 function travelOverview(){
@@ -1145,6 +1273,8 @@ function travelOverview(){
   const ordered=(tripSort==='recommended'?trips:trips.sort((a,b)=>a.budget===null?(b.budget===null?0:1):b.budget===null?-1:(a.budget-b.budget)*(tripSort==='budget-high'?-1:1))).filter(item=>item.plan?.comparisonNote);
   if(!ordered.length)return null;
   const directCount=ordered.filter(item=>tripFlightBadge(item).direct).length;
+  const pkgCount=ordered.filter(item=>tripStyleInfo(item).isPackage).length;
+  const fitCount=ordered.length-pkgCount;
   const budgets=ordered.map(item=>item.budget).filter(b=>typeof b==='number');
   const minBudget=budgets.length?Math.round(Math.min(...budgets)/10000).toLocaleString('ko-KR'):'';
   const maxBudget=budgets.length?Math.round(Math.max(...budgets)/10000).toLocaleString('ko-KR'):'';
@@ -1152,20 +1282,22 @@ function travelOverview(){
     E('div',{class:'overview-head'},
       E('div',{},
         E('h2',{id:'travel-overview-title'},'인천 직항 후보 한눈에 보기'),
-        E('p',{class:'small muted'},'추천순은 조사 당시 6월 기후·해변 휴식·인천 직항 이동성·계획 예산을 고려한 순서입니다.')),
+        E('p',{class:'small muted'},'자유여행 가안과 종합여행사 대표 허니문·세미패키지를 6월 기후·직항 이동성·계획예산 기준으로 모았습니다.')),
       E('div',{class:'overview-stats'},
-        E('span',{class:'spec-chip'},`총 ${ordered.length}곳`),
+        E('span',{class:'spec-chip'},pkgCount?`총 ${ordered.length}곳 (자유 ${fitCount} · 패키지 ${pkgCount})`:`총 ${ordered.length}곳`),
         E('span',{class:'spec-chip direct'},directCount===ordered.length?`✈️ 전 노선 인천 직항 (${directCount}곳)`:`✈️ 직항 ${directCount}곳 · 경유 ${ordered.length-directCount}곳`),
         budgets.length?E('span',{class:'spec-chip highlight'},`💰 2인 계획예산 ${minBudget}만~${maxBudget}만 원`):null)),
     E('details',{class:'overview-disclosure',open:overviewExpanded,ontoggle:event=>{if(event.currentTarget.isConnected)overviewExpanded=event.currentTarget.open;}},E('summary',{},`후보 요약 ${ordered.length}곳 비교 보드 펼치기·접기`),
       E('ol',{class:'overview-board'},ordered.map(item=>{
         const flight=tripFlightBadge(item);
+        const style=tripStyleInfo(item);
         return E('li',{},
           E('div',{class:'overview-row-top'},
-            button(item.title,()=>{if((tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id))||!matchesTripQuickFilter(item,tripQuickFilter)){tripFavoritesOnly=false;tripQuickFilter='all';render();}const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
+            button(item.title,()=>{if(!matchesAllTripFilters(item)){resetTripFilters();render();}const card=main.querySelector(`[data-trip-id="${item.id}"]`);if(card){card.querySelector('.travel-details').open=true;focusTrip(item.id);}},'text-button'),
             E('span',{class:'small muted'},item.country||''),
             E('strong',{},'2인 목표 '+won(item.budget))),
           E('div',{class:'overview-meta'},
+            E('span',{class:'spec-chip'+(style.isPackage?' highlight':'')},style.shortBadge),
             E('span',{class:'spec-chip'+(flight.direct?' direct':'')},flight.short),
             E('span',{class:'spec-chip'},'🏨 '+staySummary(item)),
             E('span',{class:'spec-chip'},tripClimateBadge(item))),
@@ -1361,18 +1493,35 @@ function renderHoneymoonPackingList(){
   details.addEventListener('toggle',()=>{packingExpanded=details.open;});
   return details;
 }
+function printHoneymoonSummary(){
+  document.body.classList.add('print-honeymoon-summary');
+  const cleanup=()=>{
+    document.body.classList.remove('print-honeymoon-summary');
+    window.removeEventListener('afterprint',cleanup);
+  };
+  window.addEventListener('afterprint',cleanup,{once:true});
+  window.print();
+  setTimeout(cleanup,1500);
+}
 function renderHoneymoon() {
   const visibleTrips=sortedTrips();
-  return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',editButton('여행지 추가',()=>openEditor('honeymoon')),'HONEYMOON'),
+  const emptyMsg=tripFavoritesOnly&&!withTripNoteOnly&&tripQuickFilter==='all'&&tripRegionFilter==='all'&&tripAgencyFilter==='all'&&!tripSearchQuery.trim()?'등록한 관심 여행지가 없습니다.':withTripNoteOnly&&!tripFavoritesOnly&&tripQuickFilter==='all'&&tripRegionFilter==='all'&&tripAgencyFilter==='all'&&!tripSearchQuery.trim()?'메모를 남긴 여행 후보가 없습니다.':'선택한 조건에 맞는 여행 후보가 없습니다.';
+  return [pageHeader('둘만의 첫 여행을 그리며','가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',guestMode?null:E('div',{class:'page-actions'},editButton('여행지 추가',()=>openEditor('honeymoon')),button('🖨️ 선택·비교 요약 인쇄',printHoneymoonSummary,'button quiet')),'HONEYMOON'),
+    E('p',{class:'form-note honeymoon-note'},'성인 2명·인천 출발 직항·일반석·객실 1실 기준. 자유여행 가안(5곳)은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 배분이며, 종합여행사 패키지·세미패키지 후보(25곳)는 공개 상품 구성을 바탕으로 잡은 2027년 6월 계획예산 배분으로 실제 예약이나 확정 견적은 아닙니다. 각 후보 상세에서 왕복 일정·현지 숙박 날짜·가이드 경비·선택관광·세금 포함 범위와 미확인 비용을 확인하세요.'),
     tripSortControl(),travelOverview(),guestMode?null:E('div',{id:'selected-trip-region'},selectedTripSummary()),E('div',{id:'trip-comparison-region'},tripComparison()),
     renderHoneymoonPackingList(),
-    content.honeymoon.length?(visibleTrips.length?E('section',{class:'travel-grid'},visibleTrips.map(item=>E('article',{class:'travel-card','data-trip-id':item.id},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('h2',{},item.title),
-      tripQuickSpecs(item),tripBudgetBar(item),
-      tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
-      tripProsCons(item),
-      !guestMode&&prefs.tripNotes?.[item.id]?E('p',{class:'checklist-item-note small trip-private-note'},`📝 우리의 상담 메모: ${prefs.tripNotes[item.id]}`):null,
-      E('dl',{class:'trip-meta-dl'},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'숙박 요약'),E('dd',{},staySummary(item))),
-      tripVideoLinks(item),travelDetails(item),tripControls(item),recordActions('honeymoon',item)))):E('p',{class:'no-results'},tripFavoritesOnly&&tripQuickFilter==='all'&&!withTripNoteOnly?'등록한 관심 여행지가 없습니다.':withTripNoteOnly&&tripQuickFilter==='all'&&!tripFavoritesOnly?'메모를 남긴 여행 후보가 없습니다.':'선택한 조건에 맞는 여행 후보가 없습니다.')):
+    content.honeymoon.length?(visibleTrips.length?E('section',{class:'travel-grid'},visibleTrips.map(item=>{
+      const style=tripStyleInfo(item);
+      return E('article',{class:'travel-card','data-trip-id':item.id},
+        E('div',{class:'trip-card-topline'},E('p',{class:'country'},item.country||'우리의 여행 후보'),E('span',{class:'trip-style-pill '+(style.isPackage?'is-package':'is-fit')},style.badge)),
+        E('h2',{},item.title),
+        tripQuickSpecs(item),tripBudgetBar(item),
+        tripBudgetStatus(item),tripQuoteStatus(item),tripStayStatus(item),
+        tripProsCons(item),
+        !guestMode&&prefs.tripNotes?.[item.id]?E('p',{class:'checklist-item-note small trip-private-note'},`📝 우리의 상담 메모: ${prefs.tripNotes[item.id]}`):null,
+        E('dl',{class:'trip-meta-dl'},E('dt',{},'한국 출발'),E('dd',{},item.startDate||'미정'),E('dt',{},'한국 도착'),E('dd',{},item.endDate||'미정'),E('dt',{},'2인 계획예산'),E('dd',{},item.budget===null?'미정':`${item.budget.toLocaleString('ko-KR')}원`),E('dt',{},'숙박 요약'),E('dd',{},staySummary(item))),
+        tripVideoLinks(item),travelDetails(item),tripControls(item),recordActions('honeymoon',item));
+    })):E('div',{class:'no-results-box'},E('p',{class:'no-results'},emptyMsg),hasActiveTripFilters()?button('모든 필터·검색 초기화',()=>{resetTripFilters();render();$('#trip-search')?.focus({preventScroll:true});},'button quiet'):null)):
     empty('어디로 떠나고 싶나요?','아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.','여행 후보 남기기',()=>openEditor('honeymoon'))];
 }
 function contactNode(studio,compact=false) {
@@ -2014,12 +2163,29 @@ function openBudgetEditor(){
   const form=E('form',{class:'editor-form'});
   form.append(E('p',{class:'form-note'},'입력한 결혼 준비 예산은 이 기기의 개인 설정에만 저장되며 방문자용 화면이나 공개 저장소에는 노출되지 않습니다.'));
   const fields={};
-  const selectedTrip=content.honeymoon.find(t=>t.id===prefs.tripSelected)||content.honeymoon[0];
+  const explicitTrip=content.honeymoon.find(t=>t.id===prefs.tripSelected);
+  const selectedTrip=explicitTrip||content.honeymoon[0];
   if(selectedTrip?.budget){
-    form.append(button(`✈️ '${selectedTrip.title}' 2인 계획예산(${won(selectedTrip.budget)})을 신혼여행 목표 예산에 채우기`,()=>{
+    const tripTag=explicitTrip?`최종 선택 '${selectedTrip.title}'`:`1순위 후보(선택 전) '${selectedTrip.title}'`;
+    form.append(button(`✈️ ${tripTag} 2인 계획예산(${won(selectedTrip.budget)})을 신혼여행 목표 예산에 채우기`,()=>{
       if(fields.honeymoon_planned){
         fields.honeymoon_planned.value=String(selectedTrip.budget);
         toast(`'${selectedTrip.title}' 계획예산을 신혼여행 목표 예산 입력란에 채웠습니다.`);
+      }
+    },'button quiet'));
+  }
+  if(selectedTrip){
+    const tripQuote=quoteReview(selectedTrip);
+    form.append(button(tripQuote.complete?`✈️ '${selectedTrip.title}' 확인된 실제 견적 총액(${won(tripQuote.total)})을 신혼여행 실제·견적에 채우기`:'✈️ 신혼여행 확인 견적 불러오기',()=>{
+      if(!tripQuote.complete){
+        toast(`'${selectedTrip.title}' 후보의 실제 견적 필수 항목(${tripQuote.missing.join(' · ')})을 먼저 확인·입력해 주세요.`,true);
+        return;
+      }
+      if(fields.honeymoon_actual){
+        fields.honeymoon_actual.value=String(tripQuote.total);
+        if(!fields.honeymoon_planned.value.trim()&&selectedTrip.budget)fields.honeymoon_planned.value=String(selectedTrip.budget);
+        else if(!fields.honeymoon_planned.value.trim())fields.honeymoon_planned.value=String(tripQuote.total);
+        toast(`'${selectedTrip.title}' 확인된 실제 견적 총액(${won(tripQuote.total)})을 신혼여행 실제·견적 입력란에 채웠습니다.`);
       }
     },'button quiet'));
   }
@@ -2900,7 +3066,17 @@ function stayEditor(form,fields,plan){
 }
 function quoteEditor(form,fields,plan,currentTrip){
   const original=structuredClone(plan.quote||emptyQuote()),body=E('div',{class:'quote-editor-body'});
-  body.append(E('p',{class:'form-note'},'실제 조회한 성인 2명·인천·일반석·객실 1실 견적만 기록하세요. 항공·숙박의 조회 근거와 한국 출발·도착 시각, 기타 여행비까지 입력합니다. 예비비는 현재 계획 배분을 더합니다. 예약 확정을 뜻하지 않습니다.'));
+  body.append(E('p',{class:'form-note'},'실제 조회한 성인 2명·인천·일반석·객실 1실 견적만 기록하세요. 항공·숙박의 조회 근거와 한국 출발·도착 시각, 기타 여행비까지 입력합니다. 항공권이 통합된 패키지 견적은 항공 실제 견적에 0을 입력하고 숙박·패키지 실제 견적에 2인 패키지 총액을 기록할 수 있습니다. 예비비는 현재 계획 배분을 더하며 예약 확정을 뜻하지 않습니다.'));
+  let confirmedBasis=original.basis;
+  const matches=()=>JSON.stringify(quoteBasis(currentTrip()))===JSON.stringify(confirmedBasis);
+  const included=E('input',{type:'checkbox',id:'quote-included'});
+  const invalidate=()=>{if(!matches())included.checked=false;};
+  body.append(button('📦 패키지 통합 견적 (항공 0원 채우기)',()=>{
+    fields.quote_airfare.value='0';
+    invalidate();
+    fields.quote_lodging.focus({preventScroll:true});
+    toast('항공 실제 견적에 0원(패키지 통합 포함)을 채웠습니다. 숙박·패키지 실제 견적에 2인 통합 견적가를 입력해 주세요.');
+  },'button quiet'));
   const specs=[...['airfare','lodging','other'].map(key=>[key,`${COST_LABELS[key]} 실제 견적 (원)`,'number',original.costs[key]??'']),
     ['checkedOn','견적 조회일','date',original.checkedOn],['flightSource','항공 견적 근거·편명·포함 조건','textarea',original.flightSource],['lodgingSource','숙박 견적 근거·객실·포함 조건','textarea',original.lodgingSource],
     ['departureAt','견적 항공편 한국 출발 시각','datetime-local',original.departureAt],['arrivalAt','견적 항공편 한국 도착 시각','datetime-local',original.arrivalAt]];
@@ -2909,11 +3085,8 @@ function quoteEditor(form,fields,plan,currentTrip){
     if(type==='number'){input.min='0';input.step='1';}
     fields['quote_'+key]=input;body.append(E('label',{class:'field',for:input.id},label,input));
   }
-  let confirmedBasis=original.basis;
-  const matches=()=>JSON.stringify(quoteBasis(currentTrip()))===JSON.stringify(confirmedBasis);
-  const included=E('input',{type:'checkbox',id:'quote-included'});included.checked=original.includesRequiredCosts&&matches();fields.quote_included=included;
+  included.checked=original.includesRequiredCosts&&matches();fields.quote_included=included;
   included.addEventListener('change',()=>{if(included.checked)confirmedBasis=quoteBasis(currentTrip());});
-  const invalidate=()=>{if(!matches())included.checked=false;};
   form.addEventListener('input',event=>{if(event.target!==included)invalidate();});form.addEventListener('click',event=>{if(event.target.closest('button'))invalidate();});
   body.append(E('label',{class:'quote-check',for:included.id},included,'현재 여행 날짜·숙박 구성의 견적이며 세금·수하물·식사·공항 및 지역 이동비를 포함해 확인했습니다.'));
   form.append(E('details',{class:'quote-editor'},E('summary',{},'실제 견적·항공편 기록 (선택)'),body));
@@ -3040,7 +3213,7 @@ function openEditor(type,item=null) {
       const input=E('textarea',{rows:'4',id:`plan-${key}`,maxlength:'12000'});input.value=editedPlan[key];fields[`plan_${key}`]=input;
       form.append(E('label',{class:'field',for:input.id},label,input));
     }
-    form.append(E('p',{class:'form-note'},'총액과 항목 배분은 별도로 입력합니다. 차이는 미배분 또는 배분 초과로 표시하며 임의로 비용을 채우지 않습니다.'));
+    form.append(E('p',{class:'form-note'},'총액과 항목 배분은 별도로 입력합니다. 차이는 미배분 또는 배분 초과로 표시하며 임의로 비용을 채우지 않습니다. 항공권이 통합된 패키지 상품은 항공 배분에 0을 입력하고 숙박·패키지 배분에 2인 상품가를 적을 수 있으며, 제목 앞에 [여행사명]을 붙이면 패키지 배지와 여행사 필터에 자동 반영됩니다.'));
     for(const [key,label]of Object.entries(COST_LABELS)){
       const input=E('input',{type:'number',min:'0',step:'1',id:`cost-${key}`});input.value=editedPlan.costs[key]??'';fields[`cost_${key}`]=input;
       form.append(E('label',{class:'field',for:input.id},`${label} 배분 (원)`,input));
@@ -3168,9 +3341,18 @@ function openEditor(type,item=null) {
         if(index===-1)next[type].push(record);else next[type][index]=record;
       }
       attemptedNext=next;
-      await setDraft(next,editingContent,approvedRaw);closeDialog();render();
+      await setDraft(next,editingContent,approvedRaw);
+      let filterResetNotice=false;
+      if(type==='honeymoon'&&savedId){
+        const savedTrip=content.honeymoon.find(value=>value.id===savedId);
+        if(savedTrip&&hasActiveTripFilters()&&!matchesAllTripFilters(savedTrip)){
+          resetTripFilters();
+          filterResetNotice=true;
+        }
+      }
+      closeDialog();render();
       if(type!=='invitation')focusRecord(type,savedId);
-      toast('이 기기에 초안을 저장했습니다.');
+      toast(filterResetNotice?'이 기기에 초안을 저장했습니다. 방금 저장한 후보를 표시하기 위해 필터를 해제했습니다.':'이 기기에 초안을 저장했습니다.');
     }catch(error){
       toast(error.message,true);
       if(error instanceof StorageConflict){

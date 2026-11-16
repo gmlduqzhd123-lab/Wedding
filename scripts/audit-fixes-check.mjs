@@ -31,8 +31,9 @@ try{
  assert.match(await g.locator('[data-trip-id="guam"] .trip-spec-chips').innerText(),/6월 건기·우기 전환기/);
  assert.match(await g.locator('[data-trip-id="danang"] .trip-spec-chips').innerText(),/6월 더위 유의/);
  assert.match(await g.locator('[data-trip-id="hawaii"] .trip-spec-chips').innerText(),/6월 여름철/);
- await g.getByRole('button',{name:'☀️ 건기·맑은 시기 (2)',exact:true}).click();
- assert.deepEqual(await g.locator('.travel-card').evaluateAll(ns=>ns.map(n=>n.dataset.tripId)),['bali','nhatrang']);
+ const dryIds=expected.honeymoon.filter(t=>t.plan?.climateSummary?.category==='dry').map(t=>t.id);
+ await g.getByRole('button',{name:`☀️ 건기·맑은 시기 (${dryIds.length})`,exact:true}).click();
+ assert.deepEqual(await g.locator('.travel-card').evaluateAll(ns=>ns.map(n=>n.dataset.tripId)),dryIds);
  await g.screenshot({path:'work/audit-fixes-qa/climate-filter-mobile.png'});
  await g.goto(base+'?view=guest#/studios');await ready(g);
  await g.getByRole('button',{name:'💡 추가금 미확인 (19)',exact:true}).click();assert.equal(await g.locator('.studio-tile').count(),19);assert.equal(await g.getByText('💡 표기 추가금 없음',{exact:true}).count(),0);

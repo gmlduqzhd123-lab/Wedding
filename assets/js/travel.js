@@ -37,9 +37,19 @@ export function quoteReview(trip,today=new Intl.DateTimeFormat('sv-SE',{timeZone
   const message=complete?`입력 견적 + 예비비 ${total.toLocaleString('ko-KR')}원 · 필수 항목 확인 완료 (입력 근거 기준 · 예약 확정 아님)`:[amountMessage,'실제 예산 충족 미확인 · '+missing.join(' · ')].filter(Boolean).join('\n');
   return {complete,total,known,assessed,excess,amountMessage,stale,flightDates,missing,message};
 }
+export function isBundledPackageTrip(trip){
+  const title=trip?.title||'',id=trip?.id||'';
+  return /^\[[^\]]+\]/.test(title)||/^pkg-/.test(id)||/(패키지|세미패키지|올인클루시브)/.test(title);
+}
+export function formatCostAllocation(trip,key,fallback='미확인'){
+  const costs=trip?.plan?.costs||{},val=costs[key];
+  if(val===null||val===undefined)return fallback;
+  if(key==='airfare'&&val===0&&(costs.lodging||0)>0&&isBundledPackageTrip(trip))return '패키지 통합 포함 (0원)';
+  return `${val.toLocaleString('ko-KR')}원`;
+}
 export function currentBudgetText(trip){
   const costs=trip.plan?.costs||{},nights=(trip.plan?.stays||[]).reduce((sum,s)=>sum+s.nights,0);
-  return Object.entries(COST_LABELS).map(([key,label])=>`${label} ${costs[key]===null||costs[key]===undefined?'미확인':costs[key].toLocaleString('ko-KR')+'원'}`).join(' · ')+(nights&&costs.lodging!==null&&costs.lodging!==undefined?` · 현재 ${nights}박 기준 숙박·패키지 1박당 배분 약 ${Math.round(costs.lodging/nights).toLocaleString('ko-KR')}원`: '');
+  return Object.entries(COST_LABELS).map(([key,label])=>`${label} ${formatCostAllocation(trip,key)}`).join(' · ')+(nights&&costs.lodging!==null&&costs.lodging!==undefined?` · 현재 ${nights}박 기준 숙박·패키지 1박당 배분 약 ${Math.round(costs.lodging/nights).toLocaleString('ko-KR')}원`: '');
 }
 export function budgetSummary(trip){
   const costs=trip.plan?.costs;

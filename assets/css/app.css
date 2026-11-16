@@ -1000,6 +1000,18 @@ summary + * { margin-top: 18px; }
 .tile-actions .button { padding: 6px 11px; min-height: 34px; font-size: 12px; }
 .tile-body .contact a { font-size: 14px; }
 .no-results { padding: 35px; color: var(--muted); grid-column: 1 / -1; text-align: center; }
+.no-results-box {
+  padding: 36px 24px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1.5px dashed #dfc0b2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.no-results-box .no-results { padding: 0; }
 .source-notes { font-size: 12px; color: var(--muted); display: grid; gap: 10px; }
 
 /* Dialogs & Toasts */
@@ -1258,16 +1270,49 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
 .overview-meta { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
 
 .travel-tools { display: grid; gap: 12px; margin-bottom: 20px; }
+.travel-search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.travel-search-row input[type="search"] { width: 100%; min-width: 0; min-height: 42px; }
 .travel-tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .travel-tools-row p { flex-basis: 100%; }
 .travel-tools select { width: auto; max-width: 100%; min-height: 41px; }
+.trip-result-count { font-weight: 600; color: var(--terracotta-dark); margin-left: auto; }
 .trip-quick-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.trip-region-filters { padding-bottom: 2px; border-bottom: 1px dashed var(--line); }
 .trip-filter-chip { padding: 7px 14px; min-height: 36px; font-size: 12px; border-radius: 999px; }
 .trip-filter-chip[aria-pressed="true"] {
   background: var(--terracotta);
   color: #fffdfb;
   border-color: var(--terracotta);
   font-weight: 600;
+}
+.honeymoon-note { margin: 0 0 18px; }
+.trip-card-topline { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.trip-card-topline .country { margin-bottom: 0; }
+.trip-style-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  border: 1px solid var(--line);
+}
+.trip-style-pill.is-package {
+  background: var(--blush);
+  border-color: var(--blush-line);
+  color: var(--terracotta-dark);
+}
+.trip-style-pill.is-fit {
+  background: var(--olive-soft);
+  border-color: var(--olive-line);
+  color: var(--olive-dark);
+}
+@media (max-width: 640px) {
+  .travel-search-row { grid-template-columns: 1fr; }
+  .travel-search-row select { width: 100%; }
+  .trip-result-count { margin-left: 0; }
 }
 
 .plan-reference { border-left: 2px solid #dfc0b2; padding-left: 12px; }
@@ -2383,22 +2428,33 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
 
 @media print {
   body { background: #ffffff !important; color: #111111 !important; }
-  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .trip-controls, .directory-controls, .trip-quick-filters, .travel-tools, .lachma-official-links, .ceremony-doc-toolbar, .invitation-actions, .invitation-readiness-card, .checklist-item-actions, .vendor-schedule-actions, .checklist-note-btn, .toast, dialog {
+  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .trip-controls, .directory-controls, .trip-quick-filters, .travel-tools, .trip-video-links, .yt-inline-play, .yt-thumb-banner, .lachma-official-links, .ceremony-doc-toolbar, .invitation-actions, .invitation-readiness-card, .checklist-item-actions, .vendor-schedule-actions, .checklist-note-btn, .toast, dialog {
     display: none !important;
   }
   .main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .invitation, .travel-card, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon {
+  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .invitation, .travel-card, .selected-trip, .travel-comparison, .honeymoon-packing-box, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border-color: #cccccc !important;
   }
+  .table-scroll { overflow: visible !important; }
   .ceremony-paper-card, .ceremony-box, .compare-card, .checklist-stage-card, .dashboard-card, .venue-sim-box, .sdm-sim-box, .amor-cue-card, .mc-step-card, .vendor-schedule-item {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border: 1px solid #cccccc !important;
     break-inside: avoid;
+  }
+  body.print-honeymoon-summary .travel-grid,
+  body.print-honeymoon-summary .travel-overview:not(:has(.overview-disclosure[open])),
+  body.print-honeymoon-summary .no-results-box {
+    display: none !important;
+  }
+  body.print-honeymoon-summary .travel-comparison {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 12px !important;
   }
   body.print-ceremony-papers .main > *:not(.ceremony-planner),
   body.print-ceremony-papers .ceremony-planner > *:not(.ceremony-docs-stack),

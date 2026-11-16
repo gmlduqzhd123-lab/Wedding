@@ -7,7 +7,9 @@ import {validateContent,parseContent} from '../assets/js/content.js';
 const raw=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 test('climate badges and dry filters use reviewed month categories rather than negated or unrelated season words',()=>{
  const trips=validateContent(raw).honeymoon;
- assert.deepEqual(trips.filter(t=>climateBadgeInfo(t).dry).map(t=>t.id),['bali','nhatrang']);
+ const expectedDry=trips.filter(t=>/^(bali|nhatrang|pkg-(bali|nhatrang)-)/.test(t.id)).map(t=>t.id);
+ assert.equal(expectedDry.length,12);
+ assert.deepEqual(trips.filter(t=>climateBadgeInfo(t).dry).map(t=>t.id),expectedDry);
  const find=id=>climateBadgeInfo(trips.find(t=>t.id===id));
  assert.match(find('nhatrang').label,/덥고 맑은/);assert.match(find('guam').label,/전환기/);
  assert.match(find('danang').label,/더위 유의/);assert.match(find('hawaii').label,/여름철/);

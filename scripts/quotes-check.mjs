@@ -17,8 +17,12 @@ try{
   const c=p.locator(`[data-trip-id="${trip.id}"]`),q=trip.plan.quote;
   for(const key of ['all','quote','stays','costs','sources'])await open(p,trip.id,key);
   const quote=p.locator(`[data-view-key="${trip.id}:quote"]`),text=await quote.innerText();
-  assert(text.includes(q.flightSource));assert(text.includes(q.lodgingSource));assert(text.includes(q.arrivalAt.replace('T',' ')));
-  assert(text.includes((q.costs.airfare+q.costs.lodging).toLocaleString('ko-KR')+'원'));
+  if(q.checkedAt){
+   assert(text.includes(q.flightSource));assert(text.includes(q.lodgingSource));assert(text.includes(q.arrivalAt.replace('T',' ')));
+   assert(text.includes((q.costs.airfare+q.costs.lodging).toLocaleString('ko-KR')+'원'));
+  }else{
+   assert.equal(q.costs.airfare,null);assert.equal(q.costs.lodging,null);assert(text.includes('미입력'));
+  }
   assert.match(text,/실제 예산 충족 미확인/);assert(!text.includes('필수 항목 확인 완료 (입력 근거'));
   const stay=trip.plan.stays[0],stayText=await p.locator(`[data-view-key="${trip.id}:stays"]`).innerText();
   assert(stayText.includes(`현지 체크인 ${stay.checkIn} → 체크아웃 ${stay.checkOut} · ${stay.nights}박`));

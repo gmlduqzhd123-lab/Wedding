@@ -36,7 +36,7 @@ try{
   await p.setViewportSize({width:390,height:844});await p.locator('.travel-overview').screenshot({path:'work/june-beaches-qa/overview-mobile.png'});
   await p.locator('.overview-disclosure > summary').click();await p.locator('.travel-overview').getByRole('button',{name:expected.honeymoon.at(-1).title,exact:true}).click();
   assert.equal(await p.evaluate(()=>document.activeElement.textContent),expected.honeymoon.at(-1).title);assert.equal(new URL(p.url()).hash,'#/honeymoon');
-  console.log('PASS actual 5 Incheon direct-flight June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts');
+  console.log(`PASS actual ${expected.honeymoon.length} Incheon direct-flight June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts`);
 
   for(const id of ['bali','nhatrang']){await card(p,id).getByRole('button',{name:'비교 선택',exact:true}).click();await p.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences'))?.tripCompare?.includes(id),id);}
   const comparison=await p.locator('.travel-comparison').innerText();for(const trip of expected.honeymoon.slice(0,2))assert(comparison.includes(trip.budget.toLocaleString('ko-KR')+'원'));assert(comparison.includes('6월 기준'));assert(!comparison.includes('5월 기준'));
