@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-42';
-import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-42';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-42';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-42';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-42';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-42';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-42';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-43';
+import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-43';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-43';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-43';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-43';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-43';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-43';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -542,22 +542,27 @@ function renderHome() {
   const roleNames=[formatPartner(info.partner1,'신랑'),formatPartner(info.partner2,'신부')].filter(Boolean).join(' · ');
   const dday=weddingDday(info.date);
   const datePillText=info.date?`${formatDate(info.date)}${info.time?` · ${info.time}`:''}`:(roleNames||'OUR WEDDING DIARY');
-  const archMeta=[dday,info.venue?info.venue.replace(/\s+\d+층$/,''):''].filter(Boolean).join(' · ')||(info.date?formatDate(info.date):'함께 써 내려가는 기록');
+  const venueBase=info.venue?info.venue.replace(/\s+\d+층$/,'').trim():'';
+  const venueFloor=info.venue?.match(/(\d+층)$/)?.[1]?`${info.venue.match(/(\d+층)$/)[1]} 예식홀`:'';
+  const archMeta=[venueFloor,dday].filter(Boolean).join(' · ')||[dday,venueBase].filter(Boolean).join(' · ')||(info.date?formatDate(info.date):'함께 써 내려가는 기록');
+  const archDate=info.date?`${info.date.replaceAll('-','. ')}${info.time?` · ${info.time}`:''}`:'예식 일정 준비 중';
   const hero=E('section',{class:'hero'},
     E('div',{class:'hero-copy'},
       E('div',{class:'hero-badges'},
         E('span',{class:'hero-date-pill'},datePillText),
         info.date&&roleNames?E('span',{class:'hero-role-caption'},roleNames):null),
-      E('h1',{},names?`${names},`:'함께 준비하는',E('br'),names?'따뜻한 계절을 닮은 우리의 시작':'우리의 다음 장'),
-      E('p',{},'소중한 분들을 초대하는 날부터 둘만의 첫 여행까지. 함께 고른 것과 오래 간직할 순간을 따뜻한 한지 일기장에 모아요.'),
-      E('div',{class:'hero-actions'},linkButton(info.date||guestMode?'모바일 청첩장 보기':'예식 정보 채우기','#/invitation'),linkButton(guestMode?'우리의 일대기 보기':'스튜디오 · 촬영 가이드',guestMode?'#/story':'#/studios',true))),
+      E('h1',{},names?`${names}, 우리의 결혼을 준비하는 기록`:'함께 준비하는 우리의 결혼 기록'),
+      E('p',{},'꼭 필요한 예식 일정과 스튜디오·신혼여행 비교 정보를 한눈에 들어오도록 정리했습니다.'),
+      E('div',{class:'hero-actions'},
+        linkButton(info.date||guestMode?'모바일 청첩장 보기':'예식 정보 채우기','#/invitation'),
+        linkButton(guestMode?'우리의 일대기 보기':'스튜디오 · 촬영 가이드',guestMode?'#/story':'#/studios',true),
+        !guestMode?linkButton('본식 식순 보기','#/ceremony',true):null)),
     E('div',{class:'hero-art','aria-hidden':'true'},
       E('div',{class:'art-arch promise-arch'},
-        E('span',{class:'arch-eyebrow'},'Our Promise'),
-        p1Clean&&p2Clean?E('strong',{class:'arch-couple'},p1Clean,E('em',{class:'arch-heart'},'♥'),p2Clean):E('strong',{class:'arch-couple'},names||'Our Story'),
-        E('span',{class:'arch-divider'}),
-        E('span',{class:'arch-meta'},archMeta)),
-      E('div',{class:'art-note'},'With love,',E('br'),'one page at a time.')));
+        E('span',{class:'arch-eyebrow'},'WEDDING VENUE'),
+        venueBase?E('strong',{class:'arch-couple'},venueBase):(p1Clean&&p2Clean?E('strong',{class:'arch-couple'},p1Clean,E('em',{class:'arch-heart'},'♥'),p2Clean):E('strong',{class:'arch-couple'},names||'Our Story')),
+        E('span',{class:'arch-meta'},archMeta),
+        E('span',{class:'arch-date-chip'},archDate))));
   const overview=E('div',{class:'overview'},
     E('div',{},E('span',{class:'small muted'},'OUR DAY'),E('strong',{},info.date?`${formatDate(info.date).replace(/ \S+요일$/,'')}${dday?` · ${dday}`:''}`:'예식 일정 준비 중')),
     E('div',{},E('span',{class:'small muted'},'OUR MEMORIES'),E('strong',{},`이야기 ${content.stories.length} · 앨범 ${content.albums.length}`)),
