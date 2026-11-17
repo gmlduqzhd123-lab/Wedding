@@ -26,13 +26,13 @@ try{
  await edit();await page.getByLabel('두 사람의 계획예산 (원)',{exact:true}).fill('8000000');
  await page.getByLabel('한국 출발일',{exact:true}).fill('2027-05-10');await page.getByLabel('한국 도착일',{exact:true}).fill('2027-05-18');await save();
  assert(await card().locator('.travel-details').evaluate(node=>node.open));
- assert.match(await card().locator(':scope > .budget-status').innerText(),/2,000,000원/);
+ assert.match(await card().locator(':scope > .budget-status').innerText(),/2인 계획예산 8,000,000원 · 배분 합계 7,500,000원/);
  assert.match(await card().locator(':scope > .budget-status').innerText(),/항목 미배분 500,000원/);
  const dates=await page.locator('[data-view-key="bali:dates"]').innerText();assert(dates.includes('2027-05-10'));assert(dates.includes('2027-05-18'));assert(!dates.includes('2027-05-17'));
  const costs=await page.locator('[data-view-key="bali:costs"] .cost-breakdown').innerText();assert.match(costs,/2인 계획 총액\n8,000,000원/);assert.match(costs,/배분 소계\n7,500,000원/);
  await edit();await page.getByLabel('항공 배분 (원)',{exact:true}).fill('2700000');await save();assert(!await card().locator(':scope > .budget-status').innerText().then(text=>text.includes('항목 미배분')));
  await edit();await page.getByLabel('두 사람의 계획예산 (원)',{exact:true}).fill('11000000');await page.getByLabel('예비비 배분 (원)',{exact:true}).fill('0');await save();
- assert.match(await card().locator(':scope > .budget-status').innerText(),/1,000,000원 초과/);assert.match(await card().locator(':scope > .budget-status').innerText(),/예비비가 0원/);
+ assert.match(await card().locator(':scope > .budget-status').innerText(),/항목 미배분 3,800,000원/);assert.match(await card().locator(':scope > .budget-status').innerText(),/예비비가 0원/);
  console.log('PASS date/total edits update all generated sections, allocation gaps, cap warnings and zero reserve');
  const toggle=async label=>{
    const button=card().getByRole('button',{name:label,exact:true});await button.scrollIntoViewIfNeeded();const before=await button.evaluate(node=>node.getBoundingClientRect().top);
@@ -66,7 +66,7 @@ try{
  const legacy=JSON.parse(await readFile(new URL('../tests/fixtures/legacy-trip.json',import.meta.url),'utf8'));const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
  legacy.budget=8000000;legacy.startDate='2027-05-10';legacy.endDate='2027-05-18';original.honeymoon=[legacy];
  await legacyPage.evaluate(data=>localStorage.setItem('wedding:v1:draft',JSON.stringify(data)),original);await legacyPage.goto(base+'#/honeymoon');await legacyPage.reload();await legacyPage.locator('#main[aria-busy="false"]').waitFor();
- assert.match(await legacyPage.locator('.budget-status').first().innerText(),/2,000,000원/);
+ assert.match(await legacyPage.locator('.budget-status').first().innerText(),/2인 계획예산 8,000,000원/);
  await legacyPage.locator('.travel-details > summary').click();await legacyPage.locator('[data-view-key="bali:dates"] > summary').click();
  assert.match(await legacyPage.locator('[data-view-key="bali:dates"]').innerText(),/2027-05-18/);assert(!await legacyPage.locator('[data-view-key="bali:dates"]').innerText().then(text=>text.includes('2027-05-17')));
  await legacyContext.close();assert.deepEqual(errors,[]);console.log('PASS legacy template drafts upgrade without restoring stale dates or balances');

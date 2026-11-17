@@ -22,6 +22,25 @@ for(const studio of studios){
   if(studio.contact.phone)assert(/^[0-9-]+$/.test(studio.contact.phone));
 }
 const html=await readFile(new URL('index.html',root),'utf8');
-for(const [,src]of html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g))await access(new URL(src,root));
-for(const name of await readdir(new URL('assets/js/',root)))if(name.endsWith('.js'))execFileSync(process.execPath,['--check',fileURLToPath(new URL('assets/js/'+name,root))]);
-console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts and JavaScript syntax verified.');
+const versions=new Set();
+for(const [,src]of html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)){
+  await access(new URL(src,root));
+  if(/\.(?:css|js)(?:\?|$)/.test(src)){
+    const ver=new URL(src,'https://example.invalid/').searchParams.get('v');
+    assert(ver,`Missing ?v= cache version on ${src} in index.html`);
+    versions.add(ver);
+  }
+}
+for(const name of await readdir(new URL('assets/js/',root))){
+  if(!name.endsWith('.js'))continue;
+  const fileUrl=new URL('assets/js/'+name,root);
+  execFileSync(process.execPath,['--check',fileURLToPath(fileUrl)]);
+  const source=await readFile(fileUrl,'utf8');
+  for(const [,spec]of source.matchAll(/from\s+['"](\.\/[^'"]+)['"]/g)){
+    const ver=new URL(spec,'https://example.invalid/').searchParams.get('v');
+    assert(ver,`Missing ?v= cache version on ${spec} in assets/js/${name}`);
+    versions.add(ver);
+  }
+}
+assert.equal(versions.size,1,`Expected a single uniform asset ?v= version across index.html and assets/js/*.js, found: ${[...versions].join(', ')}`);
+console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, asset versions and JavaScript syntax verified.');

@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-40';
-import { validatePreferences, parsePreferencesBackup, pruneTripPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-40';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-40';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-40';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-40';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-40';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-40';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-41';
+import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-41';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-41';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-41';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-41';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-41';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-41';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -166,17 +166,22 @@ function beginConflictReview({key,base,next,saveLocal,keepSaved,lockEditor=false
   review.refresh=refresh;conflictReview=review;refresh();
   $('#dialog-notice').focus();
 }
+const readRawPrefs=()=>{try{return validatePreferences(JSON.parse(readStorage(PREF_KEY)||'{}'));}catch{return structuredClone(prefs);}};
+const syncMemoryPrefs=(source=guestMode?validatePreferences({}):readRawPrefs())=>{
+  prefs=content?pruneContentPreferences(source,content):source;
+  return prefs;
+};
 function savePrefs(next,base=structuredClone(prefs),approvedRaw){return trackWrite(persistPrefs(next,base,approvedRaw));}
 async function persistPrefs(next,base,approvedRaw) {
   pendingWrites++;
   try {
     const result=await lockedMerge({locks:navigator.locks,storage:localStorage,key:PREF_KEY,base,next,fallback:validatePreferences({}),parse:raw=>validatePreferences(JSON.parse(raw)),validate:validatePreferences,approvedRaw});
-    prefs=result.value;return true;
+    syncMemoryPrefs(result.value);return true;
   }catch(error){
     if(error instanceof StorageConflict){
       if(dialog.open||showDialog('다른 탭의 변경 확인',E('p',{},'개인 메모와 선택의 변경 내용을 확인해 주세요.'))){
         beginConflictReview({key:PREF_KEY,base,next,lockEditor:true,
-          keepSaved:()=>{try{prefs=validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}'));closeDialog();render();}catch(cause){toast(cause.message,true);}},
+          keepSaved:()=>{try{syncMemoryPrefs(validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}')));closeDialog();render();}catch(cause){toast(cause.message,true);}},
           saveLocal:async raw=>{if(await savePrefs(next,base,raw)){closeDialog();render();toast('선택한 내용으로 저장했습니다.');}}});
       }
     }else toast('선택과 메모를 저장하지 못했습니다. 이전 저장본을 유지합니다. '+storageMessage(error),true);
@@ -814,13 +819,10 @@ function recordActions(type,item) {
       const next=structuredClone(content);next[type]=next[type].filter(value=>value.id!==item.id);await setDraft(next);render();
       const remaining=displayedRecords(type);
       focusRecord(type,neighbors.find(id=>remaining.some(record=>record.id===id))||remaining[0]?.id);
-      const cleaned=type==='honeymoon'?await queuePreference(async()=>{
-        const nextPrefs=pruneTripPreferences(prefs,content.honeymoon);
-        if(JSON.stringify(nextPrefs)===JSON.stringify(prefs))return true;
-        const saved=await savePrefs(nextPrefs);if(saved)updateTripChoices();return saved;
-      }):type==='tips'&&(prefs.tipFavorites?.includes(item.id)||prefs.tipNotes?.[item.id])?await queuePreference(async()=>{
-        const nextNotes={...(prefs.tipNotes||{})};delete nextNotes[item.id];
-        return savePrefs({...prefs,tipFavorites:(prefs.tipFavorites||[]).filter(id=>id!==item.id),tipNotes:nextNotes});
+      const cleaned=(type==='honeymoon'||type==='tips')?await queuePreference(async()=>{
+        const storedBase=readRawPrefs(),nextPrefs=pruneContentPreferences(storedBase,content);
+        if(JSON.stringify(nextPrefs)===JSON.stringify(storedBase)){syncMemoryPrefs(nextPrefs);return true;}
+        const saved=await savePrefs(nextPrefs,storedBase);if(saved&&type==='honeymoon')updateTripChoices();return saved;
       }):true;
       if(cleaned)toast('초안에서 삭제했습니다.');
     }catch(error){toast(error.message,true);}
@@ -1102,14 +1104,14 @@ function openTripNoteModal(item){
 function tripControls(item) {
   if(guestMode)return null;
   const toggle=key=>queuePreference(async()=>{
-    const active=pruneTripPreferences(prefs,content.honeymoon);let next;
+    const storedBase=readRawPrefs(),active=pruneContentPreferences(storedBase,content);let next;
     if(key==='tripSelected')next={...active,tripSelected:active.tripSelected===item.id?'':item.id};
     else{
       const selected=new Set(active[key]||[]);selected.has(item.id)?selected.delete(item.id):selected.add(item.id);
       if(key==='tripCompare'&&selected.size>2){toast('비교할 여행지는 두 곳까지 선택해 주세요.',true);return true;}
       next={...active,[key]:[...selected]};
     }
-    const saved=await savePrefs(next);if(saved)updateTripChoices();return saved;
+    const saved=await savePrefs(next,storedBase);if(saved)updateTripChoices();return saved;
   });
   const hasNote=Boolean(prefs.tripNotes?.[item.id]?.trim());
   return E('div',{class:'trip-controls'},...[
@@ -3383,7 +3385,7 @@ async function downloadSaved(key){
       const raw=localStorage.getItem(key);
       return key===PREF_KEY?validatePreferences(JSON.parse(raw||'{}')):raw?parseContent(raw):validateContent(baseContent);
     });
-    if(key===PREF_KEY){prefs=value;downloadJson({kind:'wedding-private-preferences',schemaVersion:1,preferences:value},'wedding-private-preferences.json');}
+    if(key===PREF_KEY){syncMemoryPrefs(value);downloadJson({kind:'wedding-private-preferences',schemaVersion:1,preferences:value},'wedding-private-preferences.json');}
     else downloadJson(value,'site.json');
   }catch(error){toast(error.message||'백업을 저장하지 못했습니다.',true);}
 }
@@ -3415,10 +3417,10 @@ function openManager() {
       const next=parseContent(await selected.text());
       if(!confirm('현재 기기의 초안을 선택한 파일의 내용으로 바꿀까요?'))return;
       const applyImport=async approvedRaw=>{
-        try{await setDraft(next,managerBase,approvedRaw);closeDialog();render();toast('콘텐츠를 이 기기의 초안으로 불러왔습니다.');}
+        try{await setDraft(next,managerBase,approvedRaw);syncMemoryPrefs();closeDialog();render();toast('콘텐츠를 이 기기의 초안으로 불러왔습니다.');}
         catch(error){
           if(error instanceof StorageConflict)beginConflictReview({key:DRAFT_KEY,base:managerBase,next,
-            saveLocal:applyImport,keepSaved:()=>{try{syncDraftFromStorage();closeDialog();render();toast('다른 탭의 저장본을 유지했습니다.');}catch(cause){toast(cause.message,true);}}});
+            saveLocal:applyImport,keepSaved:()=>{try{syncDraftFromStorage();syncMemoryPrefs();closeDialog();render();toast('다른 탭의 저장본을 유지했습니다.');}catch(cause){toast(cause.message,true);}}});
           else toast(error.message,true);
         }
       };
@@ -3444,7 +3446,7 @@ function openManager() {
           if(localStorage.getItem(DRAFT_KEY)!==managerRaw)throw new Error('다른 탭에서 초안이 변경되었습니다. 창을 닫고 최신 내용을 확인한 뒤 다시 시도해 주세요.');
           localStorage.removeItem(DRAFT_KEY);
         });
-        content=structuredClone(baseContent);isDraft=false;draftRevision=baseRevision;closeDialog();render();toast('공개본으로 돌아왔습니다.');
+        content=structuredClone(baseContent);syncMemoryPrefs();isDraft=false;draftRevision=baseRevision;closeDialog();render();toast('공개본으로 돌아왔습니다.');
       }catch(error){toast(error.message||'초안을 지우지 못했습니다.',true);}
     },'button danger')),
     E('section',{class:'manager-section'},E('h3',{},'개인 설정·메모 초기화'),E('p',{},'이 기기에 저장된 스튜디오·여행·꿀팁 관심 및 메모, 촬영 준비물 체크, 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정, 본식 식순을 초기 상태(라크마 기본 선택)로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),button('개인 설정·메모 초기화',async()=>{
@@ -3455,6 +3457,7 @@ function openManager() {
 function syncDraftFromStorage(){
   const saved=localStorage.getItem(DRAFT_KEY);
   content=saved?parseContent(saved):structuredClone(baseContent);isDraft=Boolean(saved);draftRevision=saved?JSON.parse(saved).baseRevision??null:baseRevision;
+  syncMemoryPrefs();
 }
 $('#close-dialog').addEventListener('click',requestClose);
 dialog.addEventListener('cancel',event=>{event.preventDefault();requestClose();});
@@ -3485,7 +3488,7 @@ window.addEventListener('storage',event=>{
   if(dialog.open||document.activeElement?.matches('textarea')){
     toast('다른 탭의 저장 내용이 변경되었습니다. 현재 입력은 유지하며 저장할 때 변경 내용을 확인합니다.');return;
   }
-  try{syncDraftFromStorage();prefs=pruneTripPreferences(validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}')),content.honeymoon);render();toast('다른 탭의 저장 내용을 반영했습니다.');}
+  try{syncDraftFromStorage();syncMemoryPrefs(validatePreferences(JSON.parse(localStorage.getItem(PREF_KEY)||'{}')));render();toast('다른 탭의 저장 내용을 반영했습니다.');}
   catch(error){toast('다른 탭의 내용을 읽지 못했습니다. 기존 화면을 유지합니다. '+error.message,true);}
 });
 
@@ -3499,7 +3502,7 @@ async function init() {
     let notice='';
     const saved=readStorage(DRAFT_KEY);
     if(saved&&!guestMode){try{content=parseContent(saved);draftRevision=JSON.parse(saved).baseRevision??null;isDraft=true;}catch{notice='저장된 초안을 읽지 못해 공개본을 표시합니다. 기존 초안은 지우지 않았습니다.';}}
-    try{prefs=pruneTripPreferences(validatePreferences(guestMode?{}:JSON.parse(readStorage(PREF_KEY)||'{}')),content.honeymoon);}catch{prefs=validatePreferences({});notice='개인 설정을 읽지 못했습니다. 기존 저장 데이터는 지우지 않았습니다.';}
+    try{syncMemoryPrefs(validatePreferences(guestMode?{}:JSON.parse(readStorage(PREF_KEY)||'{}')));}catch{prefs=validatePreferences({});notice='개인 설정을 읽지 못했습니다. 기존 저장 데이터는 지우지 않았습니다.';}
     $('#manage-content').hidden=guestMode;
     syncNavVisibility();
     if(guestMode)document.querySelector('.header-inner').appendChild(linkButton('일반 보기','./#/home',true));

@@ -23,7 +23,7 @@ const download=async(label)=>{
 const upload=async(label,value)=>page.getByLabel(label,{exact:true}).setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(typeof value==='string'?value:JSON.stringify(value))});
 try {
   await go('home');
-  for(const route of ['invitation','story','albums','studios','honeymoon','home']){
+  for(const route of ['invitation','story','albums','studios','honeymoon','ceremony','tips','home']){
     await page.locator(`[data-route="${route}"]`).click();
     await page.waitForFunction(route=>document.querySelector(`[data-route="${route}"]`).getAttribute('aria-current')==='page',route);
     assert.equal(await page.locator('h1').count(),1);
@@ -118,7 +118,7 @@ try {
   assert.equal(await page.locator('.travel-comparison thead th').count(),3);
   await page.getByRole('button',{name:'관심 여행지',exact:true}).first().click();
   await page.getByRole('button',{name:'최종 선택',exact:true}).nth(1).click();
-  await page.waitForFunction(()=>document.querySelectorAll('.trip-controls button')[5]?.getAttribute('aria-pressed')==='true');
+  await page.waitForFunction(()=>document.querySelectorAll('.trip-controls button[data-trip-action="tripSelected"]')[1]?.getAttribute('aria-pressed')==='true');
   await page.reload();await ready();
   assert.equal(await page.getByRole('button',{name:'최종 선택',exact:true}).nth(1).getAttribute('aria-pressed'),'true');
   console.log('PASS trip comparison limit, favorites and final choice persistence');
@@ -155,7 +155,7 @@ try {
   await mkdir(new URL('../work/browser-qa/',import.meta.url),{recursive:true});
   await page.screenshot({path:fileURLToPath(new URL('../work/browser-qa/desktop.png',import.meta.url)),fullPage:true});
   await page.setViewportSize({width:390,height:844});
-  for(const route of ['home','invitation','story','albums','studios','honeymoon']){
+  for(const route of ['home','invitation','story','albums','studios','ceremony','tips','honeymoon']){
     await go(route);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow: ${route}`);
   }
   assert(await page.locator('.table-scroll').evaluate(node=>node.scrollWidth<=node.clientWidth),'mobile comparison columns must all fit');

@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-36';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-41';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -171,6 +171,14 @@ export function pruneTripPreferences(input,trips){
   const valid=validatePreferences(input),ids=new Set(trips.map(trip=>trip.id));
   const next={...valid,tripCompare:valid.tripCompare.filter(id=>ids.has(id)),tripFavorites:valid.tripFavorites.filter(id=>ids.has(id)),tripSelected:ids.has(valid.tripSelected)?valid.tripSelected:''};
   if(valid.tripNotes!==undefined)next.tripNotes=Object.fromEntries(Object.entries(valid.tripNotes).filter(([k])=>ids.has(k)));
+  return validatePreferences(next);
+}
+export function pruneContentPreferences(input,content){
+  const next=pruneTripPreferences(input,content?.honeymoon||[]);
+  if(!Array.isArray(content?.tips))return next;
+  const tipIds=new Set(content.tips.map(tip=>tip.id));
+  if(next.tipFavorites!==undefined)next.tipFavorites=next.tipFavorites.filter(id=>tipIds.has(id));
+  if(next.tipNotes!==undefined)next.tipNotes=Object.fromEntries(Object.entries(next.tipNotes).filter(([k])=>tipIds.has(k)));
   return validatePreferences(next);
 }
 // Persist before committing UI state. Callers keep their current state on failure.
