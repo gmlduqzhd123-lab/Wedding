@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-41';
-import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-41';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-41';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-41';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-41';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-41';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-41';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-42';
+import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-42';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-42';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-42';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-42';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-42';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-42';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -176,7 +176,7 @@ async function persistPrefs(next,base,approvedRaw) {
   pendingWrites++;
   try {
     const result=await lockedMerge({locks:navigator.locks,storage:localStorage,key:PREF_KEY,base,next,fallback:validatePreferences({}),parse:raw=>validatePreferences(JSON.parse(raw)),validate:validatePreferences,approvedRaw});
-    syncMemoryPrefs(result.value);return true;
+    if(!guestMode)syncMemoryPrefs(result.value);return true;
   }catch(error){
     if(error instanceof StorageConflict){
       if(dialog.open||showDialog('다른 탭의 변경 확인',E('p',{},'개인 메모와 선택의 변경 내용을 확인해 주세요.'))){
@@ -200,7 +200,7 @@ async function persistDraft(next,base,approvedRaw) {
         if(new TextEncoder().encode(raw).length>MAX_IMPORT_BYTES)throw new Error('초안은 8MB 이하로 저장해 주세요. 사진 수나 용량을 줄여 주세요.');
         return raw;
       }});
-    draftRevision=JSON.parse(result.raw).baseRevision;content=result.value;isDraft=true;
+    draftRevision=JSON.parse(result.raw).baseRevision;if(!guestMode)content=result.value;isDraft=true;
   }catch(error){
     if(error instanceof StorageConflict)throw error;
     throw new Error('초안을 저장하지 못했습니다. 입력 내용은 유지됩니다. '+storageMessage(error));
@@ -588,13 +588,16 @@ async function shareInvitationLink(){
   }
   await copyInvitationLink();
 }
-async function copyVenueAddress(text,label='예식장 주소'){
+async function copyTextToClipboard(text,message='클립보드에 복사했습니다.',fallbackTitle='내용 복사'){
   if(!text)return;
-  try{await navigator.clipboard.writeText(text);toast(`${label}를 복사했습니다.`);}
+  try{await navigator.clipboard.writeText(text);toast(message);}
   catch{
-    const input=E('input',{type:'text',readonly:true,value:text,'aria-label':label});
-    showDialog(`${label} 복사`,E('div',{},E('p',{},'아래 내용을 선택해 복사해 주세요.'),input));input.focus();input.select();
+    const field=text.includes('\n')?E('textarea',{rows:'10',readonly:true,'aria-label':fallbackTitle},text):E('input',{type:'text',readonly:true,value:text,'aria-label':fallbackTitle});
+    showDialog(fallbackTitle,E('div',{},E('p',{},'아래 내용을 선택해 복사해 주세요.'),field));field.focus();field.select();
   }
+}
+async function copyVenueAddress(text,label='예식장 주소'){
+  return copyTextToClipboard(text,`${label}를 복사했습니다.`,`${label} 복사`);
 }
 function renderInvitationCalendar(dateStr,timeStr){
   const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr||'');
@@ -643,12 +646,20 @@ function syncNavVisibility(){
   }
 }
 function toggleGuestPreview(enable){
-  if(urlGuestMode)return;
+  if(urlGuestMode||!canLeaveEditor())return;
+  closeDialog();
   guestMode=Boolean(enable);
+  if(guestMode){
+    content=structuredClone(baseContent);
+    syncMemoryPrefs(validatePreferences({}));
+  }else{
+    try{syncDraftFromStorage();}
+    catch{content=structuredClone(baseContent);isDraft=false;draftRevision=baseRevision;syncMemoryPrefs(readRawPrefs());}
+  }
   $('#manage-content').hidden=guestMode;
   syncNavVisibility();
   render();
-  toast(guestMode?'하객 화면 미리보기 모드입니다. 상단 바에서 편집 화면으로 돌아갈 수 있습니다.':'편집 화면으로 돌아왔습니다.');
+  toast(guestMode?(isDraft?'하객 화면 미리보기 모드입니다. 공개본만 표시되며 이 기기의 미배포 초안은 제외됩니다.':'하객 화면 미리보기 모드입니다. 상단 바에서 편집 화면으로 돌아갈 수 있습니다.'):'편집 화면으로 돌아왔습니다.');
 }
 function downloadInvitationIcs(){
   try{
@@ -787,7 +798,7 @@ function focusRecord(type,id){
 }
 function filteredTips(){
   const query=tipFilter.trim().toLocaleLowerCase();
-  return content.tips.filter(item=>(tipCategory==='all'||(item.category||'기타')===tipCategory)&&(!tipFavoritesOnly||prefs.tipFavorites?.includes(item.id))&&(!withTipNoteOnly||Boolean(prefs.tipNotes?.[item.id]?.trim()))&&(!query||`${item.title} ${item.category} ${item.channel} ${item.body}`.toLocaleLowerCase().includes(query)));
+  return content.tips.filter(item=>(tipCategory==='all'||(item.category||'기타')===tipCategory)&&(guestMode||!tipFavoritesOnly||prefs.tipFavorites?.includes(item.id))&&(guestMode||!withTipNoteOnly||Boolean(prefs.tipNotes?.[item.id]?.trim()))&&(!query||`${item.title} ${item.category} ${item.channel} ${item.body}`.toLocaleLowerCase().includes(query)));
 }
 function displayedRecords(type){
   return type==='honeymoon'?sortedTrips():type==='stories'?sortedStories():type==='tips'?filteredTips():content.albums;
@@ -958,14 +969,14 @@ function matchesTripAgency(item,agencyFilter=tripAgencyFilter){
   return style.agencyKey===agencyFilter;
 }
 function hasActiveTripFilters(){
-  return Boolean(tripFavoritesOnly||withTripNoteOnly||tripQuickFilter!=='all'||tripRegionFilter!=='all'||tripAgencyFilter!=='all'||tripSearchQuery.trim());
+  return Boolean((!guestMode&&(tripFavoritesOnly||withTripNoteOnly))||tripQuickFilter!=='all'||tripRegionFilter!=='all'||tripAgencyFilter!=='all'||tripSearchQuery.trim());
 }
 function resetTripFilters(){
   tripFavoritesOnly=false;withTripNoteOnly=false;tripQuickFilter='all';tripRegionFilter='all';tripAgencyFilter='all';tripSearchQuery='';
 }
 function matchesTripPool(item,omitKey=''){
-  if(omitKey!=='favorites'&&tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id))return false;
-  if(omitKey!=='notes'&&withTripNoteOnly&&!prefs.tripNotes?.[item.id]?.trim())return false;
+  if(!guestMode&&omitKey!=='favorites'&&tripFavoritesOnly&&!prefs.tripFavorites?.includes(item.id))return false;
+  if(!guestMode&&omitKey!=='notes'&&withTripNoteOnly&&!prefs.tripNotes?.[item.id]?.trim())return false;
   if(omitKey!=='quick'&&!matchesTripQuickFilter(item,tripQuickFilter))return false;
   if(omitKey!=='region'&&tripRegionFilter!=='all'&&tripRegionKey(item)!==tripRegionFilter)return false;
   if(omitKey!=='agency'&&!matchesTripAgency(item,tripAgencyFilter))return false;
@@ -1496,9 +1507,15 @@ function renderHoneymoonPackingList(){
   return details;
 }
 function printHoneymoonSummary(){
+  const packing=$('.honeymoon-packing'),wasOpen=Boolean(packing?.open),wasExpanded=packingExpanded;
+  if(packing&&!wasOpen)packing.open=true;
   document.body.classList.add('print-honeymoon-summary');
+  let cleaned=false;
   const cleanup=()=>{
+    if(cleaned)return;
+    cleaned=true;
     document.body.classList.remove('print-honeymoon-summary');
+    if(packing&&!wasOpen){packing.open=false;packingExpanded=wasExpanded;}
     window.removeEventListener('afterprint',cleanup);
   };
   window.addEventListener('afterprint',cleanup,{once:true});
@@ -1885,7 +1902,7 @@ function studioDirectory() {
       filterBar.querySelector(`[data-studio-filter="${studioQuickFilter}"]`)?.focus({preventScroll:true});
     }},label)));
     const query=filter.trim().toLocaleLowerCase();
-    const filtered=studios.filter(s=>(!query||`${s.name} ${s.style}`.toLocaleLowerCase().includes(query))&&(!favoritesOnly||prefs.favorites?.includes(s.id))&&(!withPhoneOnly||Boolean(s.contact?.phone))&&(!withStudioNoteOnly||Boolean(prefs.notes?.[s.id]?.trim()))&&matchesStudioQuickFilter(s,studioQuickFilter));
+    const filtered=studios.filter(s=>(!query||`${s.name} ${s.style}`.toLocaleLowerCase().includes(query))&&(guestMode||!favoritesOnly||prefs.favorites?.includes(s.id))&&(!withPhoneOnly||Boolean(s.contact?.phone))&&(guestMode||!withStudioNoteOnly||Boolean(prefs.notes?.[s.id]?.trim()))&&matchesStudioQuickFilter(s,studioQuickFilter));
     count.textContent=`${filtered.length}곳`;
     results.replaceChildren(...(filtered.length?filtered.map(studio=>{
       const isSelected=currentSelectedStudioId()===studio.id;
@@ -2977,7 +2994,7 @@ function render() {
   const nodes=renderers[route]().filter(node=>node!==null&&node!==undefined&&node!==false);
   if(!urlGuestMode&&guestMode){
     nodes.unshift(E('div',{class:'guest-preview-bar',role:'region','aria-label':'하객 화면 미리보기 안내'},
-      E('span',{},'👀 하객에게 보이는 화면을 미리 보고 있습니다. (개인 메모·체크리스트·예산·편집 버튼 숨김)'),
+      E('span',{},isDraft?'👀 하객에게 보이는 공개 화면을 미리 보고 있습니다. (이 기기의 미배포 초안·개인 메모·편집 버튼 숨김)':'👀 하객에게 보이는 화면을 미리 보고 있습니다. (개인 메모·체크리스트·예산·편집 버튼 숨김)'),
       button('편집 화면으로 돌아가기',()=>toggleGuestPreview(false),'button quiet')));
   }
   main.replaceChildren(...nodes);main.setAttribute('aria-busy','false');main.dataset.renderedRoute=route;
@@ -3455,7 +3472,7 @@ function openManager() {
     },'button danger'))));
 }
 function syncDraftFromStorage(){
-  const saved=localStorage.getItem(DRAFT_KEY);
+  const saved=readStorage(DRAFT_KEY);
   content=saved?parseContent(saved):structuredClone(baseContent);isDraft=Boolean(saved);draftRevision=saved?JSON.parse(saved).baseRevision??null:baseRevision;
   syncMemoryPrefs();
 }

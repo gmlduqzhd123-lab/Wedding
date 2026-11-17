@@ -1,7 +1,8 @@
-import { cp,mkdir,writeFile,readFile } from 'node:fs/promises';
+import { cp,mkdir,rm,writeFile,readFile } from 'node:fs/promises';
 import { parseContent } from '../assets/js/content.js';
 import { applyShareMetadata } from '../assets/js/sharing.js';
 const root=new URL('../',import.meta.url),dist=new URL('../dist/',import.meta.url);
+await rm(dist,{recursive:true,force:true});
 await mkdir(dist,{recursive:true});
 const html=await readFile(new URL('index.html',root),'utf8');
 const content=parseContent(await readFile(new URL('data/site.json',root),'utf8'));

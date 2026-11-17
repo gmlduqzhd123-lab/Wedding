@@ -5,6 +5,7 @@
   --surface-strong: #ffffff;
   --surface-tint: #fdf6f0;
   --ink: #332622;
+  --ink-soft: #5c473f;
   --muted: #735c53;
   --green: #b56b58;
   --green-dark: #944e3d;
@@ -19,6 +20,7 @@
   --soft: #faf1ea;
   --rose: #f8e6dd;
   --line: #ead9cd;
+  --line-strong: #dfc9bb;
   --line-subtle: rgba(148, 78, 61, 0.13);
   --danger: #a83c32;
   --card-shadow: 0 10px 28px -10px rgba(74, 42, 32, 0.09), 0 2px 6px rgba(74, 42, 32, 0.03);
@@ -2432,7 +2434,7 @@ h1, h2, h3, p, dd, a, .couple-names { overflow-wrap: anywhere; }
     display: none !important;
   }
   .main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .invitation, .travel-card, .selected-trip, .travel-comparison, .honeymoon-packing-box, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon {
+  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .invitation, .travel-card, .selected-trip, .travel-comparison, .honeymoon-packing, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;

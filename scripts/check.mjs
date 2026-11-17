@@ -43,4 +43,10 @@ for(const name of await readdir(new URL('assets/js/',root))){
   }
 }
 assert.equal(versions.size,1,`Expected a single uniform asset ?v= version across index.html and assets/js/*.js, found: ${[...versions].join(', ')}`);
-console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, asset versions and JavaScript syntax verified.');
+const css=await readFile(new URL('assets/css/app.css',root),'utf8');
+const definedCssVars=new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map(m=>m[1]));
+const undefinedCssVars=[...new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].map(m=>m[1]))].filter(v=>!definedCssVars.has(v));
+assert.deepEqual(undefinedCssVars,[],`Undefined CSS custom properties in assets/css/app.css: ${undefinedCssVars.join(', ')}`);
+const appSource=await readFile(new URL('assets/js/app.js',root),'utf8');
+assert(/\bfunction\s+copyTextToClipboard\s*\(/.test(appSource),'app.js must define copyTextToClipboard for studio and ceremony copy actions.');
+console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, CSS tokens, asset versions and JavaScript syntax verified.');

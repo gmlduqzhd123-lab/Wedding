@@ -9,6 +9,7 @@ test('sharing metadata uses supplied public fields and escapes HTML attributes',
   content.invitation.partner1='우리 " <둘>';content.invitation.venue='공개 장소';
   const html=applyShareMetadata(await readFile(new URL('../index.html',import.meta.url),'utf8'),content);
   assert(html.includes('우리 &quot; &lt;둘&gt;'));assert(html.includes('공개 장소'));
+  assert(html.includes('<title>우리 &quot; &lt;둘&gt; &amp; 유미혜 · 우리의 결혼 기록</title>'));
   assert(!html.includes('content="우리 " <둘>'));
   assert(shareMetadata(content).url.includes('view=guest'));
 });

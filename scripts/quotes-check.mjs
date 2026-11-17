@@ -17,7 +17,7 @@ try{
   const c=p.locator(`[data-trip-id="${trip.id}"]`),q=trip.plan.quote;
   for(const key of ['all','quote','stays','costs','sources'])await open(p,trip.id,key);
   const quote=p.locator(`[data-view-key="${trip.id}:quote"]`),text=await quote.innerText();
-  if(q.checkedAt){
+  if(q.checkedOn){
    assert(text.includes(q.flightSource));assert(text.includes(q.lodgingSource));assert(text.includes(q.arrivalAt.replace('T',' ')));
    assert(text.includes((q.costs.airfare+q.costs.lodging).toLocaleString('ko-KR')+'원'));
   }else{
@@ -28,7 +28,8 @@ try{
   assert(stayText.includes(`현지 체크인 ${stay.checkIn} → 체크아웃 ${stay.checkOut} · ${stay.nights}박`));
   assert((await p.locator(`[data-view-key="${trip.id}:costs"]`).innerText()).replace(/\s+/g,' ').includes(trip.plan.budgetNotes.replace(/\s+/g,' ')),trip.id+' cost research rendered');
   assert.match(await c.locator('.plan-reference').first().innerText(),/직접 작성한 문장의 날짜·금액·박 수는 자동 갱신되지 않습니다/);
-  for(const r of trip.plan.references)assert.equal(await c.getByRole('link',{name:r.title+' ↗',exact:true}).getAttribute('href'),r.url);
+  const sources=p.locator(`[data-view-key="${trip.id}:sources"]`);
+  for(const r of trip.plan.references)assert.equal(await sources.getByRole('link',{name:r.title+' ↗',exact:true}).getAttribute('href'),r.url);
  }
  for(const width of [320,390,768,1440]){await p.setViewportSize({width,height:900});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`no horizontal overflow at ${width}`);}
  await p.setViewportSize({width:390,height:900});await p.locator('[data-trip-id="bali"]').screenshot({path:'work/quotes-qa/bali-mobile.png'});

@@ -1,4 +1,4 @@
-import { formatDate } from './content.js?v=wedding-features-41';
+import { formatDate } from './content.js?v=wedding-features-42';
 export const PUBLIC_URL='https://gmlduqzhd123-lab.github.io/Wedding/?view=guest';
 export function shareMetadata(content) {
   const info=content.invitation;
@@ -9,6 +9,7 @@ export function shareMetadata(content) {
 export function escapeAttribute(value){return value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
 export function applyShareMetadata(html,content){
   const meta=shareMetadata(content);
+  html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${escapeAttribute(meta.title)}</title>`);
   for(const [property,value]of Object.entries({'og:title':meta.title,'og:description':meta.description,'og:url':meta.url,'og:image':meta.image,'twitter:title':meta.title,'twitter:description':meta.description,'twitter:image':meta.image})){
     html=html.replace(new RegExp(`(<meta (?:property|name)="${property}" content=")[^"]*(")`),(_,start,end)=>start+escapeAttribute(value)+end);
   }
