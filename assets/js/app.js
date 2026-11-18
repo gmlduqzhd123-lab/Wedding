@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-46';
-import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-46';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-46';
-import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-46';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-46';
-import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-46';
-import {renderQrSvgString} from './qrcode.js?v=wedding-features-46';
+import { parseContent, validateContent, formatDate, weddingDday, safeUrl, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-47';
+import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, CHECKLIST_STAGES, PACKING_CATEGORIES, VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-47';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-47';
+import {COST_LABELS,budgetSummary,staySummary,stayReview,dateSpan,emptyQuote,quoteBasis,quoteReview,isBundledPackageTrip,formatCostAllocation,currentBudgetText,climateReview,CLIMATE_CATEGORIES,climateBadgeInfo} from './travel.js?v=wedding-features-47';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from './calendar.js?v=wedding-features-47';
+import {venueEstimate,studioFeeInfo,weddingBudgetSummary,sdmEstimate,shootDeadlineSummary} from './planning.js?v=wedding-features-47';
+import {renderQrSvgString} from './qrcode.js?v=wedding-features-47';
 
 const $ = selector => document.querySelector(selector);
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
@@ -625,6 +625,154 @@ async function copyTextToClipboard(text,message='클립보드에 복사했습니
 async function copyVenueAddress(text,label='예식장 주소'){
   return copyTextToClipboard(text,`${label}를 복사했습니다.`,`${label} 복사`);
 }
+const SVG_NS='http://www.w3.org/2000/svg';
+function S(tag,attributes={},...children){
+  const node=document.createElementNS(SVG_NS,tag);
+  for(const [k,v]of Object.entries(attributes)){
+    if(v!==undefined&&v!==null&&v!==false)node.setAttribute(k,String(v));
+  }
+  for(const child of children.flat(Infinity)){
+    if(child!==undefined&&child!==null&&child!==false)node.append(child instanceof Node?child:document.createTextNode(String(child)));
+  }
+  return node;
+}
+const MONTH_NAMES_EN=['','JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+function formatKoreanTimeLabel(timeStr){
+  const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(timeStr||'');
+  if(!m)return timeStr||'미정';
+  const h=Number(m[1]),min=Number(m[2]);
+  const period=h<12?'오전':'오후';
+  const h12=h%12||12;
+  return `${period} ${h12}시${min?` ${min}분`:''}`;
+}
+function renderInvitationCornerMarks(){
+  const corner=cls=>S('svg',{class:`inv-corner ${cls}`,viewBox:'0 0 36 36','aria-hidden':'true'},
+    S('path',{d:'M 2 30 L 2 9 A 7 7 0 0 1 9 2 L 30 2',fill:'none',stroke:'currentColor','stroke-width':'1.15','stroke-linecap':'round'}),
+    S('path',{d:'M 8 16 C 8 10, 10 8, 16 8',fill:'none',stroke:'#c97a70','stroke-width':'1','stroke-linecap':'round',opacity:'0.75'}),
+    S('circle',{cx:'9',cy:'9',r:'1.6',fill:'#c97a70',opacity:'0.8'}));
+  return E('div',{class:'invitation-corners','aria-hidden':'true'},corner('is-tl'),corner('is-tr'),corner('is-bl'),corner('is-br'));
+}
+function renderInvitationDivider(){
+  return E('div',{class:'invitation-divider','aria-hidden':'true'},
+    E('span',{class:'inv-div-line'}),
+    S('svg',{class:'inv-div-motif',viewBox:'0 0 56 18'},
+      S('path',{d:'M 25 9 C 19 4, 11 5, 7 9 C 11 13, 19 14, 25 9 Z',fill:'#9cb4a2',opacity:'0.65'}),
+      S('path',{d:'M 31 9 C 37 4, 45 5, 49 9 C 45 13, 37 14, 31 9 Z',fill:'#9cb4a2',opacity:'0.65'}),
+      S('path',{d:'M 28 4.5 L 31.2 9 L 28 13.5 L 24.8 9 Z',fill:'#c97a70',opacity:'0.88'})),
+    E('span',{class:'inv-div-line'}));
+}
+function renderBotanicalLeaf(x,y,rot,scale=1,fill='#6e9077',vein='#44644d'){
+  return S('g',{transform:`translate(${x} ${y}) rotate(${rot}) scale(${scale})`},
+    S('path',{d:'M 0 0 C -5.2 -6.5, -4.4 -16.5, 0 -22.5 C 4.4 -16.5, 5.2 -6.5, 0 0 Z',fill}),
+    S('path',{d:'M 0 -1.5 L 0 -18',stroke:vein,'stroke-width':'0.8','stroke-linecap':'round',opacity:'0.55'}));
+}
+function renderBotanicalRose(x,y,scale=1){
+  return S('g',{transform:`translate(${x} ${y}) scale(${scale})`},
+    S('circle',{cx:'0',cy:'0',r:'11.5',fill:'#f5dcd7'}),
+    S('circle',{cx:'-3',cy:'-2',r:'7.8',fill:'#ebbab2'}),
+    S('circle',{cx:'3.2',cy:'1.8',r:'7.2',fill:'#e39f96'}),
+    S('path',{d:'M -5 -1 C -2 -6, 4 -6, 6 -1 C 4 5, -3 5, -5 -1 Z',fill:'#c97a70'}),
+    S('path',{d:'M -3.5 0.5 C -1 -2.8, 3 -2.5, 3.8 0.8',fill:'none',stroke:'#fff8f6','stroke-width':'1','stroke-linecap':'round',opacity:'0.85'}),
+    S('circle',{cx:'0.4',cy:'-0.3',r:'1.5',fill:'#d7ab6e'}));
+}
+function renderBotanicalBud(x,y,rot,scale=1){
+  return S('g',{transform:`translate(${x} ${y}) rotate(${rot}) scale(${scale})`},
+    S('path',{d:'M 0 0 C -4 -5, -3.5 -12, 0 -15.5 C 3.5 -12, 4 -5, 0 0 Z',fill:'#e29d94'}),
+    S('path',{d:'M -3.8 -2 C -1.5 -5, 1.5 -5, 3.8 -2 L 0 1.5 Z',fill:'#5c7d65'}));
+}
+function renderInvitationHeroVisual(info){
+  const coverSrc=content.albums?.find(a=>Array.isArray(a.images)&&a.images.length)?.images?.[0]||'';
+  const coupleLabel=[info.partner1,info.partner2].filter(Boolean).join(' · ')||'신랑 · 신부';
+  const coverNode=coverSrc?image(coverSrc,`${coupleLabel} 웨딩 사진`,{class:'invitation-arch-photo'}):null;
+  if(coverNode){
+    return E('div',{class:'invitation-arch-stage has-cover-photo'},
+      E('div',{class:'invitation-arch-photo-frame'},coverNode));
+  }
+  const svg=S('svg',{class:'invitation-botanical-svg',viewBox:'0 0 380 232','aria-hidden':'true'},
+    S('defs',{},
+      S('linearGradient',{id:'invArchBg',x1:'0%',y1:'0%',x2:'0%',y2:'100%'},
+        S('stop',{offset:'0%','stop-color':'#f2f6f2'}),
+        S('stop',{offset:'52%','stop-color':'#fffdf9'}),
+        S('stop',{offset:'100%','stop-color':'#fcf4f1'})),
+      S('radialGradient',{id:'invSunHalo',cx:'50%',cy:'45%',r:'48%'},
+        S('stop',{offset:'0%','stop-color':'#fff6ee','stop-opacity':'0.95'}),
+        S('stop',{offset:'65%','stop-color':'#f8ebe6','stop-opacity':'0.42'}),
+        S('stop',{offset:'100%','stop-color':'#ffffff','stop-opacity':'0'})),
+      S('linearGradient',{id:'invGoldA',x1:'0%',y1:'0%',x2:'100%',y2:'100%'},
+        S('stop',{offset:'0%','stop-color':'#dfba82'}),
+        S('stop',{offset:'50%','stop-color':'#b98b4e'}),
+        S('stop',{offset:'100%','stop-color':'#e5c693'})),
+      S('linearGradient',{id:'invGoldB',x1:'100%',y1:'0%',x2:'0%',y2:'100%'},
+        S('stop',{offset:'0%','stop-color':'#d79e92'}),
+        S('stop',{offset:'52%','stop-color':'#c28e5c'}),
+        S('stop',{offset:'100%','stop-color':'#e6c596'}))),
+    // Cathedral Arch Backdrop & Double Hairline
+    S('path',{d:'M 78 214 L 78 124 A 112 112 0 0 1 302 124 L 302 214 Z',fill:'url(#invArchBg)',stroke:'#c1d1c4','stroke-width':'1.25'}),
+    S('path',{d:'M 86 207 L 86 124 A 104 104 0 0 1 294 124 L 294 207 Z',fill:'none',stroke:'#e3cfc8','stroke-width':'0.9'}),
+    S('circle',{cx:'190',cy:'108',r:'72',fill:'url(#invSunHalo)'}),
+    // Delicate Sunbeam Filigree at Arch Crown
+    S('g',{stroke:'#d8c2a8','stroke-width':'0.9','stroke-linecap':'round',opacity:'0.58'},
+      S('line',{x1:'190',y1:'27',x2:'190',y2:'43'}),
+      S('line',{x1:'158',y1:'34',x2:'164',y2:'47'}),
+      S('line',{x1:'222',y1:'34',x2:'216',y2:'47'}),
+      S('circle',{cx:'190',cy:'50',r:'1.8',fill:'#d2a66c',stroke:'none'})),
+    // Left Botanical Olive & Eucalyptus Bough
+    S('g',{class:'inv-bough inv-bough-left'},
+      S('path',{d:'M 66 202 C 56 150, 68 90, 118 44',fill:'none',stroke:'#4a6b53','stroke-width':'1.45','stroke-linecap':'round'}),
+      S('path',{d:'M 74 164 C 90 150, 108 144, 126 142',fill:'none',stroke:'#6d8e76','stroke-width':'1.05','stroke-linecap':'round'}),
+      renderBotanicalLeaf(63,184,-48,0.92,'#8daa94'),
+      renderBotanicalLeaf(69,170,32,0.88,'#56785f'),
+      renderBotanicalLeaf(62,134,-42,0.96,'#6e9077'),
+      renderBotanicalLeaf(76,118,38,0.9,'#9ab4a0'),
+      renderBotanicalLeaf(78,94,-32,0.92,'#53755c'),
+      renderBotanicalLeaf(95,82,42,0.84,'#7ea087'),
+      renderBotanicalLeaf(100,62,-22,0.82,'#9ab4a0'),
+      renderBotanicalLeaf(115,50,36,0.76,'#688a71'),
+      renderBotanicalLeaf(106,149,68,0.78,'#8daa94'),
+      renderBotanicalBud(91,68,-26,0.82),
+      renderBotanicalBud(56,192,-38,0.76),
+      renderBotanicalRose(72,150,0.98)),
+    // Right Botanical Olive & Eucalyptus Bough
+    S('g',{class:'inv-bough inv-bough-right'},
+      S('path',{d:'M 314 202 C 324 150, 312 90, 262 44',fill:'none',stroke:'#4a6b53','stroke-width':'1.45','stroke-linecap':'round'}),
+      S('path',{d:'M 306 160 C 290 146, 272 140, 254 138',fill:'none',stroke:'#6d8e76','stroke-width':'1.05','stroke-linecap':'round'}),
+      renderBotanicalLeaf(317,184,48,0.92,'#8daa94'),
+      renderBotanicalLeaf(311,168,-32,0.88,'#56785f'),
+      renderBotanicalLeaf(318,130,42,0.96,'#6e9077'),
+      renderBotanicalLeaf(304,114,-38,0.9,'#9ab4a0'),
+      renderBotanicalLeaf(302,92,32,0.92,'#53755c'),
+      renderBotanicalLeaf(285,80,-42,0.84,'#7ea087'),
+      renderBotanicalLeaf(280,60,22,0.82,'#9ab4a0'),
+      renderBotanicalLeaf(265,48,-36,0.76,'#688a71'),
+      renderBotanicalLeaf(274,145,-68,0.78,'#8daa94'),
+      renderBotanicalBud(289,66,26,0.82),
+      renderBotanicalBud(324,190,38,0.76),
+      renderBotanicalRose(308,144,0.96)),
+    // Centerpiece Interlocking Wedding Bands & Botanical Cradle
+    S('g',{transform:'translate(190 110)'},
+      S('path',{d:'M -46 22 C -24 35, 24 35, 46 22',fill:'none',stroke:'#93ad99','stroke-width':'1.1','stroke-linecap':'round'}),
+      renderBotanicalLeaf(-28,29,-68,0.65,'#7ea087'),
+      renderBotanicalLeaf(28,29,68,0.65,'#7ea087'),
+      S('circle',{cx:'0',cy:'32',r:'2.4',fill:'#c97a70'}),
+      S('circle',{cx:'-8',cy:'31',r:'1.5',fill:'#e5b5ad'}),
+      S('circle',{cx:'8',cy:'31',r:'1.5',fill:'#e5b5ad'}),
+      // Left Gold Ring
+      S('circle',{cx:'-12',cy:'2',r:'21',fill:'none',stroke:'url(#invGoldA)','stroke-width':'2.6'}),
+      // Right Rose-Gold Ring
+      S('circle',{cx:'12',cy:'2',r:'21',fill:'none',stroke:'url(#invGoldB)','stroke-width':'2.6'}),
+      // Over-link arc so the two bands genuinely interlock
+      S('path',{d:'M 2.8 -12.8 A 21 21 0 0 1 8.8 6.5',fill:'none',stroke:'url(#invGoldA)','stroke-width':'3'}),
+      // Solitaire Diamond & Starlight Sparkle
+      S('path',{d:'M -12 -28 L -9.6 -22.4 L -4 -20 L -9.6 -17.6 L -12 -12 L -14.4 -17.6 L -20 -20 L -14.4 -22.4 Z',fill:'#d5a868'}),
+      S('path',{d:'M 18 -23 L 19.2 -20.2 L 22 -19 L 19.2 -17.8 L 18 -15 L 16.8 -17.8 L 14 -19 L 16.8 -20.2 Z',fill:'#dfa59c',opacity:'0.9'})),
+    // Pedestal Caption inside Arch
+    S('line',{x1:'128',y1:'170',x2:'252',y2:'170',stroke:'#dce5de','stroke-width':'1'}),
+    S('text',{x:'190',y:'187','text-anchor':'middle','font-size':'9.2','font-weight':'700','letter-spacing':'3.1',fill:'#56745e'},'OUR NEW BEGINNING'),
+    S('circle',{cx:'190',cy:'199',r:'2',fill:'#c97a70'}),
+    S('circle',{cx:'182',cy:'199',r:'1.2',fill:'#9eb5a3'}),
+    S('circle',{cx:'198',cy:'199',r:'1.2',fill:'#9eb5a3'}));
+  return E('div',{class:'invitation-arch-stage','aria-hidden':'true'},svg);
+}
 function renderInvitationCalendar(dateStr,timeStr){
   const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr||'');
   if(!m)return null;
@@ -642,8 +790,10 @@ function renderInvitationCalendar(dateStr,timeStr){
   }
   return E('div',{class:'invitation-calendar','aria-label':`${year}년 ${month}월 예식 달력`},
     E('div',{class:'cal-header'},
-      E('strong',{},`${year}년 ${month}월`),
-      E('span',{class:'small muted'},`${month}월 ${day}일 ${weekdays[(firstDow+day-1)%7]}요일${timeStr?` · ${timeStr}`:''}`)),
+      E('div',{class:'cal-title-group'},
+        E('span',{class:'cal-month-en'},MONTH_NAMES_EN[month]||'WEDDING DAY'),
+        E('strong',{},`${year}년 ${month}월`)),
+      E('span',{class:'cal-time-chip'},`${month}월 ${day}일 (${weekdays[(firstDow+day-1)%7]})${timeStr?` · ${timeStr}`:''}`)),
     E('div',{class:'cal-weekdays','aria-hidden':'true'},weekdays.map((w,i)=>E('span',{class:i===0?'is-sun':i===6?'is-sat':''},w))),
     E('div',{class:'cal-grid'},cells));
 }
@@ -663,6 +813,7 @@ function syncNavVisibility(){
   }
 }
 function syncGuestChrome(){
+  document.body.classList.toggle('is-guest-mode',Boolean(guestMode));
   const brand=$('.brand');
   const brandText=brand?.querySelector('span:last-child');
   const footerText=$('.site-footer span');
@@ -774,7 +925,7 @@ function renderInvitationReadiness(info){
 function renderInvitation() {
   const info=content.invitation,dday=weddingDday(info.date);
   const hasContent=Object.values(info).some(Boolean);
-  const mapLink=externalLink('오시는 길 (네이버 지도) ↗',info.mapUrl,'button quiet');
+  const mapLink=externalLink('오시는 길 (네이버 지도) ↗',info.mapUrl,'button');
   const searchKeyword=(info.venue||info.address||'').replace(/\s+\d+층$/,'').trim();
   const kakaoLink=searchKeyword?externalLink('카카오맵 ↗',`https://map.kakao.com/link/search/${encodeURIComponent(searchKeyword)}`,'button quiet'):null;
   const copyAddrBtn=(info.address||info.venue)?button('주소 복사',()=>copyVenueAddress(info.address||info.venue),'button quiet'):null;
@@ -784,27 +935,66 @@ function renderInvitation() {
     gcalBtn=E('a',{href:gcalHref,class:'button quiet',target:'_blank',rel:'noopener noreferrer'},'Google 캘린더에 추가');
     icsBtn=button('일정 파일(.ics) 다운로드',downloadInvitationIcs,'button quiet');
   }catch{}
-  const actionButtons=[mapLink,kakaoLink,copyAddrBtn,gcalBtn,icsBtn].filter(Boolean);
+  const mapActions=[mapLink,kakaoLink,copyAddrBtn].filter(Boolean);
+  const calActions=[gcalBtn,icsBtn].filter(Boolean);
+  const shortMonthDay=info.date?formatDate(info.date).replace(/^\d+년\s*/,''):'일정 미정';
   return [pageHeader('소중한 분들을 초대합니다.',guestMode?'두 사람의 새로운 시작을 함께 축복해 주세요.':'우리의 마음과 예식 안내를 한 장에 담아요.',E('div',{class:'page-actions'},editButton('예식 정보 편집',()=>openEditor('invitation')),!guestMode?button('👀 하객 화면 미리보기',()=>toggleGuestPreview(true),'button quiet'):null,!guestMode?button('📱 QR 코드',openInvitationQrModal,'button quiet'):null,button('청첩장 공유하기',shareInvitationLink,'button quiet'),button('청첩장 링크 복사',copyInvitationLink,'button quiet')),'THE INVITATION'),
     renderInvitationReadiness(info),
     hasContent?E('section',{class:'invitation'},
-      E('span',{class:'invitation-ribbon'},info.date?`${formatDate(info.date)}${info.time?` · ${info.time}`:''}`:'WE ARE GETTING MARRIED'),
-      E('div',{class:'invitation-title'},'소중한 분들을 초대합니다'),
-      E('p',{class:'invitation-sub'},'With love, together.'),
-      (info.partner1||info.partner2)?E('h2',{class:'couple-names'},
-        info.partner1?[E('small',{class:'role-label'},'신랑 '),info.partner1.replace(/^신랑\s*/,'')]:null,
-        info.partner1&&info.partner2?E('span',{class:'couple-heart'},'♥'):null,
-        info.partner2?[E('small',{class:'role-label'},'신부 '),info.partner2.replace(/^신부\s*/,'')]:null):null,
+      renderInvitationCornerMarks(),
+      E('span',{class:'invitation-ribbon'},info.date?`WEDDING INVITATION · ${info.date.replaceAll('-','. ')}`:'WE ARE GETTING MARRIED'),
+      E('div',{class:'invitation-title'},'우리 두 사람, 결혼합니다'),
+      E('p',{class:'invitation-sub'},'With love, together'),
+      renderInvitationHeroVisual(info),
+      (info.partner1||info.partner2)?E('div',{class:'invitation-couple-plaque'},
+        E('h2',{class:'couple-names'},
+          info.partner1?[E('small',{class:'role-label is-groom'},'신랑 '),info.partner1.replace(/^신랑\s*/,'')]:null,
+          info.partner1&&info.partner2?E('span',{class:'couple-heart'},'♥'):null,
+          info.partner2?[E('small',{class:'role-label is-bride'},'신부 '),info.partner2.replace(/^신부\s*/,'')]:null)):null,
       info.message?E('p',{class:'message'},info.message):null,
-      E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?E('span',{class:'dday-badge'},` (${dday})`):null),
-      renderInvitationCalendar(info.date,info.time),
-      E('div',{class:'place'},E('strong',{},info.venue||'예식 장소 준비 중'),info.address?E('p',{},info.address):null),
-      actionButtons.length?E('div',{class:'invitation-actions'},...actionButtons):null,
-      (gcalBtn||icsBtn)?E('p',{class:'small muted calendar-update-note'},'캘린더에 저장한 일정은 예식 정보가 바뀌어도 자동 수정하지 않습니다. 변경 시 기존 일정을 삭제하거나 직접 수정해 주세요.'):null,
+      renderInvitationDivider(),
+      E('div',{class:'invitation-section is-schedule'},
+        E('div',{class:'invitation-sec-head'},
+          E('span',{class:'invitation-sec-en'},'SAVE THE DATE'),
+          E('span',{class:'invitation-sec-ko'},'예식 일시')),
+        E('p',{class:'invitation-date'},info.date?formatDate(info.date):'예식 일정 준비 중',info.time?` · ${info.time}`:'',dday?[' ',E('span',{class:'dday-badge'},dday)]:null),
+        renderInvitationCalendar(info.date,info.time),
+        (info.date||info.time)?E('div',{class:'invitation-milestone-strip'},
+          E('div',{class:'milestone-cell'},
+            E('span',{class:'milestone-label'},'DATE'),
+            E('strong',{class:'milestone-val'},shortMonthDay)),
+          E('div',{class:'milestone-cell'},
+            E('span',{class:'milestone-label'},'TIME'),
+            E('strong',{class:'milestone-val'},info.time?formatKoreanTimeLabel(info.time):'시간 미정')),
+          E('div',{class:'milestone-cell is-highlight'},
+            E('span',{class:'milestone-label'},'D-DAY'),
+            E('strong',{class:'milestone-val'},dday||'예식일'))):null,
+        calActions.length?E('div',{class:'invitation-actions invitation-cal-actions'},...calActions):null,
+        calActions.length?E('p',{class:'small muted calendar-update-note'},'캘린더에 저장한 일정은 예식 정보가 바뀌어도 자동 수정하지 않습니다. 변경 시 기존 일정을 삭제하거나 직접 수정해 주세요.'):null),
+      renderInvitationDivider(),
+      E('div',{class:'invitation-section is-location'},
+        E('div',{class:'invitation-sec-head'},
+          E('span',{class:'invitation-sec-en'},'LOCATION'),
+          E('span',{class:'invitation-sec-ko'},'오시는 길')),
+        E('div',{class:'place'},
+          E('span',{class:'place-kicker'},'📍 WEDDING VENUE'),
+          E('strong',{},info.venue||'예식 장소 준비 중'),
+          info.address?E('p',{},info.address):null),
+        mapActions.length?E('div',{class:'invitation-actions invitation-map-actions'},...mapActions):null),
       (info.transit||info.notice)?E('div',{class:'invitation-extra-guides'},
         info.transit?E('div',{class:'invitation-guide-box'},E('strong',{},'🚗 오시는 길 · 교통 및 주차 안내'),E('p',{class:'record-body'},info.transit)):null,
         info.notice?E('div',{class:'invitation-guide-box'},E('strong',{},'📌 예식 안내'),E('p',{class:'record-body'},info.notice)):null):null,
-      renderInvitationContacts(info.contacts)):
+      renderInvitationContacts(info.contacts),
+      E('div',{class:'invitation-closing'},
+        S('svg',{class:'invitation-closing-sprig',viewBox:'0 0 84 22','aria-hidden':'true'},
+          S('path',{d:'M 16 14 C 28 11, 56 11, 68 14',fill:'none',stroke:'#8ba792','stroke-width':'1.1','stroke-linecap':'round'}),
+          renderBotanicalLeaf(28,12,-62,0.52,'#8daa94'),
+          renderBotanicalLeaf(56,12,62,0.52,'#8daa94'),
+          S('circle',{cx:'42',cy:'11',r:'2.4',fill:'#c97a70'})),
+        E('span',{class:'invitation-closing-note'},'귀한 걸음으로 축복해 주시는 모든 분께 진심으로 감사드립니다.'),
+        E('div',{class:'invitation-actions invitation-share-foot'},
+          button('💌 초대장 공유하기',shareInvitationLink,'button quiet'),
+          button('🔗 초대장 링크 복사',copyInvitationLink,'button quiet')))):
     empty('우리의 첫 초대장을 준비해요.','두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.','예식 정보 입력',()=>openEditor('invitation'))];
 }
 function sortedStories(){
