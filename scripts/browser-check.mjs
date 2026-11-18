@@ -138,13 +138,15 @@ try {
   const personalBefore=await storage(prefsKey);
   await page.goto(base+'?view=guest#/invitation');await ready();
   assert.equal(await page.locator('#manage-content').isVisible(),false);
+  assert.equal(await page.getByRole('link',{name:'일반 보기',exact:true}).count(),0);
+  assert.equal(await page.locator('[data-route="studios"]').isVisible(),false);
   assert.equal(await page.getByRole('button',{name:'예식 정보 편집',exact:true}).count(),0);
   assert.match(await page.locator('.couple-names').innerText(),/새 공개본/);
   assert(!await page.locator('main').innerText().then(text=>text.includes('브라우저 검증')));
   await page.goto(base+'?view=guest#/studios');await ready();
   assert.equal(await page.locator('textarea').count(),0);
-  assert.equal(await page.locator('.compare-selectors, .studio-directory').count(),0);
-  assert.match(await page.locator('.selected-studio-card h2').innerText(),/라크마/);
+  assert.equal(await page.locator('.selected-studio-card, .compare-selectors, .studio-directory').count(),0);
+  assert.match(await page.locator('main').innerText(),/신랑·신부 전용 결혼 준비 탭입니다/);
   assert.deepEqual(await storage(prefsKey),personalBefore);
   assert.deepEqual(await storage(draftKey),before);
   console.log('PASS content round trip, invalid import, changed-public warning, guest isolation');

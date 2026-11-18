@@ -104,6 +104,10 @@ try{
   await guest.route('**/data/studios.json',route=>failStudios?route.fulfill({status:503,body:'unavailable'}):route.continue());
   await guest.goto(base+'?view=guest#/invitation');await guest.locator('#main[aria-busy="false"]').waitFor();
   await guest.getByRole('heading',{name:'소중한 분들을 초대합니다.',exact:true}).waitFor();
+  assert.equal(await guest.locator('[data-route="studios"]').isVisible(),false);
+  assert.equal(await guest.getByRole('link',{name:'일반 보기',exact:true}).count(),0);
+  await guest.goto(base+'#/invitation');await guest.locator('#main[aria-busy="false"]').waitFor();
+  await guest.getByRole('heading',{name:'소중한 분들을 초대합니다.',exact:true}).waitFor();
   await guest.locator('[data-route="studios"]').click();
   await guest.getByRole('button',{name:'스튜디오 다시 불러오기',exact:true}).waitFor();
   failStudios=false;await guest.getByRole('button',{name:'스튜디오 다시 불러오기',exact:true}).click();
