@@ -10,6 +10,8 @@ test('sharing metadata uses supplied public fields and escapes HTML attributes',
   const html=applyShareMetadata(await readFile(new URL('../index.html',import.meta.url),'utf8'),content);
   assert(html.includes('우리 &quot; &lt;둘&gt;'));assert(html.includes('공개 장소'));
   assert(html.includes('<title>우리 &quot; &lt;둘&gt; &amp; 유미혜 · 우리의 결혼 기록</title>'));
+  assert(html.includes('<meta property="og:image:alt" content="우리 &quot; &lt;둘&gt; &amp; 유미혜 · 2027년 6월 5일 토요일 · 15:00 · 공개 장소">'));
   assert(!html.includes('content="우리 " <둘>'));
   assert(shareMetadata(content).url.includes('view=guest'));
+  assert.match(shareMetadata(content).image,/\/assets\/share-card\.png\?v=wedding-features-\d+$/);
 });

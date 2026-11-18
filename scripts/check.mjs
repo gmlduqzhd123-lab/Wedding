@@ -42,7 +42,16 @@ for(const name of await readdir(new URL('assets/js/',root))){
     versions.add(ver);
   }
 }
-assert.equal(versions.size,1,`Expected a single uniform asset ?v= version across index.html and assets/js/*.js, found: ${[...versions].join(', ')}`);
+for(const [,imgUrl]of html.matchAll(/<meta (?:property="og:image"|name="twitter:image") content="([^"]+)"/g)){
+  const ver=new URL(imgUrl).searchParams.get('v');
+  assert(ver,`Missing ?v= cache version on share image ${imgUrl} in index.html`);
+  versions.add(ver);
+}
+const sharingSource=await readFile(new URL('assets/js/sharing.js',root),'utf8');
+const shareConstMatch=sharingSource.match(/SHARE_IMAGE_URL=['"]([^'"]+)['"]/);
+assert(shareConstMatch,'sharing.js must export SHARE_IMAGE_URL');
+versions.add(new URL(shareConstMatch[1]).searchParams.get('v'));
+assert.equal(versions.size,1,`Expected a single uniform asset ?v= version across index.html, share-card, and assets/js/*.js, found: ${[...versions].join(', ')}`);
 const css=await readFile(new URL('assets/css/app.css',root),'utf8');
 const definedCssVars=new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map(m=>m[1]));
 const undefinedCssVars=[...new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].map(m=>m[1]))].filter(v=>!definedCssVars.has(v));

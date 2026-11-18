@@ -42,18 +42,18 @@ try{
   await other.locator('[aria-label="신혼여행 상담 메모"]').first().waitFor();
   await Promise.all([page.locator('.selected-studio-card textarea').first().fill('메모 A'),other.locator('[aria-label="신혼여행 상담 메모"]').first().fill('메모 B')]);
   await page.waitForFunction(()=>{const p=JSON.parse(localStorage.getItem('wedding:v1:preferences'));return p.notes?.['studio-09']==='메모 A'&&Object.values(p.tripNotes||{}).includes('메모 B');});
-  // A delayed favorite write must not replace a memo field being edited.
+  // A delayed prep-checklist write must not replace a memo field being edited.
   await page.evaluate(()=>{
     const locks=navigator.locks,original=locks.request.bind(locks);
     window.savedLockRequest=original;
     locks.request=(name,callback)=>new Promise(resolve=>setTimeout(resolve,150)).then(()=>original(name,callback));
   });
-  await page.locator('.selected-studio-card .favorite').first().click();
-  await page.locator('.selected-studio-card textarea').first().fill('관심 표시 중에도 보존할 메모');
-  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes['studio-09']==='관심 표시 중에도 보존할 메모');
-  assert.equal(await page.locator('.selected-studio-card textarea').first().inputValue(),'관심 표시 중에도 보존할 메모');
+  await page.locator('.lachma-prep-check-list input[type="checkbox"]').first().check();
+  await page.locator('.selected-studio-card textarea').first().fill('준비물 체크 중에도 보존할 메모');
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes['studio-09']==='준비물 체크 중에도 보존할 메모');
+  assert.equal(await page.locator('.selected-studio-card textarea').first().inputValue(),'준비물 체크 중에도 보존할 메모');
   await page.evaluate(()=>{navigator.locks.request=window.savedLockRequest;});
-  console.log('PASS concurrent studio/trip memos and delayed favorite write preserve notes');
+  console.log('PASS concurrent studio/trip memos and delayed prep-check write preserve notes');
 
   await page.goto(base+'#/story');await page.getByRole('button',{name:'이야기 추가',exact:true}).click();
   await page.getByLabel('이야기 제목',{exact:true}).fill('보존할 작성 내용');

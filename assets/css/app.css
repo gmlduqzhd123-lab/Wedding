@@ -1544,6 +1544,12 @@ h1, h2, h3, p, dd, a, .couple-names { word-break: keep-all; overflow-wrap: anywh
   color: var(--ink);
   white-space: nowrap;
   max-width: 100%;
+  text-decoration: none;
+}
+a.spec-chip:hover {
+  border-color: var(--olive-line);
+  background: var(--olive-soft);
+  color: var(--green-dark);
 }
 .spec-chip.direct {
   background: var(--olive-soft);

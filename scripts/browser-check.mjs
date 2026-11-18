@@ -38,14 +38,15 @@ try {
   console.log('PASS menus, draft save and reload');
 
   await go('studios');
-  assert.equal(await page.locator('.compare-selectors, .comparison-table, .studio-directory').count(),0);
-  await page.locator('.selected-studio-card .favorite').first().click();
+  assert.equal(await page.locator('.compare-selectors, .comparison-table, .studio-directory, .selected-studio-card .favorite').count(),0);
+  await page.locator('.lachma-prep-check-list input[type="checkbox"]').first().check();
   await page.locator('.selected-studio-card textarea').first().fill('백업할 개인 메모');
   await page.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes).includes('백업할 개인 메모'));
   const savedPrefs=await storage(prefsKey);
   await page.evaluate(()=>{window.originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('quota','QuotaExceededError');};});
-  await page.locator('.selected-studio-card .favorite').first().click();
-  assert.equal(await page.locator('.selected-studio-card .favorite').first().getAttribute('aria-pressed'),'true');
+  await page.locator('.lachma-prep-check-list input[type="checkbox"]').first().uncheck();
+  await page.waitForFunction(()=>document.querySelector('.lachma-prep-check-list input[type="checkbox"]').checked===true);
+  assert.equal(await page.locator('.lachma-prep-check-list input[type="checkbox"]').first().isChecked(),true);
   await page.locator('.selected-studio-card textarea').first().fill('실패할 변경');
   await page.waitForFunction(()=>document.querySelector('.selected-studio-card textarea').value==='백업할 개인 메모');
   assert.equal(await page.locator('.selected-studio-card textarea').first().inputValue(),'백업할 개인 메모');
