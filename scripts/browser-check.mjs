@@ -38,20 +38,17 @@ try {
   console.log('PASS menus, draft save and reload');
 
   await go('studios');
-  await page.locator('.compare-card .favorite').first().click();
-  await page.locator('.compare-card textarea').first().fill('백업할 개인 메모');
+  assert.equal(await page.locator('.compare-selectors, .comparison-table, .studio-directory').count(),0);
+  await page.locator('.selected-studio-card .favorite').first().click();
+  await page.locator('.selected-studio-card textarea').first().fill('백업할 개인 메모');
   await page.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes).includes('백업할 개인 메모'));
   const savedPrefs=await storage(prefsKey);
   await page.evaluate(()=>{window.originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('quota','QuotaExceededError');};});
-  await page.locator('.compare-card .favorite').first().click();
-  assert.equal(await page.locator('.compare-card .favorite').first().getAttribute('aria-pressed'),'true');
-  await page.locator('.compare-card textarea').first().fill('실패할 변경');
-  await page.waitForFunction(()=>document.querySelector('.compare-card textarea').value==='백업할 개인 메모');
-  assert.equal(await page.locator('.compare-card textarea').first().inputValue(),'백업할 개인 메모');
-  const leftBefore=await page.getByLabel('비교할 스튜디오 A',{exact:true}).inputValue();
-  await page.getByLabel('비교할 스튜디오 A',{exact:true}).selectOption('studio-01');
-  await page.waitForFunction(value=>document.querySelector('[aria-label="비교할 스튜디오 A"]').value===value,leftBefore);
-  assert.equal(await page.getByLabel('비교할 스튜디오 A',{exact:true}).inputValue(),leftBefore);
+  await page.locator('.selected-studio-card .favorite').first().click();
+  assert.equal(await page.locator('.selected-studio-card .favorite').first().getAttribute('aria-pressed'),'true');
+  await page.locator('.selected-studio-card textarea').first().fill('실패할 변경');
+  await page.waitForFunction(()=>document.querySelector('.selected-studio-card textarea').value==='백업할 개인 메모');
+  assert.equal(await page.locator('.selected-studio-card textarea').first().inputValue(),'백업할 개인 메모');
   assert.deepEqual(await storage(prefsKey),savedPrefs);
   await page.locator('[data-route="invitation"]').click();
   await page.getByRole('button',{name:'예식 정보 편집',exact:true}).click();
@@ -73,10 +70,10 @@ try {
   assert(privateRaw.includes('백업할 개인 메모'));assert(!publicRaw.includes('백업할 개인 메모'));
   await upload('개인 메모·선택 백업 선택',{kind:'wrong'});
   assert.deepEqual(await storage(prefsKey),savedPrefs);
-  const restored=JSON.parse(privateRaw);restored.preferences.notes={...restored.preferences.notes,'studio-01':'복원 메모'};
+  const restored=JSON.parse(privateRaw);restored.preferences.notes={...restored.preferences.notes,'studio-09':'복원 메모'};
   await upload('개인 메모·선택 백업 선택',restored);
   await page.waitForFunction(()=>!document.querySelector('dialog').open);
-  assert.equal((await storage(prefsKey)).notes['studio-01'],'복원 메모');
+  assert.equal((await storage(prefsKey)).notes['studio-09'],'복원 메모');
   console.log('PASS preference failures, private backup/restore, studio enlargement');
 
   await go('albums');await page.getByRole('button',{name:'앨범 추가',exact:true}).click();
@@ -146,7 +143,8 @@ try {
   assert(!await page.locator('main').innerText().then(text=>text.includes('브라우저 검증')));
   await page.goto(base+'?view=guest#/studios');await ready();
   assert.equal(await page.locator('textarea').count(),0);
-  await page.getByLabel('비교할 스튜디오 A',{exact:true}).selectOption('studio-03');
+  assert.equal(await page.locator('.compare-selectors, .studio-directory').count(),0);
+  assert.match(await page.locator('.selected-studio-card h2').innerText(),/라크마/);
   assert.deepEqual(await storage(prefsKey),personalBefore);
   assert.deepEqual(await storage(draftKey),before);
   console.log('PASS content round trip, invalid import, changed-public warning, guest isolation');

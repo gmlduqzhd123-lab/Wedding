@@ -35,25 +35,25 @@ try{
   assert.equal((await draft(page)).invitation.venue,'동시 작성 장소');
   console.log('PASS parallel draft merge and same-field conflict review');
 
-  await page.goto(base+'#/studios');await page.getByLabel('비교할 스튜디오 A',{exact:true}).selectOption('studio-01');
-  await page.locator('.compare-card h2').first().filter({hasText:'아르센'}).waitFor();
-  await page.locator('.compare-card textarea').first().focus();
-  await other.goto(base+'#/studios');await other.getByLabel('비교할 스튜디오 A',{exact:true}).selectOption('studio-02');
-  await other.locator('.compare-card h2').first().filter({hasText:'고유'}).waitFor();
-  await Promise.all([page.locator('.compare-card textarea').first().fill('메모 A'),other.locator('.compare-card textarea').first().fill('메모 B')]);
-  await page.waitForFunction(()=>{const notes=JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes;return notes['studio-01']==='메모 A'&&notes['studio-02']==='메모 B';});
+  await page.goto(base+'#/studios');
+  await page.locator('.selected-studio-card h2').filter({hasText:'라크마'}).waitFor();
+  await page.locator('.selected-studio-card textarea').first().focus();
+  await other.goto(base+'#/honeymoon');
+  await other.locator('[aria-label="신혼여행 상담 메모"]').first().waitFor();
+  await Promise.all([page.locator('.selected-studio-card textarea').first().fill('메모 A'),other.locator('[aria-label="신혼여행 상담 메모"]').first().fill('메모 B')]);
+  await page.waitForFunction(()=>{const p=JSON.parse(localStorage.getItem('wedding:v1:preferences'));return p.notes?.['studio-09']==='메모 A'&&Object.values(p.tripNotes||{}).includes('메모 B');});
   // A delayed favorite write must not replace a memo field being edited.
   await page.evaluate(()=>{
     const locks=navigator.locks,original=locks.request.bind(locks);
     window.savedLockRequest=original;
     locks.request=(name,callback)=>new Promise(resolve=>setTimeout(resolve,150)).then(()=>original(name,callback));
   });
-  await page.locator('.compare-card .favorite').first().click();
-  await page.locator('.compare-card textarea').first().fill('관심 표시 중에도 보존할 메모');
-  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes['studio-01']==='관심 표시 중에도 보존할 메모');
-  assert.equal(await page.locator('.compare-card textarea').first().inputValue(),'관심 표시 중에도 보존할 메모');
+  await page.locator('.selected-studio-card .favorite').first().click();
+  await page.locator('.selected-studio-card textarea').first().fill('관심 표시 중에도 보존할 메모');
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('wedding:v1:preferences')).notes['studio-09']==='관심 표시 중에도 보존할 메모');
+  assert.equal(await page.locator('.selected-studio-card textarea').first().inputValue(),'관심 표시 중에도 보존할 메모');
   await page.evaluate(()=>{navigator.locks.request=window.savedLockRequest;});
-  console.log('PASS concurrent studio memos preserve both notes');
+  console.log('PASS concurrent studio/trip memos and delayed favorite write preserve notes');
 
   await page.goto(base+'#/story');await page.getByRole('button',{name:'이야기 추가',exact:true}).click();
   await page.getByLabel('이야기 제목',{exact:true}).fill('보존할 작성 내용');
@@ -107,7 +107,7 @@ try{
   await guest.locator('[data-route="studios"]').click();
   await guest.getByRole('button',{name:'스튜디오 다시 불러오기',exact:true}).waitFor();
   failStudios=false;await guest.getByRole('button',{name:'스튜디오 다시 불러오기',exact:true}).click();
-  await guest.getByLabel('비교할 스튜디오 A',{exact:true}).waitFor();
+  await guest.locator('.selected-studio-card h2').filter({hasText:'라크마'}).waitFor();
   await isolated.close();
   await page.goto(base+'#/invitation');await page.getByRole('button',{name:'청첩장 링크 복사',exact:true}).click();
   assert.match(await page.evaluate(()=>navigator.clipboard.readText()),/\?view=guest#\/invitation$/);

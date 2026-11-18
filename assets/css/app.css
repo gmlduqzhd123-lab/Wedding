@@ -2208,6 +2208,12 @@ h1, h2, h3, p, dd, a, .couple-names { word-break: keep-all; overflow-wrap: anywh
 }
 .selected-studio-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; min-width: 0; }
 .selected-studio-head h2 { font-family: var(--display); font-size: 20.5px; margin: 2px 0 4px; }
+.selected-studio-head .page-actions { align-items: center; }
+.selected-studio-card .studio-photos { margin: 6px 0 2px; gap: 14px; }
+.selected-studio-card .studio-photos img { height: 280px; }
+.studio-sample-caption { margin: 0 0 4px; }
+.studio-memo-field { margin-top: 6px; }
+.studio-memo-field textarea { font-size: 13.5px; min-height: 76px; }
 
 .lachma-deep-guide {
   margin-top: 10px;
@@ -2261,7 +2267,7 @@ h1, h2, h3, p, dd, a, .couple-names { word-break: keep-all; overflow-wrap: anywh
   font-weight: 600;
   line-height: 1.55;
 }
-.lachma-location-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.lachma-location-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .lachma-location-card {
   padding: 13px 15px;
   border-radius: 16px;
@@ -2488,7 +2494,7 @@ h1, h2, h3, p, dd, a, .couple-names { word-break: keep-all; overflow-wrap: anywh
   .compare-selectors { grid-template-columns: 1fr; gap: 12px; }
   .compare-grid { grid-template-columns: 1fr; gap: 15px; }
   .compare-card { padding: 18px; }
-  .studio-photos img { height: 210px; }
+  .studio-photos img, .selected-studio-card .studio-photos img { height: 210px; }
 
   .comparison-table, .comparison-table tbody { display: block; }
   .comparison-table tr {
