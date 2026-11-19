@@ -58,4 +58,8 @@ const undefinedCssVars=[...new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)]
 assert.deepEqual(undefinedCssVars,[],`Undefined CSS custom properties in assets/css/app.css: ${undefinedCssVars.join(', ')}`);
 const appSource=await readFile(new URL('assets/js/app.js',root),'utf8');
 assert(/\bfunction\s+copyTextToClipboard\s*\(/.test(appSource),'app.js must define copyTextToClipboard for studio and ceremony copy actions.');
-console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, CSS tokens, asset versions and JavaScript syntax verified.');
+await access(new URL('404.html',root));
+const manifest=JSON.parse(await readFile(new URL('manifest.webmanifest',root),'utf8'));
+assert(manifest.name&&manifest.short_name&&Array.isArray(manifest.icons)&&manifest.icons.length>=2,'manifest.webmanifest must define name, short_name, and icons.');
+for(const icon of manifest.icons)await access(new URL(String(icon.src||'').replace(/^\.\//,''),root));
+console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, manifest, 404 fallback, CSS tokens, asset versions and JavaScript syntax verified.');

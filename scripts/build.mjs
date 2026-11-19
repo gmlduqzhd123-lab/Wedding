@@ -7,6 +7,7 @@ await mkdir(dist,{recursive:true});
 const html=await readFile(new URL('index.html',root),'utf8');
 const content=parseContent(await readFile(new URL('data/site.json',root),'utf8'));
 await writeFile(new URL('index.html',dist),applyShareMetadata(html,content));
+for(const rootFile of ['manifest.webmanifest','404.html'])await cp(new URL(rootFile,root),new URL(rootFile,dist));
 await cp(new URL('assets/',root),new URL('assets/',dist),{recursive:true});
 await mkdir(new URL('data/',dist),{recursive:true});
 for(const name of ['site.json','studios.json'])await cp(new URL('data/'+name,root),new URL('data/'+name,dist));

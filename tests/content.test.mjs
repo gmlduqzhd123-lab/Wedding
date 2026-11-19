@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import {parseContent,validateContent,validDate,safeUrl,formatDate,weddingDday,invitationCountdownInfo,extractPhoneNumber,extractAccountNumber} from '../assets/js/content.js';
+import {parseContent,validateContent,validDate,safeUrl,formatDate,weddingDday,invitationCountdownInfo,invitationLiveCountdown,extractPhoneNumber,extractAccountNumber} from '../assets/js/content.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 test('content export/import round trip preserves all six menu data including 50 wedding tips',()=>{
  assert.equal(original.tips.length,50);
@@ -12,6 +12,7 @@ test('content export/import round trip preserves all six menu data including 50 
  content.invitation.transit='순천역 택시 이용';content.invitation.notice='1층 연회장 식사 안내';content.invitation.contacts='신랑측 연락처 · 010-0000-0000';
  content.invitation.groomAccounts='신랑 김희엽 · 카카오뱅크 3333-01-2345678';content.invitation.brideAccounts='신부 유미혜 · 국민은행 123401-04-123456';
  content.invitation.rsvpUrl='https://docs.google.com/forms/d/e/example/viewform';
+ content.invitation.venueMapImage='./assets/studios/01-1.jpg';
  content.stories=[{id:'memory-1',title:'처음 만난 날',date:'2026-11-04',body:'우리의 이야기',image:''}];
  content.albums=[{id:'album-1',title:'첫 앨범',date:'',body:'기록',images:['./assets/studios/01-1.jpg']}];
  content.honeymoon=[{id:'trip-1',title:'우리의 여행',country:'',startDate:'2027-04-04',endDate:'2027-04-10',budget:3000000,pros:'좋은 점',cons:'고민',body:'메모',url:'https://example.com'}];
@@ -25,7 +26,8 @@ test('invalid import never normalizes into data that can overwrite a draft',()=>
  assert.throws(()=>validateContent(content));
  content.invitation.date='';content.invitation.mapUrl='javascript:alert(1)';assert.throws(()=>validateContent(content));
  content.invitation.mapUrl='';content.invitation.rsvpUrl='javascript:alert(1)';assert.throws(()=>validateContent(content));
- content.invitation.rsvpUrl='';content.invitation.groomParents='가'.repeat(201);assert.throws(()=>validateContent(content));
+ content.invitation.rsvpUrl='';content.invitation.venueMapImage='javascript:alert(1)';assert.throws(()=>validateContent(content));
+ content.invitation.venueMapImage='';content.invitation.groomParents='가'.repeat(201);assert.throws(()=>validateContent(content));
 });
 test('dates and links do not depend on the host timezone or permit scripts',()=>{
  assert(validDate('2028-02-29'));assert(!validDate('2027-02-29'));
@@ -38,6 +40,10 @@ test('dates and links do not depend on the host timezone or permit scripts',()=>
  assert.deepEqual(invitationCountdownInfo('2027-06-05','2027-06-05'),{status:'today',days:0});
  assert.deepEqual(invitationCountdownInfo('2027-06-05','2027-06-08'),{status:'past',days:3});
  assert.equal(invitationCountdownInfo('','2026-11-08'),null);
+ assert.deepEqual(invitationLiveCountdown('2027-06-05','15:00',Date.parse('2027-06-04T13:58:55+09:00')),{status:'future',days:1,hours:1,minutes:1,seconds:5,hasTime:true});
+ assert.deepEqual(invitationLiveCountdown('2027-06-05','15:00',Date.parse('2027-06-05T15:30:00+09:00')),{status:'ongoing',days:0,hours:0,minutes:0,seconds:0,hasTime:true});
+ assert.deepEqual(invitationLiveCountdown('2027-06-05','15:00',Date.parse('2027-06-05T19:00:00+09:00')),{status:'past',days:0,hours:4,minutes:0,seconds:0,hasTime:true});
+ assert.equal(invitationLiveCountdown('','15:00',Date.parse('2027-06-04T12:00:00+09:00')),null);
  assert.equal(safeUrl('javascript:alert(1)'), '');assert.equal(safeUrl('data:text/html,hi'), '');
  assert.equal(safeUrl(' https://example.com'), '');
  assert.equal(safeUrl('./assets/studios/01-1.jpg',{image:true}),'./assets/studios/01-1.jpg');

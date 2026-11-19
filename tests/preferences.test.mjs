@@ -93,3 +93,30 @@ test('checklist, budgetPlan, packingList, customPackingList, checklistNotes, cus
   assert.equal(okLimits.vendorSchedules[0].note.length,450);
   assert.equal(okLimits.customPackingList.length,80);
 });
+
+test('guestList and giftLedger validate strictly and survive private backup round trips',()=>{
+  const prefs=validatePreferences({
+    guestList:[
+      {id:'guest-1',name:'홍길동',side:'신랑 측',group:'친구',partySize:2,inviteStatus:'모바일 발송',rsvp:'참석',mealTicket:true,note:'채식 요청'},
+      {id:'guest-2',name:'김영희',side:'신부 측',group:'직장·동료',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:false}
+    ],
+    giftLedger:[
+      {id:'gift-1',name:'홍길동',side:'신랑 측',group:'친구',channel:'축의대(현금)',amount:100000,mealTickets:2,returnGiftDone:false,thankYouDone:true,note:'현장 전달'}
+    ]
+  });
+  const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
+  assert.deepEqual(parsePreferencesBackup(raw),prefs);
+  for(const bad of [
+    {guestList:'invalid'},
+    {guestList:[{id:'guest-1',name:'',side:'신랑 측',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true}]},
+    {guestList:[{id:'guest-1',name:'홍길동',side:'없는구분',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true}]},
+    {guestList:[{id:'guest-1',name:'홍길동',side:'신랑 측',group:'친구',partySize:0,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true}]},
+    {guestList:[{id:'dup',name:'A',side:'신랑 측',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true},{id:'dup',name:'B',side:'신부 측',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true}]},
+    {giftLedger:'invalid'},
+    {giftLedger:[{id:'gift-1',name:'홍길동',side:'신랑 측',group:'친구',channel:'없는방식',amount:50000,mealTickets:1,returnGiftDone:false,thankYouDone:false}]},
+    {giftLedger:[{id:'gift-1',name:'홍길동',side:'신랑 측',group:'친구',channel:'축의대(현금)',amount:-1000,mealTickets:1,returnGiftDone:false,thankYouDone:false}]},
+    {giftLedger:[{id:'gift-1',name:'홍길동',side:'신랑 측',group:'친구',channel:'축의대(현금)',amount:50000,mealTickets:51,returnGiftDone:false,thankYouDone:false}]}
+  ]){
+    assert.throws(()=>validatePreferences(bad));
+  }
+});

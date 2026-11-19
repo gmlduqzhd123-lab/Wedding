@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#faf9f5">
+  <title>페이지를 이동하고 있어요 · 우리의 결혼 기록</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 16px;
+      background:
+        radial-gradient(ellipse 70% 50% at 15% 10%, rgba(214, 227, 217, 0.45), transparent 60%),
+        radial-gradient(ellipse 60% 50% at 85% 90%, rgba(237, 214, 209, 0.35), transparent 60%),
+        #faf9f5;
+      color: #23201e;
+      font-family: 'SUITE', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      padding: 40px 28px;
+      border-radius: 26px;
+      background: #ffffff;
+      border: 1px solid #dfdacc;
+      box-shadow: 0 18px 42px rgba(34, 48, 38, 0.08);
+      text-align: center;
+    }
+    .mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: #eef3ef;
+      border: 1px solid #cfe0d3;
+      color: #3b5944;
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 21px;
+      line-height: 1.35;
+      color: #23201e;
+    }
+    p {
+      margin: 0 0 22px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #5c5752;
+      word-break: keep-all;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 700;
+      border: 1px solid #3b5944;
+      background: #3b5944;
+      color: #ffffff;
+    }
+    .btn.quiet {
+      background: #ffffff;
+      color: #2c4433;
+      border-color: #cfe0d3;
+    }
+  </style>
+  <script>
+    (function () {
+      var routes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'tips'];
+      var path = location.pathname || '/';
+      var isProjectPath = path === '/Wedding' || path.indexOf('/Wedding/') === 0;
+      var base = isProjectPath ? '/Wedding/' : '/';
+      var rest = path.slice(base.length).replace(/^\/+|\/+$/g, '');
+      var firstSegment = rest.split('/')[0];
+      if (routes.indexOf(firstSegment) !== -1) {
+        location.replace(base + location.search + '#/' + firstSegment);
+      }
+      window.__WEDDING_BASE__ = base;
+    })();
+  </script>
+</head>
+<body>
+  <main class="card">
+    <div class="mark" aria-hidden="true">♥</div>
+    <h1>요청하신 페이지를 찾을 수 없어요</h1>
+    <p>주소가 변경되었거나 해시 경로(<code>#/invitation</code>) 없이 접근하셨습니다. 아래 버튼에서 모바일 청첩장이나 홈으로 바로 이동해 주세요.</p>
+    <div class="actions">
+      <a class="btn" id="go-invitation" href="/Wedding/?view=guest#/invitation">모바일 청첩장 보기</a>
+      <a class="btn quiet" id="go-home" href="/Wedding/">홈으로 이동</a>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var base = window.__WEDDING_BASE__ || '/Wedding/';
+      var inv = document.getElementById('go-invitation');
+      var home = document.getElementById('go-home');
+      if (inv) inv.href = base + '?view=guest#/invitation';
+      if (home) home.href = base;
+    })();
+  </script>
+</body>
+</html>

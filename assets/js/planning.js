@@ -85,3 +85,122 @@ export function shootDeadlineSummary(shootDateStr,now=new Date()){
     penaltyLabel
   };
 }
+
+export function guestListSummary(list = []) {
+  const bySide = {
+    '신랑 측': { records: 0, attending: 0, possible: 0 },
+    '신부 측': { records: 0, attending: 0, possible: 0 },
+    '공통': { records: 0, attending: 0, possible: 0 }
+  };
+  let totalRecords = 0, totalInvitedHeadcount = 0, attendingHeadcount = 0, undecidedHeadcount = 0, declinedHeadcount = 0, mealHeadcount = 0, sentCount = 0, unsentCount = 0;
+  for (const item of Array.isArray(list) ? list : []) {
+    const size = Number.isInteger(item?.partySize) && item.partySize > 0 ? item.partySize : 1;
+    totalRecords++;
+    totalInvitedHeadcount += size;
+    if (item?.inviteStatus && item.inviteStatus !== '미발송') sentCount++;
+    else unsentCount++;
+    const sideBucket = bySide[item?.side] || bySide['공통'];
+    sideBucket.records++;
+    if (item?.rsvp === '참석') {
+      attendingHeadcount += size;
+      sideBucket.attending += size;
+      sideBucket.possible += size;
+      if (item.mealTicket !== false) mealHeadcount += size;
+    } else if (item?.rsvp === '불참') {
+      declinedHeadcount += size;
+    } else {
+      undecidedHeadcount += size;
+      sideBucket.possible += size;
+    }
+  }
+  return {
+    totalRecords,
+    totalInvitedHeadcount,
+    attendingHeadcount,
+    undecidedHeadcount,
+    declinedHeadcount,
+    possibleHeadcount: attendingHeadcount + undecidedHeadcount,
+    mealHeadcount,
+    sentCount,
+    unsentCount,
+    bySide
+  };
+}
+
+export function giftLedgerSummary(list = []) {
+  const bySide = {
+    '신랑 측': { count: 0, amount: 0, mealTickets: 0 },
+    '신부 측': { count: 0, amount: 0, mealTickets: 0 },
+    '공통': { count: 0, amount: 0, mealTickets: 0 }
+  };
+  const byChannel = {
+    '축의대(현금)': { count: 0, amount: 0 },
+    '계좌이체': { count: 0, amount: 0 },
+    '선물·기타': { count: 0, amount: 0 }
+  };
+  let totalRecords = 0, totalAmount = 0, totalMealTickets = 0, returnGiftPending = 0, thankYouPending = 0;
+  for (const item of Array.isArray(list) ? list : []) {
+    const amount = Number.isInteger(item?.amount) && item.amount >= 0 ? item.amount : 0;
+    const tickets = Number.isInteger(item?.mealTickets) && item.mealTickets >= 0 ? item.mealTickets : 0;
+    totalRecords++;
+    totalAmount += amount;
+    totalMealTickets += tickets;
+    if (!item?.returnGiftDone) returnGiftPending++;
+    if (!item?.thankYouDone) thankYouPending++;
+    const sideBucket = bySide[item?.side] || bySide['공통'];
+    sideBucket.count++;
+    sideBucket.amount += amount;
+    sideBucket.mealTickets += tickets;
+    const chBucket = byChannel[item?.channel] || byChannel['선물·기타'];
+    chBucket.count++;
+    chBucket.amount += amount;
+  }
+  return {
+    totalRecords,
+    totalAmount,
+    totalMealTickets,
+    returnGiftPending,
+    thankYouPending,
+    bySide,
+    byChannel
+  };
+}
+
+export function csvEscape(value) {
+  let str = String(value ?? '');
+  if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
+  if (/[",\r\n]/.test(str)) return `"${str.replaceAll('"', '""')}"`;
+  return str;
+}
+
+export function guestsToCsv(list = []) {
+  const header = ['구분', '관계', '성함', '인원수', '청첩장 발송', '참석 여부', '식사 여부', '메모'];
+  const rows = (Array.isArray(list) ? list : []).map(item => [
+    item.side || '',
+    item.group || '',
+    item.name || '',
+    item.partySize ?? 1,
+    item.inviteStatus || '',
+    item.rsvp || '',
+    item.mealTicket === false ? '미식사(답례품)' : '식사',
+    item.note || ''
+  ]);
+  return '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
+}
+
+export function giftsToCsv(list = []) {
+  const header = ['구분', '관계', '성함', '전달 방식', '축의금(원)', '식권(매)', '답례품 전달', '감사 인사', '메모'];
+  const rows = (Array.isArray(list) ? list : []).map(item => [
+    item.side || '',
+    item.group || '',
+    item.name || '',
+    item.channel || '',
+    item.amount ?? 0,
+    item.mealTickets ?? 0,
+    item.returnGiftDone ? '완료' : '미완료',
+    item.thankYouDone ? '완료' : '미완료',
+    item.note || ''
+  ]);
+  return '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
+}
+

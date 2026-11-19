@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-48';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-49';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -106,6 +106,7 @@ export function validateContent(input) {
   const groomAccounts = source.groomAccounts === undefined ? '' : string(source.groomAccounts, 2000);
   const brideAccounts = source.brideAccounts === undefined ? '' : string(source.brideAccounts, 2000);
   const rsvpUrl = source.rsvpUrl === undefined ? '' : link(source.rsvpUrl);
+  const venueMapImage = source.venueMapImage === undefined ? '' : link(source.venueMapImage, true);
   return {
     schemaVersion:1,
     invitation:{
@@ -120,7 +121,8 @@ export function validateContent(input) {
       ...(contacts?{contacts}:{}),
       ...(groomAccounts?{groomAccounts}:{}),
       ...(brideAccounts?{brideAccounts}:{}),
-      ...(rsvpUrl?{rsvpUrl}:{})
+      ...(rsvpUrl?{rsvpUrl}:{}),
+      ...(venueMapImage?{venueMapImage}:{})
     },
     stories:list(input.stories, item => ({ ...record(item), date:date(item.date), body:string(item.body), image:link(item.image,true) })),
     albums:list(input.albums, item => {
@@ -163,6 +165,37 @@ export function invitationCountdownInfo(value, today = new Intl.DateTimeFormat('
   if (value === today) return { status: 'today', days: 0 };
   return value > today ? { status: 'future', days: dateSpan(today, value) } : { status: 'past', days: dateSpan(value, today) };
 }
+export function invitationLiveCountdown(dateStr, timeStr = '', nowMs = Date.now()) {
+  if (!validDate(dateStr) || !Number.isFinite(nowMs)) return null;
+  const hasTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(timeStr || '');
+  const targetMs = Date.parse(`${dateStr}T${hasTime ? timeStr : '00:00'}:00+09:00`);
+  if (!Number.isFinite(targetMs)) return null;
+  const diffMs = targetMs - nowMs;
+  if (diffMs > 0) {
+    const totalSec = Math.floor(diffMs / 1000);
+    return {
+      status: 'future',
+      days: Math.floor(totalSec / 86400),
+      hours: Math.floor((totalSec % 86400) / 3600),
+      minutes: Math.floor((totalSec % 3600) / 60),
+      seconds: totalSec % 60,
+      hasTime
+    };
+  }
+  const ongoingWindowMs = hasTime ? 3 * 3600 * 1000 : 24 * 3600 * 1000;
+  if (diffMs >= -ongoingWindowMs) {
+    return { status: 'ongoing', days: 0, hours: 0, minutes: 0, seconds: 0, hasTime };
+  }
+  const absSec = Math.floor(Math.abs(diffMs) / 1000);
+  return {
+    status: 'past',
+    days: Math.floor(absSec / 86400),
+    hours: Math.floor((absSec % 86400) / 3600),
+    minutes: Math.floor((absSec % 3600) / 60),
+    seconds: absSec % 60,
+    hasTime
+  };
+}
 export function extractPhoneNumber(line) {
   const text = String(line || '');
   const match = text.match(/(?:^|[^\d-])((?:01[016789]|02|0[3-6][1-5]|070|1[568]\d\d)(?:[-\s.]\d{3,4}[-\s.]\d{4}|-\d{4})|01[016789]\d{7,8})(?=$|[^\d-])/);
@@ -190,5 +223,6 @@ export function extractAccountNumber(line, { allowPhoneLike = false } = {}) {
   }
   return null;
 }
+
 
 

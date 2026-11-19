@@ -1,9 +1,14 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-48';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-49';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
 export const PACKING_CATEGORIES = ['📄 필수 서류·결제', '🔌 전자기기·통신', '🏖️ 의류·해변 용품', '💊 상비약·세면·기타'];
 export const VENDOR_CATEGORIES = ['📸 스튜디오', '🏛️ 웨딩홀', '👗 드레스', '💄 메이크업', '🎥 본식스냅·DVD', '💍 예물·예복·한복', '✈️ 신혼여행·기타'];
+export const GUEST_SIDES = ['신랑 측', '신부 측', '공통'];
+export const GUEST_GROUPS = ['가족·친척', '친구', '직장·동료', '지인·기타'];
+export const INVITE_STATUSES = ['미발송', '모바일 발송', '종이 전달', '모바일+종이'];
+export const RSVP_STATUSES = ['미확인', '참석', '미정', '불참'];
+export const GIFT_CHANNELS = ['축의대(현금)', '계좌이체', '선물·기타'];
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 const validMoney = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000000000);
 const validGuestCount = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 10000);
@@ -88,6 +93,71 @@ export function validatePreferences(input) {
       const note = item.note === undefined || item.note === null ? '' : item.note;
       if (typeof note !== 'string' || note.length > 500) throw new Error('업체 일정 메모는 500자 이하로 입력해 주세요.');
       return { id: item.id, category: item.category, name, date: dateStr, done: item.done, ...(note.trim() ? { note: note.trim() } : {}) };
+    });
+  }
+  if (input.guestList !== undefined) {
+    if (!Array.isArray(input.guestList) || input.guestList.length > 500) throw new Error('하객 명단은 500건까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.guestList = input.guestList.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || typeof item.name !== 'string' || !GUEST_SIDES.includes(item.side) || !GUEST_GROUPS.includes(item.group) || !INVITE_STATUSES.includes(item.inviteStatus) || !RSVP_STATUSES.includes(item.rsvp)) {
+        throw new Error('하객 명단 항목 형식을 확인해 주세요.');
+      }
+      const name = item.name.trim();
+      if (!name || name.length > 80 || seen.has(item.id)) throw new Error('하객 이름과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      if (typeof item.partySize !== 'number' || !Number.isInteger(item.partySize) || item.partySize < 1 || item.partySize > 20) {
+        throw new Error('동반 포함 인원은 1명 이상 20명 이하의 정수로 입력해 주세요.');
+      }
+      const mealTicket = item.mealTicket === undefined ? true : item.mealTicket;
+      if (typeof mealTicket !== 'boolean') throw new Error('식사 여부 형식을 확인해 주세요.');
+      const note = item.note === undefined || item.note === null ? '' : item.note;
+      if (typeof note !== 'string' || note.length > 300) throw new Error('하객 메모는 300자 이하로 입력해 주세요.');
+      return {
+        id: item.id,
+        name,
+        side: item.side,
+        group: item.group,
+        partySize: item.partySize,
+        inviteStatus: item.inviteStatus,
+        rsvp: item.rsvp,
+        mealTicket,
+        ...(note.trim() ? { note: note.trim() } : {})
+      };
+    });
+  }
+  if (input.giftLedger !== undefined) {
+    if (!Array.isArray(input.giftLedger) || input.giftLedger.length > 500) throw new Error('축의금 장부는 500건까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.giftLedger = input.giftLedger.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || typeof item.name !== 'string' || !GUEST_SIDES.includes(item.side) || !GUEST_GROUPS.includes(item.group) || !GIFT_CHANNELS.includes(item.channel)) {
+        throw new Error('축의금 장부 항목 형식을 확인해 주세요.');
+      }
+      const name = item.name.trim();
+      if (!name || name.length > 80 || seen.has(item.id)) throw new Error('축의금 기록 이름과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      if (typeof item.amount !== 'number' || !Number.isInteger(item.amount) || item.amount < 0 || item.amount > 100000000) {
+        throw new Error('축의금 금액은 0원 이상 1억 원 이하의 정수로 입력해 주세요.');
+      }
+      if (typeof item.mealTickets !== 'number' || !Number.isInteger(item.mealTickets) || item.mealTickets < 0 || item.mealTickets > 50) {
+        throw new Error('식권 수량은 0매 이상 50매 이하의 정수로 입력해 주세요.');
+      }
+      if (typeof item.returnGiftDone !== 'boolean' || typeof item.thankYouDone !== 'boolean') {
+        throw new Error('답례품·감사 인사 완료 여부를 확인해 주세요.');
+      }
+      const note = item.note === undefined || item.note === null ? '' : item.note;
+      if (typeof note !== 'string' || note.length > 300) throw new Error('축의금 장부 메모는 300자 이하로 입력해 주세요.');
+      return {
+        id: item.id,
+        name,
+        side: item.side,
+        group: item.group,
+        channel: item.channel,
+        amount: item.amount,
+        mealTickets: item.mealTickets,
+        returnGiftDone: item.returnGiftDone,
+        thankYouDone: item.thankYouDone,
+        ...(note.trim() ? { note: note.trim() } : {})
+      };
     });
   }
   if (input.ceremonyPlan !== undefined) {
