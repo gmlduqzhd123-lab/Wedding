@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-47';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-48';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -98,19 +98,29 @@ export function validateContent(input) {
   const source = input.invitation;
   const time = string(source.time, 5);
   if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('예식 시간을 확인해 주세요.');
+  const groomParents = source.groomParents === undefined ? '' : string(source.groomParents, 200);
+  const brideParents = source.brideParents === undefined ? '' : string(source.brideParents, 200);
   const transit = source.transit === undefined ? '' : string(source.transit, 2000);
   const notice = source.notice === undefined ? '' : string(source.notice, 2000);
   const contacts = source.contacts === undefined ? '' : string(source.contacts, 2000);
+  const groomAccounts = source.groomAccounts === undefined ? '' : string(source.groomAccounts, 2000);
+  const brideAccounts = source.brideAccounts === undefined ? '' : string(source.brideAccounts, 2000);
+  const rsvpUrl = source.rsvpUrl === undefined ? '' : link(source.rsvpUrl);
   return {
     schemaVersion:1,
     invitation:{
       partner1:string(source.partner1,100), partner2:string(source.partner2,100),
+      ...(groomParents?{groomParents}:{}),
+      ...(brideParents?{brideParents}:{}),
       date:date(source.date), time,
       venue:string(source.venue,300), address:string(source.address,500),
       mapUrl:link(source.mapUrl), message:string(source.message),
       ...(transit?{transit}:{}),
       ...(notice?{notice}:{}),
-      ...(contacts?{contacts}:{})
+      ...(contacts?{contacts}:{}),
+      ...(groomAccounts?{groomAccounts}:{}),
+      ...(brideAccounts?{brideAccounts}:{}),
+      ...(rsvpUrl?{rsvpUrl}:{})
     },
     stories:list(input.stories, item => ({ ...record(item), date:date(item.date), body:string(item.body), image:link(item.image,true) })),
     albums:list(input.albums, item => {
@@ -148,4 +158,37 @@ export function weddingDday(value, today = new Intl.DateTimeFormat('sv-SE',{time
   if (value === today) return 'D-Day';
   return value > today ? `D-${dateSpan(today, value)}` : `D+${dateSpan(value, today)}`;
 }
+export function invitationCountdownInfo(value, today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())) {
+  if (!validDate(value) || !validDate(today)) return null;
+  if (value === today) return { status: 'today', days: 0 };
+  return value > today ? { status: 'future', days: dateSpan(today, value) } : { status: 'past', days: dateSpan(value, today) };
+}
+export function extractPhoneNumber(line) {
+  const text = String(line || '');
+  const match = text.match(/(?:^|[^\d-])((?:01[016789]|02|0[3-6][1-5]|070|1[568]\d\d)(?:[-\s.]\d{3,4}[-\s.]\d{4}|-\d{4})|01[016789]\d{7,8})(?=$|[^\d-])/);
+  if (!match) return null;
+  const display = match[1].trim();
+  const digits = display.replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 11) return null;
+  return { display, digits, isMobile: /^01[016789]/.test(digits) };
+}
+export function extractAccountNumber(line, { allowPhoneLike = false } = {}) {
+  const text = String(line || '');
+  const hasBankHint = /(은행|뱅크|토스|농협|수협|신협|새마을|우체국|카카오|케이|국민|신한|우리|하나|기업|부산|대구|경남|광주|전북|제주|씨티|SC|IBK|KB|NH|iM|계좌)/i.test(text);
+  const candidates = [...text.matchAll(/(?:^|[^\d-])(\d{2,6}(?:-\d{2,8}){1,3}|\d{10,16})(?=$|[^\d-])/g)]
+    .map(m => {
+      const display = m[1].trim();
+      const digits = display.replace(/\D/g, '');
+      return { display, digits, isPhoneLike: /^(?:01[016789]|02|0[3-6][1-5]|070)\d{7,8}$/.test(digits) && digits.length <= 11 };
+    })
+    .filter(item => item.digits.length >= 10 && item.digits.length <= 16);
+  const primary = candidates.find(item => !item.isPhoneLike);
+  if (primary) return { display: primary.display, digits: primary.digits };
+  if (allowPhoneLike || hasBankHint) {
+    const fallback = candidates[0];
+    if (fallback) return { display: fallback.display, digits: fallback.digits };
+  }
+  return null;
+}
+
 
