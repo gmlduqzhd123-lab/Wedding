@@ -1,6 +1,6 @@
-import { E, button } from './dom.js?v=wedding-features-49';
-import { formatDate } from './content.js?v=wedding-features-49';
-import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-49';
+import { E, button } from './dom.js?v=wedding-features-50';
+import { formatDate } from './content.js?v=wedding-features-50';
+import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-50';
 
 function shiftTime(hhmm, deltaMinutes) {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');

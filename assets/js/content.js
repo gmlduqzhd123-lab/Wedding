@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-49';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-50';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -223,6 +223,91 @@ export function extractAccountNumber(line, { allowPhoneLike = false } = {}) {
   }
   return null;
 }
+
+const INVITATION_DIFF_LABELS = {
+  partner1: '첫 번째 이름',
+  partner2: '두 번째 이름',
+  groomParents: '신랑 측 혼주',
+  brideParents: '신부 측 혼주',
+  date: '예식 날짜',
+  time: '예식 시간',
+  venue: '예식장',
+  address: '예식장 주소',
+  mapUrl: '지도 링크',
+  venueMapImage: '예식장 약도 이미지',
+  message: '초대 인사',
+  transit: '교통·주차 안내',
+  notice: '예식 안내 메모',
+  contacts: '연락처 안내',
+  groomAccounts: '신랑 측 계좌',
+  brideAccounts: '신부 측 계좌',
+  rsvpUrl: 'RSVP 설문 링크'
+};
+
+export function summarizeContentDiff(baseInput, draftInput) {
+  const base = baseInput || {};
+  const draft = draftInput || {};
+  const baseInv = base.invitation || {};
+  const draftInv = draft.invitation || {};
+  const invitationFields = [];
+  for (const [key, label] of Object.entries(INVITATION_DIFF_LABELS)) {
+    const before = String(baseInv[key] ?? '').trim();
+    const after = String(draftInv[key] ?? '').trim();
+    if (before !== after) {
+      invitationFields.push({
+        key,
+        label,
+        status: !before ? 'added' : (!after ? 'removed' : 'modified')
+      });
+    }
+  }
+  const collections = {};
+  let totalCollectionChanges = 0;
+  for (const key of ['stories', 'albums', 'honeymoon', 'tips']) {
+    const baseList = Array.isArray(base[key]) ? base[key] : [];
+    const draftList = Array.isArray(draft[key]) ? draft[key] : [];
+    const baseMap = new Map(baseList.map(item => [item.id, item]));
+    const draftMap = new Map(draftList.map(item => [item.id, item]));
+    const addedTitles = [];
+    const removedTitles = [];
+    const modifiedTitles = [];
+    for (const item of draftList) {
+      if (!baseMap.has(item.id)) {
+        addedTitles.push(item.title || '제목 없음');
+      } else if (JSON.stringify(baseMap.get(item.id)) !== JSON.stringify(item)) {
+        modifiedTitles.push(item.title || '제목 없음');
+      }
+    }
+    for (const item of baseList) {
+      if (!draftMap.has(item.id)) {
+        removedTitles.push(item.title || '제목 없음');
+      }
+    }
+    const baseOrder = baseList.filter(item => draftMap.has(item.id)).map(item => item.id);
+    const draftOrder = draftList.filter(item => baseMap.has(item.id)).map(item => item.id);
+    const reordered = baseOrder.length > 1 && baseOrder.some((id, idx) => draftOrder[idx] !== id);
+    const count = addedTitles.length + removedTitles.length + modifiedTitles.length + (reordered ? 1 : 0);
+    totalCollectionChanges += count;
+    collections[key] = {
+      added: addedTitles.length,
+      removed: removedTitles.length,
+      modified: modifiedTitles.length,
+      reordered,
+      addedTitles,
+      removedTitles,
+      modifiedTitles,
+      total: count
+    };
+  }
+  const totalChanges = invitationFields.length + totalCollectionChanges;
+  return {
+    hasChanges: totalChanges > 0,
+    totalChanges,
+    invitationFields,
+    collections
+  };
+}
+
 
 
 

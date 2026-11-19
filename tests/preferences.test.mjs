@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePreferences, parsePreferencesBackup, persistPreferences, pruneTripPreferences, pruneContentPreferences } from '../assets/js/preferences.js';
+import { validatePreferences, parsePreferencesBackup, persistPreferences, pruneTripPreferences, pruneContentPreferences, mergePreferences, summarizePreferencesMerge } from '../assets/js/preferences.js';
 
 test('private backup preserves notes and choices independently of public content',()=>{
   const preferences=validatePreferences({favorites:['s01'],notes:{s01:'개인 상담 메모'},left:'s01',right:'s02',tripCompare:['trip1','trip2'],tripFavorites:['trip1'],tripSelected:'trip2'});
@@ -119,4 +119,64 @@ test('guestList and giftLedger validate strictly and survive private backup roun
   ]){
     assert.throws(()=>validatePreferences(bad));
   }
+});
+
+test('mergePreferences combines partner A and partner B records safely without losing data or creating duplicates',()=>{
+  const partnerA=validatePreferences({
+    checklist:['d180-hall'],
+    notes:{'studio-09':'신랑 측 촬영 메모'},
+    guestList:[
+      {id:'g-a1',name:'홍길동',side:'신랑 측',group:'친구',partySize:2,inviteStatus:'모바일 발송',rsvp:'참석',mealTicket:true}
+    ],
+    giftLedger:[
+      {id:'f-a1',name:'홍길동',side:'신랑 측',group:'친구',channel:'축의대(현금)',amount:100000,mealTickets:2,returnGiftDone:false,thankYouDone:false}
+    ],
+    budgetPlan:{venue:{planned:15000000,actual:null}}
+  });
+  const partnerB=validatePreferences({
+    checklist:['d180-hall','d120-shoot'],
+    notes:{'studio-09':'신부 측 추가 메모','studio-01':'다른 스튜디오'},
+    guestList:[
+      {id:'g-b-dup',name:'홍길동',side:'신랑 측',group:'친구',partySize:2,inviteStatus:'모바일 발송',rsvp:'참석',mealTicket:true},
+      {id:'g-b1',name:'김영희',side:'신부 측',group:'직장·동료',partySize:1,inviteStatus:'종이 전달',rsvp:'참석',mealTicket:true}
+    ],
+    giftLedger:[
+      {id:'f-b1',name:'김영희',side:'신부 측',group:'직장·동료',channel:'계좌이체',amount:150000,mealTickets:1,returnGiftDone:true,thankYouDone:true}
+    ],
+    vendorSchedules:[
+      {id:'vs-b1',category:'👗 드레스',name:'본식 드레스 투어',date:'2027-03-10',done:false}
+    ],
+    budgetPlan:{venue:{planned:20000000,actual:14000000},sdm:{planned:3200000,actual:null}}
+  });
+
+  const merged=mergePreferences(partnerA,partnerB);
+  assert.equal(merged.guestList.length,2);
+  assert.deepEqual(merged.guestList.map(g=>g.name),['홍길동','김영희']);
+  assert.equal(merged.giftLedger.length,2);
+  assert.deepEqual(merged.checklist,['d180-hall','d120-shoot']);
+  assert.equal(merged.vendorSchedules.length,1);
+  assert(merged.notes['studio-09'].includes('신랑 측 촬영 메모')&&merged.notes['studio-09'].includes('신부 측 추가 메모'));
+  assert.equal(merged.notes['studio-01'],'다른 스튜디오');
+  // Existing planned kept, missing actual filled from incoming
+  assert.equal(merged.budgetPlan.venue.planned,15000000);
+  assert.equal(merged.budgetPlan.venue.actual,14000000);
+  assert.equal(merged.budgetPlan.sdm.planned,3200000);
+
+  const summary=summarizePreferencesMerge(partnerA,merged);
+  assert.equal(summary.guestsAdded,1);
+  assert.equal(summary.giftsAdded,1);
+  assert.equal(summary.schedulesAdded,1);
+  assert.equal(summary.checksAdded,1);
+  assert.equal(summary.notesUpdated,2);
+
+  // Cap enforcement at 500 guests
+  const curBig=validatePreferences({
+    guestList:Array.from({length:498},(_,i)=>({id:`ga-${i}`,name:`하객A${i}`,side:'신랑 측',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true}))
+  });
+  const incBig=validatePreferences({
+    guestList:Array.from({length:10},(_,i)=>({id:`gb-${i}`,name:`하객B${i}`,side:'신부 측',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true}))
+  });
+  const capped=mergePreferences(curBig,incBig);
+  assert.equal(capped.guestList.length,500);
+  assert.throws(()=>mergePreferences(partnerA,{guestList:'invalid'}));
 });

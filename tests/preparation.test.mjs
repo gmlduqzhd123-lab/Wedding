@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv} from '../assets/js/planning.js';
+import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,buildThankYouMessage} from '../assets/js/planning.js';
+import {buildInvitationShareMessages} from '../assets/js/invitation-card.js';
 
 const keys=['venue','sdm','snap','rings','honeymoon','living'];
 test('unknown wedding costs stay unknown, partial amounts are subtotals and notes do not imply zero',()=>{
@@ -66,4 +67,66 @@ test('guest list and gift ledger summaries calculate headcounts, totals, and for
  const fCsv=giftsToCsv([{name:'이수진',side:'신부 측',group:'직장·동료',channel:'계좌이체',amount:200000,mealTickets:0,returnGiftDone:false,thankYouDone:true,note:''}]);
  assert(fCsv.startsWith('\uFEFF구분,관계,성함,전달 방식,축의금(원)'));
  assert(fCsv.includes('200000'));
+});
+
+test('parseCsvRows and parseGuestsCsv round-trip exports, handle flexible headers, and reject malformed input',()=>{
+ const exported=guestsToCsv([
+  {name:'홍길동',side:'신랑 측',group:'친구',partySize:2,inviteStatus:'모바일 발송',rsvp:'참석',mealTicket:true,note:'=SUM(A1), "채식"'},
+  {name:'김영희',side:'신부 측',group:'직장·동료',partySize:1,inviteStatus:'종이 전달',rsvp:'불참',mealTicket:false,note:''}
+ ]);
+ const parsed=parseGuestsCsv(exported);
+ assert.equal(parsed.records.length,2);
+ assert.equal(parsed.records[0].name,'홍길동');
+ assert.equal(parsed.records[0].partySize,2);
+ assert.equal(parsed.records[0].mealTicket,true);
+ assert.equal(parsed.records[0].note,'=SUM(A1), "채식"');
+ assert.equal(parsed.records[1].side,'신부 측');
+ assert.equal(parsed.records[1].rsvp,'불참');
+ assert.equal(parsed.records[1].mealTicket,false);
+
+ // Flexible alias headers + partySize > 20 cap warning + nameless row skip
+ const customCsv='\uFEFF양가,소속,이름,인원,청첩장,참석,식사,비고\n신부,대학 동기,이민정,25,모바일,예,아니오,인원 보정 확인\n신랑,친구,,1,,,,\n,,,\n';
+ const custom=parseGuestsCsv(customCsv);
+ assert.equal(custom.records.length,1);
+ assert.equal(custom.records[0].side,'신부 측');
+ assert.equal(custom.records[0].group,'친구');
+ assert.equal(custom.records[0].partySize,20);
+ assert.equal(custom.records[0].inviteStatus,'모바일 발송');
+ assert.equal(custom.records[0].rsvp,'참석');
+ assert.equal(custom.records[0].mealTicket,false);
+ assert.equal(custom.warnings.length,2);
+ assert.equal(custom.skipped,1);
+
+ assert.throws(()=>parseCsvRows('a,"unclosed'));
+ assert.throws(()=>parseGuestsCsv('구분,관계\n신랑 측,친구'));
+ assert.throws(()=>parseGuestsCsv('성함\n\n'));
+});
+
+test('buildThankYouMessage and buildInvitationShareMessages format couple details and omit missing fields gracefully',()=>{
+ const inv={
+  partner1:'김희엽',
+  partner2:'유미혜',
+  date:'2027-06-05',
+  time:'15:00',
+  venue:'순천아모르웨딩컨벤션 1층',
+  address:'전라남도 순천시 서면 압곡길 94 (압곡리 607)'
+ };
+ const attended=buildThankYouMessage({name:'홍길동',side:'신랑 측',channel:'축의대(현금)',amount:100000},inv,'attended');
+ const remote=buildThankYouMessage({name:'김영희',side:'신부 측',channel:'계좌이체',amount:100000},inv,'remote');
+ assert(attended.includes('홍길동님')&&attended.includes('귀한 걸음')&&attended.includes('김희엽·유미혜'));
+ assert(remote.includes('김영희님')&&remote.includes('따뜻한 마음')&&remote.includes('김희엽·유미혜'));
+
+ const presets=buildInvitationShareMessages(inv,'https://gmlduqzhd123-lab.github.io/Wedding/?view=guest#/invitation');
+ assert.equal(presets.length,3);
+ assert.deepEqual(presets.map(p=>p.id),['formal','friend','parents']);
+ for(const p of presets){
+  assert(p.text.includes('김희엽')&&p.text.includes('유미혜'));
+  assert(p.text.includes('2027년 6월 5일')&&p.text.includes('오후 3시'));
+  assert(p.text.includes('순천아모르웨딩컨벤션 1층'));
+  assert(p.text.includes('https://gmlduqzhd123-lab.github.io/Wedding/?view=guest#/invitation'));
+ }
+
+ const minimal=buildInvitationShareMessages({},'');
+ assert.equal(minimal.length,3);
+ assert(!minimal[0].text.includes('· 일시:')&&!minimal[0].text.includes('▶ 모바일 청첩장 보기'));
 });

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs && node --test",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "share-card": "node scripts/generate-share-card.mjs"
   }
 }

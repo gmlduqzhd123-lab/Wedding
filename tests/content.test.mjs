@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import {parseContent,validateContent,validDate,safeUrl,formatDate,weddingDday,invitationCountdownInfo,invitationLiveCountdown,extractPhoneNumber,extractAccountNumber} from '../assets/js/content.js';
+import {parseContent,validateContent,validDate,safeUrl,formatDate,weddingDday,invitationCountdownInfo,invitationLiveCountdown,extractPhoneNumber,extractAccountNumber,summarizeContentDiff} from '../assets/js/content.js';
 const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 test('content export/import round trip preserves all six menu data including 50 wedding tips',()=>{
  assert.equal(original.tips.length,50);
  assert.equal(new Set(original.tips.map(t=>t.url)).size,50);
  const content=structuredClone(original);
  content.invitation.partner1='우리';content.invitation.date='2027-04-03';content.invitation.time='14:30';
- content.invitation.groomParents='김○○ · 이○○의 장남';content.invitation.brideParents='유○○ · 박○○의 장녀';
+ content.invitation.groomParents='김○○ · 이○○의 장남';content.invitation.brideParents='유○○ · 박○○의 차녀';
  content.invitation.transit='순천역 택시 이용';content.invitation.notice='1층 연회장 식사 안내';content.invitation.contacts='신랑측 연락처 · 010-0000-0000';
  content.invitation.groomAccounts='신랑 김희엽 · 카카오뱅크 3333-01-2345678';content.invitation.brideAccounts='신부 유미혜 · 국민은행 123401-04-123456';
  content.invitation.rsvpUrl='https://docs.google.com/forms/d/e/example/viewform';
@@ -63,4 +63,38 @@ test('duplicate IDs and reversed travel dates are rejected',()=>{
  content.stories=[story,story];assert.throws(()=>validateContent(content));
  content.stories=[];content.honeymoon=[{id:'trip',title:'여행',country:'',startDate:'2027-04-10',endDate:'2027-04-01',budget:null,pros:'',cons:'',body:'',url:''}];
  assert.throws(()=>validateContent(content));
+});
+test('summarizeContentDiff reports invitation changes and collection additions, edits, removals, and reorders',()=>{
+ const same=summarizeContentDiff(original,structuredClone(original));
+ assert.equal(same.hasChanges,false);
+ assert.equal(same.totalChanges,0);
+
+ const base=structuredClone(original);
+ base.albums=[
+  {id:'alb-1',title:'첫 앨범',date:'2027-02-03',body:'촬영',images:[]},
+  {id:'alb-2',title:'둘째 앨범',date:'2027-03-01',body:'데이트',images:[]}
+ ];
+ const draft=structuredClone(base);
+ draft.invitation.groomParents='홍길동 · 김영희 의 장남'; // added
+ draft.invitation.venue='순천아모르웨딩컨벤션 2층'; // modified
+ draft.invitation.address=''; // removed
+ draft.stories.push({id:'st-new',title:'프러포즈 날',date:'2026-12-24',body:'행복한 날',image:''});
+ draft.albums=[draft.albums[1],draft.albums[0]]; // reordered
+ draft.honeymoon[0]={...draft.honeymoon[0],pros:'직접 수정한 장점'}; // modified
+ draft.tips=draft.tips.slice(1); // removed 1 tip
+
+ const diff=summarizeContentDiff(base,draft);
+ assert.equal(diff.hasChanges,true);
+ assert.deepEqual(diff.invitationFields.map(f=>[f.key,f.status]),[
+  ['groomParents','added'],
+  ['venue','modified'],
+  ['address','removed']
+ ]);
+ assert.equal(diff.collections.stories.added,1);
+ assert.deepEqual(diff.collections.stories.addedTitles,['프러포즈 날']);
+ assert.equal(diff.collections.albums.reordered,true);
+ assert.equal(diff.collections.albums.total,1);
+ assert.equal(diff.collections.honeymoon.modified,1);
+ assert.equal(diff.collections.tips.removed,1);
+ assert.equal(diff.totalChanges,7);
 });

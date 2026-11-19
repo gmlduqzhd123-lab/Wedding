@@ -1,6 +1,7 @@
-import { E, button, downloadText } from './dom.js?v=wedding-features-49';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-49';
-import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv } from './planning.js?v=wedding-features-49';
+import { E, button, downloadText } from './dom.js?v=wedding-features-50';
+import { formatDate } from './content.js?v=wedding-features-50';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-50';
+import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, buildThankYouMessage } from './planning.js?v=wedding-features-50';
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
@@ -13,6 +14,321 @@ let giftPendingOnly = false;
 let giftQuery = '';
 
 const won = value => `${Number(value || 0).toLocaleString('ko-KR')}원`;
+
+function printDedicatedSheet(bodyClass, sheetNode) {
+  document.querySelectorAll('.print-only-sheet').forEach(el => el.remove());
+  document.body.classList.remove('print-guest-sheet', 'print-gift-sheet');
+  document.body.appendChild(sheetNode);
+  document.body.classList.add(bodyClass);
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    document.body.classList.remove(bodyClass);
+    sheetNode.remove();
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
+  setTimeout(cleanup, 1500);
+}
+
+function buildGuestPrintSheet(ctx, list) {
+  const info = ctx.getContent()?.invitation || {};
+  const couple = [info.partner1, info.partner2].filter(Boolean).join(' · ') || '웨딩 축의대';
+  const when = [info.date ? formatDate(info.date) : '', info.time || '', info.venue || ''].filter(Boolean).join(' · ');
+  const summary = guestListSummary(list);
+  const sideOrder = { '신랑 측': 0, '신부 측': 1, '공통': 2 };
+  const sorted = [...list].sort((a, b) =>
+    (sideOrder[a.side] ?? 9) - (sideOrder[b.side] ?? 9) ||
+    String(a.group || '').localeCompare(String(b.group || ''), 'ko') ||
+    String(a.name || '').localeCompare(String(b.name || ''), 'ko')
+  );
+  const blankRows = Array.from({ length: 10 }, (_, idx) => E('tr', { class: 'print-blank-row' },
+    E('td', { class: 'num' }, String(sorted.length + idx + 1)),
+    E('td', {}, ''), E('td', {}, ''), E('td', {}, ''), E('td', { class: 'num' }, ''),
+    E('td', {}, ''), E('td', {}, ''), E('td', { class: 'num' }, ''), E('td', {}, '')));
+  return E('section', { class: 'print-only-sheet guest-print-sheet', 'aria-label': '축의대 현장 하객 명부 인쇄 양식' },
+    E('header', { class: 'print-sheet-header' },
+      E('div', {},
+        E('p', { class: 'print-sheet-eyebrow' }, 'RECEPTION DESK GUEST SHEET'),
+        E('h1', {}, `${couple} · 축의대 하객 명부`),
+        when ? E('p', { class: 'print-sheet-meta' }, when) : null),
+      E('div', { class: 'print-sheet-kpis' },
+        E('span', {}, `등록 ${summary.totalRecords}건`),
+        E('span', {}, `참석 확정 ${summary.attendingHeadcount}명`),
+        E('span', {}, `불참 제외 예상 ${summary.possibleHeadcount}명`),
+        E('span', {}, `식사 예정 ${summary.mealHeadcount}명`))),
+    E('table', { class: 'print-sheet-table' },
+      E('thead', {},
+        E('tr', {},
+          ['번호', '양가', '관계', '성함', '인원', '참석·식사', '축의금 (현장기입)', '식권(매)', '메모·비고'].map(col => E('th', { scope: 'col' }, col)))),
+      E('tbody', {},
+        ...sorted.map((item, idx) => E('tr', {},
+          E('td', { class: 'num' }, String(idx + 1)),
+          E('td', {}, item.side || ''),
+          E('td', {}, item.group || ''),
+          E('td', { class: 'strong' }, item.name || ''),
+          E('td', { class: 'num' }, `${item.partySize ?? 1}명`),
+          E('td', {}, `${item.rsvp || '미확인'} · ${item.mealTicket === false ? '미식사' : '식사'}`),
+          E('td', {}, ''),
+          E('td', { class: 'num' }, ''),
+          E('td', {}, item.note || ''))),
+        ...blankRows)),
+    E('p', { class: 'print-sheet-foot' }, '※ 현장 방문 하객은 아래 빈 칸에 성함·축의금·식권 수량을 기록해 주세요. 본 문서는 개인 관리용으로 공개 저장소에 업로드하지 않습니다.'));
+}
+
+function buildGiftPrintSheet(ctx, list) {
+  const info = ctx.getContent()?.invitation || {};
+  const couple = [info.partner1, info.partner2].filter(Boolean).join(' · ') || '웨딩 축의금 정산';
+  const when = [info.date ? formatDate(info.date) : '', info.time || '', info.venue || ''].filter(Boolean).join(' · ');
+  const summary = giftLedgerSummary(list);
+  const sideOrder = { '신랑 측': 0, '신부 측': 1, '공통': 2 };
+  const sorted = [...list].sort((a, b) =>
+    (sideOrder[a.side] ?? 9) - (sideOrder[b.side] ?? 9) ||
+    String(a.name || '').localeCompare(String(b.name || ''), 'ko')
+  );
+  return E('section', { class: 'print-only-sheet gift-print-sheet', 'aria-label': '축의금 정산표 인쇄 양식' },
+    E('header', { class: 'print-sheet-header' },
+      E('div', {},
+        E('p', { class: 'print-sheet-eyebrow' }, 'WEDDING GIFT SETTLEMENT SHEET'),
+        E('h1', {}, `${couple} · 축의금 · 식권 정산표`),
+        when ? E('p', { class: 'print-sheet-meta' }, when) : null),
+      E('div', { class: 'print-sheet-kpis' },
+        E('span', {}, `총 ${summary.totalRecords}건`),
+        E('span', {}, `합계 ${won(summary.totalAmount)}`),
+        E('span', {}, `신랑 측 ${won(summary.bySide['신랑 측'].amount)}`),
+        E('span', {}, `신부 측 ${won(summary.bySide['신부 측'].amount)}`),
+        E('span', {}, `식권 ${summary.totalMealTickets}매`))),
+    E('div', { class: 'print-sheet-subsummary' },
+      E('span', {}, `현금(축의대): ${won(summary.byChannel['축의대(현금)'].amount)} (${summary.byChannel['축의대(현금)'].count}건)`),
+      E('span', {}, `계좌이체: ${won(summary.byChannel['계좌이체'].amount)} (${summary.byChannel['계좌이체'].count}건)`),
+      E('span', {}, `선물·기타: ${won(summary.byChannel['선물·기타'].amount)} (${summary.byChannel['선물·기타'].count}건)`),
+      E('span', {}, `답례품 미전달 ${summary.returnGiftPending}건 · 감사 미완료 ${summary.thankYouPending}건`)),
+    E('table', { class: 'print-sheet-table' },
+      E('thead', {},
+        E('tr', {},
+          ['번호', '양가', '관계', '성함', '전달 방식', '축의금', '식권', '답례품', '감사인사', '메모'].map(col => E('th', { scope: 'col' }, col)))),
+      E('tbody', {},
+        sorted.map((item, idx) => E('tr', {},
+          E('td', { class: 'num' }, String(idx + 1)),
+          E('td', {}, item.side || ''),
+          E('td', {}, item.group || ''),
+          E('td', { class: 'strong' }, item.name || ''),
+          E('td', {}, item.channel || ''),
+          E('td', { class: 'num strong' }, won(item.amount)),
+          E('td', { class: 'num' }, `${item.mealTickets ?? 0}매`),
+          E('td', { class: 'num' }, item.returnGiftDone ? '✓' : '□'),
+          E('td', { class: 'num' }, item.thankYouDone ? '✓' : '□'),
+          E('td', {}, item.note || '')))),
+      E('tfoot', {},
+        E('tr', {},
+          E('th', { scope: 'row', colspan: '5' }, `합계 (${summary.totalRecords}건)`),
+          E('td', { class: 'num strong' }, won(summary.totalAmount)),
+          E('td', { class: 'num strong' }, `${summary.totalMealTickets}매`),
+          E('td', { colspan: '3' }, `감사 미완료 ${summary.thankYouPending}건 · 답례품 미전달 ${summary.returnGiftPending}건`)))),
+    E('p', { class: 'print-sheet-foot' }, '※ 본 정산표는 이 기기 개인 설정에서 인쇄한 문서입니다. 공개 저장소나 외부에 업로드하지 마세요.'));
+}
+
+export function openGuestCsvImportModal(ctx) {
+  if (ctx.isGuestMode()) return;
+  const form = E('form', { class: 'editor-form' });
+  const fileInput = E('input', { type: 'file', accept: '.csv,text/csv', class: 'file-input', id: 'guest-csv-file', 'aria-label': '하객 명단 CSV 파일 선택' });
+  const previewWrap = E('div', { class: 'csv-import-preview', 'aria-live': 'polite' });
+  const modeSkipRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'skip', id: 'csv-mode-skip', checked: true });
+  const modeAllRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'all', id: 'csv-mode-all' });
+  const modeWrap = E('div', { class: 'pref-restore-modes', hidden: true },
+    E('label', { class: 'check-label', for: modeSkipRadio.id }, modeSkipRadio, '같은 양가·성함 중복 건너뛰고 추가 (권장)'),
+    E('label', { class: 'check-label', for: modeAllRadio.id }, modeAllRadio, '중복 포함 전체 추가 (동명이인 포함)'));
+
+  const submit = E('button', { class: 'button', type: 'submit', disabled: true }, '하객 명단에 가져오기');
+  let parsed = null;
+  let saving = false;
+
+  const existingKeySet = () => new Set((ctx.getPrefs().guestList || []).map(g => `${g.side}|${String(g.name || '').trim().toLocaleLowerCase()}`));
+
+  const computeToAdd = () => {
+    if (!parsed) return [];
+    if (modeAllRadio.checked) return parsed.records;
+    const seen = existingKeySet();
+    const out = [];
+    for (const rec of parsed.records) {
+      const k = `${rec.side}|${rec.name.trim().toLocaleLowerCase()}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(rec);
+    }
+    return out;
+  };
+
+  const renderPreview = () => {
+    if (!parsed) {
+      previewWrap.replaceChildren();
+      modeWrap.hidden = true;
+      submit.disabled = true;
+      return;
+    }
+    const curCount = (ctx.getPrefs().guestList || []).length;
+    const seen = existingKeySet();
+    let dupCount = 0;
+    const seenBatch = new Set(seen);
+    for (const rec of parsed.records) {
+      const k = `${rec.side}|${rec.name.trim().toLocaleLowerCase()}`;
+      if (seenBatch.has(k)) dupCount++;
+      else seenBatch.add(k);
+    }
+    const toAdd = computeToAdd();
+    const overCap = curCount + toAdd.length > 500;
+    modeWrap.hidden = false;
+    submit.disabled = saving || toAdd.length === 0 || overCap;
+    submit.textContent = toAdd.length > 0 ? `${toAdd.length}건 하객 명단에 추가` : '추가할 새 하객 없음';
+
+    const headRows = parsed.records.slice(0, 8);
+    previewWrap.replaceChildren(...[
+      E('p', { class: 'form-note' + (overCap ? ' warning' : '') },
+        `총 ${parsed.records.length}건 인식 (기존 명단과 중복 ${dupCount}건${parsed.skipped ? ` · 빈 행 제외 ${parsed.skipped}건` : ''}) → 현재 선택 기준 ${toAdd.length}건 추가 예정 (합계 ${curCount + toAdd.length}/500건)` +
+        (overCap ? '\n하객 명단은 최대 500건까지 보관할 수 있습니다. 중복 제외를 선택하거나 행 수를 줄여 주세요.' : '')),
+      parsed.warnings.length ? E('p', { class: 'small muted' }, `참고 안내: ${parsed.warnings.slice(0, 3).join(' / ')}${parsed.warnings.length > 3 ? ` 외 ${parsed.warnings.length - 3}건` : ''}`) : null,
+      E('div', { class: 'table-scroll' },
+        E('table', { class: 'csv-preview-table' },
+          E('thead', {}, E('tr', {}, ['구분', '관계', '성함', '인원', '발송', '참석', '식사'].map(h => E('th', { scope: 'col' }, h)))),
+          E('tbody', {}, headRows.map(r => E('tr', {},
+            E('td', {}, r.side),
+            E('td', {}, r.group),
+            E('td', {}, r.name),
+            E('td', {}, `${r.partySize}명`),
+            E('td', {}, r.inviteStatus),
+            E('td', {}, r.rsvp),
+            E('td', {}, r.mealTicket ? '식사' : '미식사')))))),
+      parsed.records.length > headRows.length ? E('p', { class: 'small muted' }, `… 외 ${parsed.records.length - headRows.length}건 더 있습니다.`) : null
+    ].filter(Boolean));
+  };
+
+  modeSkipRadio.addEventListener('change', renderPreview);
+  modeAllRadio.addEventListener('change', renderPreview);
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) { parsed = null; renderPreview(); return; }
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error('CSV 파일은 2MB 이하로 선택해 주세요.');
+      const text = await file.text();
+      parsed = parseGuestsCsv(text);
+      renderPreview();
+    } catch (error) {
+      parsed = null;
+      renderPreview();
+      ctx.toast(error.message || 'CSV 파일을 읽지 못했습니다.', true);
+    }
+  });
+
+  const downloadSample = () => {
+    const sampleCsv = guestsToCsv([
+      { side: '신랑 측', group: '친구', name: '예시_홍길동', partySize: 2, inviteStatus: '모바일 발송', rsvp: '참석', mealTicket: true, note: '가족 동반 2명' },
+      { side: '신부 측', group: '직장·동료', name: '예시_김영희', partySize: 1, inviteStatus: '종이 전달', rsvp: '미확인', mealTicket: true, note: '' },
+      { side: '공통', group: '지인·기타', name: '예시_이철수', partySize: 1, inviteStatus: '미발송', rsvp: '불참', mealTicket: false, note: '답례품 전달 예정' }
+    ]);
+    downloadText(sampleCsv, 'wedding-guest-sample.csv', 'text/csv;charset=utf-8');
+    ctx.toast('하객 명단 예시 양식(wedding-guest-sample.csv)을 내려받았습니다.');
+  };
+
+  form.append(
+    E('p', { class: 'form-note' }, '엑셀이나 구글 시트에서 정리한 CSV 파일(UTF-8)을 한 번에 가져올 수 있습니다. 첫 행에 ‘성함’(또는 ‘이름’) 열이 있어야 하며, 구분·관계·인원수·청첩장 발송·참석 여부·식사 여부·메모 열은 자동으로 인식합니다. 가져온 명단은 이 기기에만 저장됩니다.'),
+    E('div', { class: 'page-actions' }, button('📄 예시 CSV 양식 받기', downloadSample, 'button quiet')),
+    E('label', { class: 'field', for: fileInput.id }, '하객 명단 CSV 파일 선택', fileInput),
+    modeWrap,
+    previewWrap,
+    E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit)
+  );
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (saving || !parsed) return;
+    const toAdd = computeToAdd();
+    const curList = [...(ctx.getPrefs().guestList || [])];
+    if (!toAdd.length) { ctx.toast('새로 추가할 하객이 없습니다.', true); return; }
+    if (curList.length + toAdd.length > 500) { ctx.toast('하객 명단은 500건까지 보관할 수 있습니다.', true); return; }
+    const additions = toAdd.map(rec => ({
+      id: 'guest-' + crypto.randomUUID().slice(0, 8),
+      ...rec
+    }));
+    const nextList = [...curList, ...additions];
+    saving = true;
+    submit.disabled = true;
+    try {
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), guestList: nextList }));
+      if (saved) {
+        ctx.closeDialog();
+        ctx.render();
+        ctx.toast(`CSV에서 하객 ${additions.length}건을 명단에 추가했습니다.`);
+      }
+    } catch (error) {
+      ctx.toast(ctx.storageMessage(error), true);
+    } finally {
+      saving = false;
+      renderPreview();
+    }
+  });
+
+  if (ctx.showDialog('📤 하객 명단 CSV 일괄 가져오기', form)) {
+    ctx.setEditorState({ isDirty: () => saving || Boolean(parsed), isSaving: () => saving });
+  }
+}
+
+export function openThankYouModal(ctx, gift) {
+  if (ctx.isGuestMode() || !gift) return;
+  const info = ctx.getContent()?.invitation || {};
+  let variant = (gift.channel === '계좌이체' && Number(gift.mealTickets || 0) === 0) ? 'remote' : 'attended';
+  const ta = E('textarea', { rows: '9', id: 'thank-you-msg-text', 'aria-label': `${gift.name}님 감사 인사 문구` });
+  ta.value = buildThankYouMessage(gift, info, variant);
+
+  const variantBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '감사 인사 상황 선택' });
+  const drawTabs = () => {
+    variantBar.replaceChildren(...[
+      ['attended', '💐 참석 하객 감사 인사'],
+      ['remote', '💌 불참·마음 전달 감사 인사']
+    ].map(([key, label]) => {
+      const btn = button(label, () => {
+        variant = key;
+        ta.value = buildThankYouMessage(gift, info, variant);
+        drawTabs();
+        ta.focus({ preventScroll: true });
+      }, 'button quiet trip-filter-chip');
+      btn.setAttribute('aria-pressed', String(variant === key));
+      return btn;
+    }));
+  };
+  drawTabs();
+
+  const copyAndMarkBtn = button(gift.thankYouDone ? '📋 문구 복사 (감사완료됨)' : '📋 복사 + 감사완료 체크', async () => {
+    const text = ta.value.trim();
+    if (!text) return;
+    const copied = await ctx.copyTextToClipboard(text, `${gift.name}님 감사 인사 문구를 복사했습니다.`, '감사 인사 복사');
+    if (!gift.thankYouDone) {
+      const saved = await ctx.queuePreference(async () => {
+        const cur = ctx.getPrefs().giftLedger || [];
+        const next = cur.map(item => (item.id === gift.id ? { ...item, thankYouDone: true } : item));
+        return ctx.savePrefs({ ...ctx.getPrefs(), giftLedger: next });
+      });
+      if (saved) {
+        if (copied) ctx.closeDialog();
+        ctx.render();
+        ctx.toast(copied ? `${gift.name}님 감사 문구를 복사하고 ‘감사인사 완료’로 표시했습니다.` : `${gift.name}님을 ‘감사인사 완료’로 표시했습니다. 열린 창에서 문구를 복사해 주세요.`);
+      }
+    }
+  }, 'button');
+
+  const body = E('div', { class: 'editor-form share-msg-modal' },
+    E('p', { class: 'form-note' }, `${gift.name}님(${gift.side} · ${gift.channel} · ${won(gift.amount)})에게 보낼 감사 인사 문구입니다. 필요에 맞게 내용을 다듬은 뒤 복사해 카카오톡이나 문자로 보내세요.`),
+    variantBar,
+    E('label', { class: 'field', for: ta.id }, '감사 인사 문구 (수정 가능)', ta),
+    E('div', { class: 'page-actions' },
+      copyAndMarkBtn,
+      button('문구만 복사', () => ctx.copyTextToClipboard(ta.value.trim(), `${gift.name}님 감사 문구를 복사했습니다.`, '감사 인사 복사'), 'button quiet'),
+      button('닫기', ctx.closeDialog, 'button quiet')));
+
+  ctx.showDialog(`💬 ${gift.name}님 감사 인사 문구`, body);
+}
 
 export function openGuestEditor(ctx, existing = null) {
   if (ctx.isGuestMode()) return;
@@ -323,7 +639,9 @@ export function renderGuestListBoard(ctx) {
         E('p', {}, '양가 하객 명단, 청첩장 발송 상태, 참석·식사 여부를 정리하고 웨딩홀 식대 시뮬레이터의 예상 인원과 연동할 수 있습니다. (이 기기 전용 · 방문자 화면 및 공개 site.json 제외)')),
       E('div', { class: 'page-actions guest-board-toolbar' },
         button('+ 하객 추가', () => openGuestEditor(ctx)),
+        button('📤 CSV 가져오기', () => openGuestCsvImportModal(ctx), 'button quiet'),
         list.length ? button(`🏛️ ${syncModeLabel}(${syncTarget}명) 시뮬레이터 반영`, syncVenueGuestCount, 'button quiet') : null,
+        button('🖨️ 축의대 명부 인쇄', () => printDedicatedSheet('print-guest-sheet', buildGuestPrintSheet(ctx, list)), 'button quiet'),
         list.length ? button('📥 CSV 내보내기', () => {
           downloadText(guestsToCsv(list), 'wedding-guest-list.csv', 'text/csv;charset=utf-8');
           ctx.toast('하객 명단(wedding-guest-list.csv)을 내려받았습니다.');
@@ -425,6 +743,7 @@ export function renderGiftLedgerBoard(ctx) {
         E('div', { class: 'ledger-row-controls' },
           E('label', { class: 'ledger-inline-check' }, retBox, '답례품'),
           E('label', { class: 'ledger-inline-check' }, thxBox, '감사인사'),
+          button('💬 감사문자', () => openThankYouModal(ctx, item), 'checklist-note-btn'),
           button('수정', () => openGiftEditor(ctx, item), 'checklist-note-btn'),
           button('삭제', () => {
             if (!confirm(`'${item.name}' 축의금 기록을 삭제할까요?`)) return;
@@ -451,6 +770,7 @@ export function renderGiftLedgerBoard(ctx) {
         E('p', {}, '본식 축의금, 식권 지급 매수, 답례품 전달과 감사 인사 완료 여부를 기록하고 엑셀(CSV)로 내려받을 수 있습니다. (이 기기 전용 · 계좌번호 등 민감 정보 입력 금지)')),
       E('div', { class: 'page-actions gift-ledger-toolbar' },
         button('+ 축의금 기록', () => openGiftEditor(ctx)),
+        list.length ? button('🖨️ 정산표 인쇄', () => printDedicatedSheet('print-gift-sheet', buildGiftPrintSheet(ctx, list)), 'button quiet') : null,
         list.length ? button('📥 CSV 내보내기', () => {
           downloadText(giftsToCsv(list), 'wedding-gift-ledger.csv', 'text/csv;charset=utf-8');
           ctx.toast('축의금 정산 장부(wedding-gift-ledger.csv)를 내려받았습니다.');

@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-49';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-50';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -257,3 +257,155 @@ export function persistPreferences(storage, key, next) {
   storage.setItem(key, JSON.stringify(valid));
   return valid;
 }
+
+function mergeNoteMap(currentMap, incomingMap, maxLen, maxEntries) {
+  if (currentMap === undefined && incomingMap === undefined) return undefined;
+  const result = { ...(currentMap || {}) };
+  for (const [key, rawVal] of Object.entries(incomingMap || {})) {
+    const val = String(rawVal || '').trim();
+    if (!val) continue;
+    const prev = String(result[key] || '').trim();
+    if (!prev) {
+      if (Object.keys(result).length < maxEntries) result[key] = val.slice(0, maxLen);
+    } else if (prev !== val && !prev.includes(val)) {
+      const combined = `${prev}\n---\n${val}`;
+      result[key] = combined.length <= maxLen ? combined : prev;
+    }
+  }
+  return result;
+}
+
+function mergeIdList(currentList, incomingList, cap = 1000) {
+  if (currentList === undefined && incomingList === undefined) return undefined;
+  return [...new Set([...(currentList || []), ...(incomingList || [])])].slice(0, cap);
+}
+
+function mergeRecordList(currentList, incomingList, { cap, dedupeKey }) {
+  if (currentList === undefined && incomingList === undefined) return undefined;
+  const base = [...(currentList || [])];
+  const seenIds = new Set(base.map(item => item.id));
+  const seenKeys = new Set(dedupeKey ? base.map(dedupeKey) : []);
+  for (const item of incomingList || []) {
+    if (base.length >= cap) break;
+    if (seenIds.has(item.id)) continue;
+    const key = dedupeKey ? dedupeKey(item) : '';
+    if (key && seenKeys.has(key)) continue;
+    base.push(structuredClone(item));
+    seenIds.add(item.id);
+    if (key) seenKeys.add(key);
+  }
+  return base;
+}
+
+export function mergePreferences(currentInput, incomingInput) {
+  const cur = validatePreferences(currentInput || {});
+  const inc = validatePreferences(incomingInput || {});
+  const merged = {
+    favorites: mergeIdList(cur.favorites, inc.favorites, 1000) || [],
+    notes: mergeNoteMap(cur.notes, inc.notes, 1000, 1000) || {},
+    tripFavorites: mergeIdList(cur.tripFavorites, inc.tripFavorites, 1000) || [],
+    tripCompare: mergeIdList(cur.tripCompare, inc.tripCompare, 2) || []
+  };
+
+  for (const key of ['tipFavorites', 'checklist', 'packingList', 'shootChecklist', 'ceremonyChecks']) {
+    const list = mergeIdList(cur[key], inc[key], 1000);
+    if (list !== undefined) merged[key] = list;
+  }
+  const checklistNotes = mergeNoteMap(cur.checklistNotes, inc.checklistNotes, 300, 200);
+  if (checklistNotes !== undefined) merged.checklistNotes = checklistNotes;
+  const tripNotes = mergeNoteMap(cur.tripNotes, inc.tripNotes, 1000, 200);
+  if (tripNotes !== undefined) merged.tripNotes = tripNotes;
+  const tipNotes = mergeNoteMap(cur.tipNotes, inc.tipNotes, 500, 200);
+  if (tipNotes !== undefined) merged.tipNotes = tipNotes;
+
+  const customChecklist = mergeRecordList(cur.customChecklist, inc.customChecklist, { cap: 50, dedupeKey: item => `${item.stage}|${item.title}` });
+  if (customChecklist !== undefined) merged.customChecklist = customChecklist;
+  const customPackingList = mergeRecordList(cur.customPackingList, inc.customPackingList, { cap: 80, dedupeKey: item => `${item.category}|${item.title}` });
+  if (customPackingList !== undefined) merged.customPackingList = customPackingList;
+  const vendorSchedules = mergeRecordList(cur.vendorSchedules, inc.vendorSchedules, { cap: 60, dedupeKey: item => `${item.category}|${item.name}|${item.date || ''}` });
+  if (vendorSchedules !== undefined) merged.vendorSchedules = vendorSchedules;
+  const guestList = mergeRecordList(cur.guestList, inc.guestList, { cap: 500, dedupeKey: item => `${item.side}|${item.name}|${item.group}` });
+  if (guestList !== undefined) merged.guestList = guestList;
+  const giftLedger = mergeRecordList(cur.giftLedger, inc.giftLedger, { cap: 500, dedupeKey: item => `${item.side}|${item.name}|${item.group}|${item.channel}|${item.amount}` });
+  if (giftLedger !== undefined) merged.giftLedger = giftLedger;
+
+  if (cur.ceremonyPlan !== undefined || inc.ceremonyPlan !== undefined) {
+    const a = cur.ceremonyPlan || {};
+    const b = inc.ceremonyPlan || {};
+    const cPlan = { style: a.style || b.style || 'noOfficiant' };
+    for (const key of ['mc', 'song', 'speech', 'banquetFloor', 'note', 'vows', 'declaration']) {
+      const val = a[key] || b[key];
+      if (val) cPlan[key] = val;
+    }
+    merged.ceremonyPlan = cPlan;
+  }
+  if (cur.venueSim !== undefined || inc.venueSim !== undefined) {
+    const a = cur.venueSim || {};
+    const b = inc.venueSim || {};
+    merged.venueSim = {
+      mealPrice: a.mealPrice ?? b.mealPrice ?? null,
+      guestCount: a.guestCount ?? b.guestCount ?? null,
+      minGuarantee: a.minGuarantee ?? b.minGuarantee ?? null,
+      hallFee: a.hallFee ?? b.hallFee ?? null,
+      deposit: a.deposit ?? b.deposit ?? null,
+      ...((a.note || b.note) ? { note: a.note || b.note } : {})
+    };
+  }
+  if (cur.sdmSim !== undefined || inc.sdmSim !== undefined) {
+    const a = cur.sdmSim || {};
+    const b = inc.sdmSim || {};
+    merged.sdmSim = {
+      packageFee: a.packageFee ?? b.packageFee ?? null,
+      helperFee: a.helperFee ?? b.helperFee ?? null,
+      extraFee: a.extraFee ?? b.extraFee ?? null,
+      deposit: a.deposit ?? b.deposit ?? null,
+      roadScene: Boolean(a.roadScene || b.roadScene),
+      nightShoot: Boolean(a.nightShoot || b.nightShoot),
+      ...((a.note || b.note) ? { note: a.note || b.note } : {})
+    };
+  }
+  if (cur.budgetPlan !== undefined || inc.budgetPlan !== undefined) {
+    const plan = {};
+    for (const key of BUDGET_KEYS) {
+      const a = cur.budgetPlan?.[key];
+      const b = inc.budgetPlan?.[key];
+      if (!a && !b) continue;
+      plan[key] = {
+        planned: a?.planned ?? b?.planned ?? null,
+        actual: a?.actual ?? b?.actual ?? null,
+        ...((a?.note || b?.note) ? { note: a?.note || b?.note } : {})
+      };
+    }
+    merged.budgetPlan = plan;
+  }
+  for (const key of ['left', 'right', 'tripSelected', 'studioSelected']) {
+    const val = cur[key] || inc[key];
+    if (val) merged[key] = val;
+  }
+  return validatePreferences(merged);
+}
+
+export function summarizePreferencesMerge(currentInput, mergedInput) {
+  const cur = validatePreferences(currentInput || {});
+  const mer = validatePreferences(mergedInput || {});
+  const diffLen = (a, b) => Math.max(0, (b?.length || 0) - (a?.length || 0));
+  const diffKeys = (a, b) => {
+    const curObj = a || {};
+    const merObj = b || {};
+    let changed = 0;
+    for (const [k, v] of Object.entries(merObj)) {
+      if ((curObj[k] || '') !== (v || '')) changed++;
+    }
+    return changed;
+  };
+  return {
+    guestsAdded: diffLen(cur.guestList, mer.guestList),
+    giftsAdded: diffLen(cur.giftLedger, mer.giftLedger),
+    schedulesAdded: diffLen(cur.vendorSchedules, mer.vendorSchedules),
+    checksAdded: diffLen(cur.checklist, mer.checklist) + diffLen(cur.shootChecklist, mer.shootChecklist) + diffLen(cur.ceremonyChecks, mer.ceremonyChecks) + diffLen(cur.packingList, mer.packingList),
+    customItemsAdded: diffLen(cur.customChecklist, mer.customChecklist) + diffLen(cur.customPackingList, mer.customPackingList),
+    favoritesAdded: diffLen(cur.favorites, mer.favorites) + diffLen(cur.tripFavorites, mer.tripFavorites) + diffLen(cur.tipFavorites, mer.tipFavorites),
+    notesUpdated: diffKeys(cur.notes, mer.notes) + diffKeys(cur.tripNotes, mer.tripNotes) + diffKeys(cur.tipNotes, mer.tipNotes) + diffKeys(cur.checklistNotes, mer.checklistNotes)
+  };
+}
+

@@ -1,5 +1,6 @@
-import { E, S, image } from './dom.js?v=wedding-features-49';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-49';
+import { E, S, image } from './dom.js?v=wedding-features-50';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-50';
+import { renderQrSvgString } from './qrcode.js?v=wedding-features-50';
 
 const MONTH_NAMES_EN = ['', 'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 
@@ -10,6 +11,77 @@ export function formatKoreanTimeLabel(timeStr) {
   const period = h < 12 ? '오전' : '오후';
   const h12 = h % 12 || 12;
   return `${period} ${h12}시${min ? ` ${min}분` : ''}`;
+}
+
+export function buildInvitationShareMessages(info = {}, publicUrl = '') {
+  const p1 = (info.partner1 || '').replace(/^신랑\s*/, '').trim();
+  const p2 = (info.partner2 || '').replace(/^신부\s*/, '').trim();
+  const coupleShort = (p1 && p2) ? `${p1} · ${p2}` : (p1 || p2 || '저희 두 사람');
+  const coupleRoles = (p1 && p2) ? `신랑 ${p1} ♥ 신부 ${p2}` : coupleShort;
+  const datePart = info.date ? formatDate(info.date) : '';
+  const timePart = info.time ? formatKoreanTimeLabel(info.time) : '';
+  const whenLine = [datePart, timePart].filter(Boolean).join(' ');
+  const venue = (info.venue || '').trim();
+  const address = (info.address || '').trim();
+  const url = (publicUrl || '').trim();
+
+  const detailLines = [
+    whenLine ? `· 일시: ${whenLine}` : '',
+    venue ? `· 장소: ${venue}` : '',
+    address ? `· 주소: ${address}` : ''
+  ].filter(Boolean);
+  const detailsBlock = detailLines.length ? ['', ...detailLines] : [];
+  const urlBlock = url ? ['', '▶ 모바일 청첩장 보기', url] : [];
+
+  return [
+    {
+      id: 'formal',
+      label: '직장·어른 정중한 인사',
+      audience: '직장 상사·선배·어르신께 보내기 좋은 격식 있는 문구',
+      text: [
+        `[결혼식 초대] ${coupleRoles}`,
+        '',
+        '안녕하세요. 늘 따뜻한 관심과 배려에 깊이 감사드립니다.',
+        '바쁘신 가운데서도 직접 찾아뵙고 인사드리는 것이 도리이나,',
+        '이렇게 모바일 청첩장으로 먼저 소식을 전하게 되어 송구스러운 마음입니다.',
+        '',
+        '귀한 걸음으로 함께해 주셔서 두 사람의 새로운 출발을 축복해 주시면',
+        '더없는 기쁨으로 간직하겠습니다.',
+        ...detailsBlock,
+        ...urlBlock
+      ].join('\n')
+    },
+    {
+      id: 'friend',
+      label: '친구·지인 따뜻한 안내',
+      audience: '가까운 친구·동료·지인에게 부담 없이 전하는 문구',
+      text: [
+        `💌 ${coupleShort} 결혼합니다!`,
+        '',
+        '오랜 인연으로 소중한 하루하루를 함께해 온 저희 두 사람이',
+        '드디어 결혼이라는 새로운 시작을 하게 되었어요.',
+        '편한 마음으로 오셔서 맛있는 식사도 함께하고,',
+        '기쁜 날 자리를 빛내 주시면 정말 감사하겠습니다 :)',
+        ...detailsBlock,
+        ...urlBlock
+      ].join('\n')
+    },
+    {
+      id: 'parents',
+      label: '부모님·친척 전달용',
+      audience: '양가 부모님과 친지분들이 지인께 전달하실 때 쓰는 문구',
+      text: [
+        `[결혼 안내] ${coupleRoles}`,
+        '',
+        '평소 아껴 주시고 보살펴 주신 은혜에 깊이 감사드립니다.',
+        `저희 아이들(${coupleShort})이 사랑과 믿음으로 한 가정을 이루게 되었습니다.`,
+        '바쁘시더라도 귀한 걸음으로 참석하시어',
+        '앞날을 축복하고 격려해 주시면 감사하겠습니다.',
+        ...detailsBlock,
+        ...urlBlock
+      ].join('\n')
+    }
+  ];
 }
 
 export function renderInvitationCornerMarks() {
@@ -320,15 +392,63 @@ async function loadImageSafe(src) {
   });
 }
 
-export async function renderInvitationCardCanvas(info = {}, albums = []) {
+async function loadQrSvgImage(url) {
+  if (!url) return null;
+  try {
+    const svgMarkup = renderQrSvgString(url, { margin: 2 });
+    const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    return await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(blobUrl); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
+      img.src = blobUrl;
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function renderInvitationCardCanvas(info = {}, albums = [], options = {}) {
   if (document.fonts?.ready) {
     try { await document.fonts.ready; } catch {}
   }
-  const W = 1080, H = 1520;
+  const W = 1080;
   const canvas = document.createElement('canvas');
   canvas.width = W;
-  canvas.height = H;
+  canvas.height = 1520;
   const ctx = canvas.getContext('2d');
+
+  // Pre-measure dynamic text blocks & optional QR image before committing canvas height
+  const p1 = (info.partner1 || '').replace(/^신랑\s*/, '').trim();
+  const p2 = (info.partner2 || '').replace(/^신부\s*/, '').trim();
+  const gp = (info.groomParents || '').trim();
+  const bp = (info.brideParents || '').trim();
+  const plaqueY = 710;
+  const plaqueH = (gp && bp) ? 190 : ((gp || bp) ? 156 : 114);
+
+  ctx.font = '500 24px SUITE, sans-serif';
+  const msgLines = (info.message || '').trim() ? wrapCanvasLines(ctx, info.message, 740, 4) : [];
+
+  ctx.font = '500 22px SUITE, sans-serif';
+  const addrLines = (info.address || '').trim() ? wrapCanvasLines(ctx, info.address, 740, 2) : [];
+
+  const shareUrl = options.includeQr ? String(options.shareUrl || '').trim() : '';
+  const qrImg = shareUrl ? await loadQrSvgImage(shareUrl) : null;
+
+  const msgStartY = plaqueY + plaqueH + 40;
+  const afterMsgY = msgLines.length ? (msgStartY + msgLines.length * 36 + 18) : (plaqueY + plaqueH + 34);
+  const dateBoxY = Math.max(afterMsgY, 870);
+  const dateBoxH = 136;
+  const venueBoxY = dateBoxY + dateBoxH + 22;
+  const venueBoxH = addrLines.length >= 2 ? 178 : (addrLines.length === 1 ? 150 : 122);
+  const qrBoxY = venueBoxY + venueBoxH + 24;
+  const qrBoxH = qrImg ? 214 : 0;
+  const contentBottomY = qrImg ? (qrBoxY + qrBoxH) : (venueBoxY + venueBoxH);
+  const H = Math.max(1520, contentBottomY + 174);
+  const footerY = H - 108;
+
+  canvas.height = H;
 
   // Outer botanical paper backdrop
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -415,12 +535,6 @@ export async function renderInvitationCardCanvas(info = {}, albums = []) {
   if (!drewPhoto) drawCanvasBotanicalArch(ctx, W / 2, 314);
 
   // Couple plaque
-  const p1 = (info.partner1 || '').replace(/^신랑\s*/, '').trim();
-  const p2 = (info.partner2 || '').replace(/^신부\s*/, '').trim();
-  const gp = (info.groomParents || '').trim();
-  const bp = (info.brideParents || '').trim();
-  const plaqueY = 710;
-  const plaqueH = (gp || bp) ? 186 : 114;
   drawRoundedRect(ctx, 146, plaqueY, W - 292, plaqueH, 28);
   const plaqueGrad = ctx.createLinearGradient(0, plaqueY, 0, plaqueY + plaqueH);
   plaqueGrad.addColorStop(0, '#fcfbf7');
@@ -446,31 +560,23 @@ export async function renderInvitationCardCanvas(info = {}, albums = []) {
     ctx.font = '600 22px SUITE, sans-serif';
     ctx.fillStyle = '#4f554f';
     if (gp) ctx.fillText(`${gp}${p1 ? ` ${p1}` : ''}`, W / 2, plaqueY + 132);
-    if (bp) ctx.fillText(`${bp}${p2 ? ` ${p2}` : ''}`, W / 2, plaqueY + (gp ? 164 : 144));
+    if (bp) ctx.fillText(`${bp}${p2 ? ` ${p2}` : ''}`, W / 2, plaqueY + (gp ? 166 : 134));
   }
 
-  let cursorY = plaqueY + plaqueH + 34;
-
   // Optional invitation greeting excerpt
-  if ((info.message || '').trim()) {
+  if (msgLines.length) {
     ctx.font = '500 24px SUITE, sans-serif';
-    const msgLines = wrapCanvasLines(ctx, info.message, 740, 4);
     ctx.fillStyle = '#44403c';
-    for (const line of msgLines) {
-      ctx.fillText(line, W / 2, cursorY);
-      cursorY += 36;
-    }
-    cursorY += 16;
-  } else {
-    cursorY += 18;
+    msgLines.forEach((line, idx) => {
+      ctx.fillText(line, W / 2, msgStartY + idx * 36);
+    });
   }
 
   // Date & Time card
-  const dateBoxY = Math.max(cursorY, 938);
   const dday = weddingDday(info.date);
   const dateText = info.date ? formatDate(info.date) : '예식 일정 준비 중';
   const timeText = info.time ? formatKoreanTimeLabel(info.time) : '';
-  drawRoundedRect(ctx, 146, dateBoxY, W - 292, 134, 26);
+  drawRoundedRect(ctx, 146, dateBoxY, W - 292, dateBoxH, 26);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
   ctx.strokeStyle = '#dfe5de';
@@ -482,7 +588,7 @@ export async function renderInvitationCardCanvas(info = {}, albums = []) {
   ctx.fillText('SAVE THE DATE', W / 2, dateBoxY + 34);
   ctx.fillStyle = '#23201e';
   ctx.font = '700 32px Paperlogy, SUITE, sans-serif';
-  ctx.fillText(`${dateText}${timeText ? ` · ${timeText}` : ''}`, W / 2, dateBoxY + 86);
+  ctx.fillText(`${dateText}${timeText ? ` · ${timeText}` : ''}`, W / 2, dateBoxY + 84);
   if (dday) {
     ctx.fillStyle = '#a3554b';
     ctx.font = '700 18px SUITE, sans-serif';
@@ -490,8 +596,7 @@ export async function renderInvitationCardCanvas(info = {}, albums = []) {
   }
 
   // Venue card
-  const venueBoxY = dateBoxY + 154;
-  drawRoundedRect(ctx, 146, venueBoxY, W - 292, 150, 26);
+  drawRoundedRect(ctx, 146, venueBoxY, W - 292, venueBoxH, 26);
   ctx.fillStyle = '#f5f8f5';
   ctx.fill();
   ctx.strokeStyle = '#d3e0d6';
@@ -503,30 +608,69 @@ export async function renderInvitationCardCanvas(info = {}, albums = []) {
   ctx.fillText('LOCATION', W / 2, venueBoxY + 34);
   ctx.fillStyle = '#23201e';
   ctx.font = '700 34px Paperlogy, SUITE, sans-serif';
-  ctx.fillText(info.venue || '예식 장소 준비 중', W / 2, venueBoxY + 82);
-  if (info.address) {
+  ctx.fillText(info.venue || '예식 장소 준비 중', W / 2, venueBoxY + 80);
+  if (addrLines.length) {
     ctx.fillStyle = '#4f554f';
     ctx.font = '500 22px SUITE, sans-serif';
-    const addrLines = wrapCanvasLines(ctx, info.address, 740, 2);
-    ctx.fillText(addrLines[0] || '', W / 2, venueBoxY + 122);
+    addrLines.forEach((line, idx) => {
+      ctx.fillText(line, W / 2, venueBoxY + 120 + idx * 30);
+    });
+  }
+
+  // Optional embedded QR block
+  if (qrImg) {
+    drawRoundedRect(ctx, 146, qrBoxY, W - 292, qrBoxH, 26);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = '#d3e0d6';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const qrBoxSize = 166;
+    const qrX = 186;
+    const qrY = qrBoxY + (qrBoxH - qrBoxSize) / 2;
+    drawRoundedRect(ctx, qrX - 8, qrY - 8, qrBoxSize + 16, qrBoxSize + 16, 16);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = '#e4eae5';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.drawImage(qrImg, qrX, qrY, qrBoxSize, qrBoxSize);
+
+    const textX = qrX + qrBoxSize + 40;
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#3b5944';
+    ctx.font = '700 18px SUITE, sans-serif';
+    ctx.fillText('MOBILE INVITATION QR', textX, qrBoxY + 56);
+    ctx.fillStyle = '#23201e';
+    ctx.font = '700 30px Paperlogy, SUITE, sans-serif';
+    ctx.fillText('모바일 청첩장 바로가기', textX, qrBoxY + 104);
+    ctx.fillStyle = '#565c56';
+    ctx.font = '500 21px SUITE, sans-serif';
+    ctx.fillText('스마트폰 카메라로 QR 코드를 스캔하면', textX, qrBoxY + 144);
+    ctx.fillText('예식 일정·지도·안내를 확인하실 수 있습니다.', textX, qrBoxY + 174);
+    ctx.restore();
   }
 
   // Footer closing
   ctx.fillStyle = '#5c5752';
   ctx.font = '600 22px SUITE, sans-serif';
-  ctx.fillText('귀한 걸음으로 축복해 주시는 모든 분께 진심으로 감사드립니다.', W / 2, H - 110);
+  ctx.textAlign = 'center';
+  ctx.fillText('귀한 걸음으로 축복해 주시는 모든 분께 진심으로 감사드립니다.', W / 2, footerY);
 
   return canvas;
 }
 
-export async function downloadInvitationCardPng(info, albums = [], notify = () => {}) {
+export async function downloadInvitationCardPng(info, albums = [], notify = () => {}, options = {}) {
   try {
-    const canvas = await renderInvitationCardCanvas(info, albums);
+    const filename = options.includeQr ? 'wedding-invitation-card-qr.png' : 'wedding-invitation-card.png';
+    const canvas = await renderInvitationCardCanvas(info, albums, options);
     await new Promise((resolve, reject) => {
       canvas.toBlob(blob => {
         if (!blob) { reject(new Error('이미지 생성에 실패했습니다.')); return; }
         const url = URL.createObjectURL(blob);
-        const a = E('a', { href: url, download: 'wedding-invitation-card.png' });
+        const a = E('a', { href: url, download: filename });
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -534,7 +678,7 @@ export async function downloadInvitationCardPng(info, albums = [], notify = () =
         resolve();
       }, 'image/png');
     });
-    notify('청첩장 이미지(wedding-invitation-card.png)를 저장했습니다.');
+    notify(`청첩장 이미지(${filename})를 저장했습니다.`);
     return true;
   } catch (error) {
     notify(error?.message || '청첩장 이미지를 저장하지 못했습니다.', true);

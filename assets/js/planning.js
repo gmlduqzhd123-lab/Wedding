@@ -204,3 +204,174 @@ export function giftsToCsv(list = []) {
   return '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
 }
 
+export function parseCsvRows(rawText) {
+  const text = String(rawText ?? '').replace(/^\uFEFF/, '');
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(field);
+      field = '';
+    } else if (ch === '\r') {
+      if (text[i + 1] === '\n') i++;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (ch === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += ch;
+    }
+  }
+  if (inQuotes) throw new Error('CSV 따옴표가 닫히지 않았습니다. 파일을 확인해 주세요.');
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter(r => r.some(cell => cell.trim() !== ''));
+}
+
+function unescapeExcelCell(value) {
+  const s = String(value ?? '').trim();
+  return /^'[=+\-@\t\r]/.test(s) ? s.slice(1) : s;
+}
+
+function normalizeGuestSide(raw) {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '');
+  if (!s) return '공통';
+  if (s.includes('신랑')) return '신랑 측';
+  if (s.includes('신부')) return '신부 측';
+  return '공통';
+}
+
+function normalizeGuestGroup(raw) {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '');
+  if (!s) return '지인·기타';
+  if (s.includes('가족') || s.includes('친척') || s.includes('친지')) return '가족·친척';
+  if (s.includes('친구') || s.includes('동창') || s.includes('대학')) return '친구';
+  if (s.includes('직장') || s.includes('동료') || s.includes('회사') || s.includes('선배') || s.includes('후배')) return '직장·동료';
+  return '지인·기타';
+}
+
+function normalizeInviteStatus(raw) {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '');
+  const lower = s.toLowerCase();
+  if (!s || s.includes('미발송') || lower === 'x' || lower === 'n' || lower === 'no' || s === '아니오' || s === '아니요') return '미발송';
+  if (s.includes('모바일') && s.includes('종이')) return '모바일+종이';
+  if (s.includes('종이')) return '종이 전달';
+  if (s.includes('모바일') || s.includes('발송') || lower === 'o' || lower === 'y' || lower === 'yes' || s === '예' || s === '네') return '모바일 발송';
+  return '미발송';
+}
+
+function normalizeRsvpStatus(raw) {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '');
+  const lower = s.toLowerCase();
+  if (!s || s.includes('미확인')) return '미확인';
+  if (s.includes('불참') || lower === 'x' || lower === 'n' || lower === 'no' || s === '아니오' || s === '아니요') return '불참';
+  if (s.includes('미정') || s.includes('보류')) return '미정';
+  if (s.includes('참석') || lower === 'o' || lower === 'y' || lower === 'yes' || s === '예' || s === '네') return '참석';
+  return '미확인';
+}
+
+function normalizeMealTicket(raw) {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '').toLowerCase();
+  if (!s) return true;
+  if (s.includes('미식사') || s.includes('답례품') || s === 'x' || s === 'n' || s === 'no' || s === 'false' || s === '아니오' || s === '안함') return false;
+  return true;
+}
+
+export function parseGuestsCsv(csvText) {
+  const rows = parseCsvRows(csvText);
+  if (rows.length < 2) throw new Error('헤더 행과 최소 1건 이상의 하객 행이 포함된 CSV 파일을 선택해 주세요.');
+  const headers = rows[0].map(h => unescapeExcelCell(h).replace(/\s+/g, '').toLowerCase());
+  const findCol = patterns => headers.findIndex(h => patterns.some(p => h === p || h.includes(p)));
+  const colName = findCol(['성함', '이름', '하객', 'name']);
+  if (colName === -1) throw new Error('CSV 첫 행에 ‘성함’ 또는 ‘이름’ 열이 필요합니다.');
+  const colSide = findCol(['구분', '양가', 'side']);
+  const colGroup = findCol(['관계', '분류', '그룹', '소속', 'group']);
+  const colSize = findCol(['인원수', '인원', '동반', 'partysize']);
+  const colInvite = findCol(['청첩장발송', '발송', '청첩장', 'invite']);
+  const colRsvp = findCol(['참석여부', '참석', 'rsvp']);
+  const colMeal = findCol(['식사여부', '식사', '식권', 'meal']);
+  const colNote = findCol(['메모', '비고', 'note']);
+
+  const records = [];
+  const warnings = [];
+  let skipped = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = unescapeExcelCell(r[colName]).slice(0, 80);
+    if (!name) {
+      skipped++;
+      warnings.push(`${i + 1}행: 성함이 비어 있어 건너뛰었습니다.`);
+      continue;
+    }
+    const sizeRaw = colSize >= 0 ? unescapeExcelCell(r[colSize]).replace(/[^\d]/g, '') : '';
+    let partySize = sizeRaw ? Number.parseInt(sizeRaw, 10) : 1;
+    if (!Number.isInteger(partySize) || partySize < 1) partySize = 1;
+    if (partySize > 20) {
+      partySize = 20;
+      warnings.push(`${i + 1}행(${name}): 인원수가 20명을 넘어 20명으로 조정했습니다.`);
+    }
+    const note = colNote >= 0 ? unescapeExcelCell(r[colNote]).slice(0, 300) : '';
+    records.push({
+      name,
+      side: colSide >= 0 ? normalizeGuestSide(r[colSide]) : '공통',
+      group: colGroup >= 0 ? normalizeGuestGroup(r[colGroup]) : '지인·기타',
+      partySize,
+      inviteStatus: colInvite >= 0 ? normalizeInviteStatus(r[colInvite]) : '미발송',
+      rsvp: colRsvp >= 0 ? normalizeRsvpStatus(r[colRsvp]) : '미확인',
+      mealTicket: colMeal >= 0 ? normalizeMealTicket(r[colMeal]) : true,
+      ...(note ? { note } : {})
+    });
+  }
+  if (!records.length) throw new Error('가져올 수 있는 유효한 하객 행이 없습니다.');
+  return { records, skipped, warnings };
+}
+
+export function buildThankYouMessage(gift = {}, invitation = {}, variant = 'attended') {
+  const recipient = (gift.name || '').trim() || '귀하';
+  const p1 = (invitation.partner1 || '').replace(/^신랑\s*/, '').trim();
+  const p2 = (invitation.partner2 || '').replace(/^신부\s*/, '').trim();
+  const couple = (p1 && p2) ? `${p1}·${p2}` : (p1 || p2 || '저희 두 사람');
+  if (variant === 'remote') {
+    return [
+      `${recipient}님, 안녕하세요. ${couple}입니다.`,
+      '',
+      '바쁘신 와중에도 저희 결혼을 진심으로 축하해 주시고',
+      '따뜻한 마음 전해 주셔서 깊이 감사드립니다.',
+      '',
+      '보내주신 축복을 오래도록 간직하며 서로 아끼고 예쁘게 잘 살겠습니다.',
+      '조만간 직접 찾아뵙고 감사의 인사 드리겠습니다.',
+      '늘 건강하시고 행복한 일만 가득하시길 바랍니다.'
+    ].join('\n');
+  }
+  return [
+    `${recipient}님, 안녕하세요. ${couple}입니다.`,
+    '',
+    '바쁘신 가운데서도 저희 결혼식에 귀한 걸음으로 함께해 주시고',
+    '따뜻한 축복과 마음을 전해 주셔서 진심으로 감사드립니다.',
+    '',
+    '축복해 주신 마음 잊지 않고 서로 존중하며 행복하게 잘 살겠습니다.',
+    '신혼여행 다녀온 후 다시 한 번 감사 인사드리겠습니다.',
+    '늘 건강과 평안이 함께하시길 바랍니다.'
+  ].join('\n');
+}
+
+
