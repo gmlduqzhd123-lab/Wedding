@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText } from './dom.js?v=wedding-features-50';
-import { weddingDday } from './content.js?v=wedding-features-50';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-50';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-50';
+import { $, E, button, externalLink, image, downloadText } from './dom.js?v=wedding-features-51';
+import { weddingDday } from './content.js?v=wedding-features-51';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-51';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-51';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -279,7 +279,12 @@ function renderLachmaStudioCard(ctx, studio) {
         studio.deepGuide?.officialInfo?.guideUrl ? externalLink('📄 공식 안내 원문 ↗', studio.deepGuide.officialInfo.guideUrl, 'button quiet') : null,
         button('사진 크게 보기', () => ctx.openPhotos(studio.name, studio.images.map(v => v.src), 0), 'button quiet'))),
     studioSpecChips(ctx, studio),
-    E('div', { class: 'studio-photos' }, studio.images.map((im, index) => E('button', { type: 'button', class: 'photo-open', 'aria-label': `${studio.name} 사진 ${index + 1} 확대`, onclick: () => ctx.openPhotos(studio.name, studio.images.map(value => value.src), index) }, image(im.src, `${studio.name} · ${im.file}`)))),
+    E('div', { class: 'studio-photos' }, studio.images.map((im, index) => E('button', {
+      type: 'button',
+      class: 'photo-open studio-photo-frame',
+      'aria-label': `${studio.name} 사진 ${index + 1} 원본 크게 보기`,
+      onclick: () => ctx.openPhotos(studio.name, studio.images.map(value => value.src), index)
+    }, image(im.src, `${studio.name} · ${im.file}`), E('span', { class: 'studio-photo-zoom', 'aria-hidden': 'true' }, '🔍 원본 보기')))),
     E('p', { class: 'small muted studio-sample-caption' }, '제공된 라크마 스튜디오 대표 샘플 사진입니다. 두 사람의 개인 포토 앨범과는 별도로 구분됩니다.'),
     studioProsCons(studio),
     !guestMode ? E('label', { class: 'field studio-memo-field' }, E('span', {}, '우리의 메모 ', E('span', { class: 'muted small' }, '· 이 기기에 저장')), memo) : null,

@@ -1,4 +1,4 @@
-import { safeUrl } from './content.js?v=wedding-features-50';
+import { safeUrl } from './content.js?v=wedding-features-51';
 
 export const $ = selector => document.querySelector(selector);
 
@@ -55,6 +55,35 @@ export function image(src, alt, attrs = {}) {
 export function formatPartner(name, role) {
   if (!name) return '';
   return name.startsWith(role) ? name : `${role} ${name}`;
+}
+
+export function searchBox({ id, value = '', placeholder = '검색', ariaLabel = '검색', onInput, onClear }) {
+  const input = E('input', { type: 'search', id, placeholder, 'aria-label': ariaLabel });
+  input.value = value;
+  const clearBtn = E('button', {
+    type: 'button',
+    class: 'search-clear-btn',
+    'aria-label': `${ariaLabel} 지우기`,
+    hidden: !value
+  }, '×');
+  const syncClear = () => { clearBtn.hidden = !input.value; };
+  input.addEventListener('input', event => {
+    syncClear();
+    onInput?.(input.value, input, event);
+  });
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    syncClear();
+    if (onClear) onClear(input);
+    else onInput?.('', input);
+    input.focus({ preventScroll: true });
+  });
+  return {
+    wrap: E('div', { class: 'search-box' }, input, clearBtn),
+    input,
+    clearBtn,
+    syncClear
+  };
 }
 
 export function downloadText(raw, filename, type) {

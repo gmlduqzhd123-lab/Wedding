@@ -1,6 +1,11 @@
-import { E, button } from './dom.js?v=wedding-features-50';
-import { formatDate } from './content.js?v=wedding-features-50';
-import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-50';
+import { E, button } from './dom.js?v=wedding-features-51';
+import { formatDate } from './content.js?v=wedding-features-51';
+import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-51';
+
+let ceremonySubTab = 'rundown';
+export function setCeremonySubTab(tab) {
+  if (['rundown', 'guests', 'gifts'].includes(tab)) ceremonySubTab = tab;
+}
 
 function shiftTime(hhmm, deltaMinutes) {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
@@ -383,109 +388,140 @@ export function renderCeremony(ctx) {
       return saved;
     });
   };
+  const guestCount = (prefs.guestList || []).length;
+  const giftCount = (prefs.giftLedger || []).length;
+  const subTabs = [
+    ['rundown', '📋 본식 식순·대본', `${prepDone}/${CEREMONY_PREP_ITEMS.length}`],
+    ['guests', '👥 하객 명단', `${guestCount}건`],
+    ['gifts', '💌 축의금·식권 장부', `${giftCount}건`]
+  ];
+  const subTabBar = E('div', { class: 'subtab-bar', role: 'tablist', 'aria-label': '본식·하객·축의금 화면 전환' },
+    subTabs.map(([key, label, badge]) => {
+      const selected = ceremonySubTab === key;
+      return E('button', {
+        type: 'button',
+        role: 'tab',
+        class: 'subtab-btn' + (selected ? ' is-active' : ''),
+        'aria-selected': String(selected),
+        'data-ceremony-tab': key,
+        onclick: () => {
+          ceremonySubTab = key;
+          ctx.render();
+          document.querySelector(`[data-ceremony-tab="${key}"]`)?.focus({ preventScroll: true });
+        }
+      }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));
+    }));
+
+  const rundownPanel = E('section', { class: 'ceremony-planner', 'aria-label': '순천아모르 본식 타임테이블 및 낭독 보드' },
+    E('div', { class: 'ceremony-top-bar' },
+      E('div', { class: 'ceremony-summary-chips' },
+        E('span', { class: 'spec-chip highlight' }, `🔔 예식 형태: ${isNoOfficiant ? '주례 없는 예식 (아모르 12단계)' : '일반 예식 (주례사 중심)'}`),
+        E('span', { class: 'spec-chip' }, `🎤 사회자: ${cPlan.mc || '미정'}`),
+        E('span', { class: 'spec-chip' }, `🎵 축가: ${cPlan.song || '미정'}`),
+        E('span', { class: 'spec-chip' + (cPlan.banquetFloor ? ' direct' : ' highlight') }, `🍽️ 연회홀: ${cPlan.banquetFloor || '층수 확인 필요'}`),
+        E('span', { class: 'spec-chip direct' }, `✅ 식순 준비 체크: ${prepDone}/${CEREMONY_PREP_ITEMS.length}`)),
+      E('div', { class: 'page-actions ceremony-action-bar' },
+        button('📋 타임테이블·식순 복사', () => copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant), 'button quiet'),
+        button('🎤 사회자 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet'),
+        button('🖨️ 서약서·선언문 인쇄', printCeremonyPapersOnly, 'button quiet'),
+        button('🖨️ 전체 인쇄 / PDF', () => window.print(), 'button quiet'))),
+    E('div', { class: 'amor-cue-grid', 'aria-label': '순천아모르웨딩컨벤션 현장 진행 핵심 포인트' },
+      E('div', { class: 'amor-cue-card' },
+        E('span', { class: 'amor-cue-tag' }, '🪑 홀 하객석 방향'),
+        E('strong', {}, '사회자 단상 쪽 = 신랑 측'),
+        E('p', { class: 'small muted' }, '단상 반대쪽이 신부 측 좌석입니다. 개식 예고 멘트와 접수대 안내 시 함께 확인하세요.')),
+      E('div', { class: 'amor-cue-card' },
+        E('span', { class: 'amor-cue-tag' }, '🚶 신랑·신부 입장 큐'),
+        E('strong', {}, '신랑 버진로드 대기 · 신부 2단계'),
+        E('p', { class: 'small muted' }, '신부는 ① 신부문 전 ‘신부 등장’ 박수 유도 후 ② 문 앞 아버님 손 잡고 ‘신부 입장’으로 진행됩니다.')),
+      E('div', { class: 'amor-cue-card' },
+        E('span', { class: 'amor-cue-tag' }, '🙇 혼주 인사 → 축가 순서'),
+        E('strong', {}, '신부측 → 신랑측 → 중앙 내빈 → 축가'),
+        E('p', { class: 'small muted' }, '양가 부모님 포옹·내빈 인사 후 축가가 진행되며, 드레스 정리 완료 확인 뒤 행진합니다.')),
+      E('div', { class: 'amor-cue-card' },
+        E('span', { class: 'amor-cue-tag' }, '🍽️ 폐회식 연회홀 안내'),
+        E('strong', {}, cPlan.banquetFloor ? `${cPlan.banquetFloor} 연회홀 반영됨` : '연회홀 층수 사전 확인'),
+        E('p', { class: 'small muted' }, '폐회식 직후 가족·친지·친구 원판 촬영 안내와 함께 연회홀 층수를 멘트로 안내합니다.'))),
+    E('div', { class: 'ceremony-grid' },
+      E('article', { class: 'ceremony-box' },
+        E('h3', {}, `⏰ ${baseTime} 본식 기준 당일 타임테이블`),
+        E('ol', { class: 'timetable-list' }, timeline.map(([t, title, desc]) => E('li', { class: 'timetable-row' + (t === baseTime ? ' highlight' : '') },
+          E('strong', { class: 'timetable-time' }, t),
+          E('div', { class: 'timetable-detail' },
+            E('strong', {}, title),
+            E('p', { class: 'small muted' }, desc)))))),
+      E('article', { class: 'ceremony-box' },
+        E('h3', {}, `📋 ${isNoOfficiant ? '순천아모르 주례 없는 예식 12단계 식순' : '일반 예식 식순 가이드'}`),
+        E('ol', { class: 'ceremony-order-list' }, orderSteps.map(step => E('li', {}, step))),
+        cPlan.note ? E('div', { class: 'ceremony-note-box' },
+          E('strong', { class: 'small' }, '🎼 식순·BGM·진행 메모'),
+          E('p', { class: 'small record-body' }, cPlan.note)) :
+          E('p', { class: 'small muted' }, '‘식순·사회·낭독문 편집’ 버튼에서 사회자·축가·연회홀 층수·BGM과 서약서 문구를 다듬을 수 있어요.'))),
+    E('div', { class: 'ceremony-docs-stack' },
+      E('details', { class: 'disclosure ceremony-doc-details' },
+        E('summary', {}, `🎤 [사회자 진행 대본] ${isNoOfficiant ? '주례 없는 결혼식순 12단계 멘트 & 동선 큐시트' : '일반 예식(주례사 중심) 사회자 멘트 & 아모르 동선 큐시트'} (${inv.partner1 || '신랑'} · ${inv.partner2 || '신부'} 자동 반영)`),
+        E('div', { class: 'ceremony-doc-body' },
+          E('div', { class: 'ceremony-doc-toolbar' },
+            E('span', { class: 'small muted' }, `사회자에게 전달하기 전 성함·${isNoOfficiant ? '축가자' : '주례·축가자'}·연회홀 층수를 확인해 주세요. 복사 시 8번 순서에 성혼선언문이 함께 포함됩니다.`),
+            E('div', { class: 'lachma-official-links' },
+              button('📋 사회자 전체 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet small-copy-btn'),
+              button('✏️ 사회자·연회홀 입력', () => openCeremonyEditor(ctx), 'button quiet small-copy-btn'))),
+          E('ol', { class: 'mc-script-list' }, mcSteps.map(([no, title, cue, scripts]) => E('li', { class: 'mc-step-card' },
+            E('div', { class: 'mc-step-head' },
+              E('span', { class: 'lachma-step-badge' }, `STEP ${no}`),
+              E('strong', { class: 'mc-step-title' }, title),
+              E('span', { class: 'mc-step-cue small' }, cue)),
+            E('div', { class: 'mc-step-lines' }, scripts.map(line => E('p', { class: 'mc-script-line' }, line)))))))),
+      E('div', { class: 'ceremony-papers-grid' },
+        E('article', { class: 'ceremony-paper-card' },
+          E('div', { class: 'ceremony-paper-head' },
+            E('div', {},
+              E('span', { class: 'lachma-step-badge' }, cPlan.vows ? '직접 다듬은 문안' : '아모르 기본 4가지 서약 예문'),
+              E('h3', {}, '💍 혼인서약서 (신랑·신부 함께 낭독)')),
+            E('div', { class: 'lachma-official-links' },
+              button('📋 복사', () => ctx.copyTextToClipboard(vowsText, '혼인서약서 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
+              button('✏️ 문구 수정', () => openCeremonyEditor(ctx, 'vows'), 'button quiet small-copy-btn'))),
+          E('pre', { class: 'ceremony-paper-text' }, vowsText)),
+        E('article', { class: 'ceremony-paper-card' },
+          E('div', { class: 'ceremony-paper-head' },
+            E('div', {},
+              E('span', { class: 'lachma-step-badge' }, cPlan.declaration ? '직접 다듬은 문안' : (isNoOfficiant ? '사회자 낭독용 기본 예문' : '주례·사회 낭독용 기본 예문')),
+              E('h3', {}, isNoOfficiant ? '📜 성혼선언문 (사회자용)' : '📜 성혼선언문 (주례·사회자용)')),
+            E('div', { class: 'lachma-official-links' },
+              button('📋 복사', () => ctx.copyTextToClipboard(declText, '성혼선언문 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
+              button('✏️ 문구 수정', () => openCeremonyEditor(ctx, 'declaration'), 'button quiet small-copy-btn'))),
+          E('pre', { class: 'ceremony-paper-text' }, declText)))),
+    E('div', { class: 'ceremony-prep-box' },
+      E('div', { class: 'lachma-prep-head' },
+        E('strong', {}, `✅ 본식 식순 · 낭독문 사전 준비 체크 (${prepDone}/${CEREMONY_PREP_ITEMS.length} 완료)`),
+        prepDone > 0 ? button('체크 초기화', () => {
+          if (!confirm('본식 식순 사전 준비 체크 표시를 초기화할까요?')) return;
+          ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), ceremonyChecks: [] }).then(ok => { if (ok) ctx.render(); return ok; }));
+        }, 'checklist-note-btn') : null),
+      E('ul', { class: 'ceremony-prep-list' }, CEREMONY_PREP_ITEMS.map(([cid, label]) => {
+        const done = checkedSet.has(cid);
+        const box = E('input', { type: 'checkbox' });
+        box.checked = done;
+        box.addEventListener('change', () => togglePrepCheck(cid, box.checked));
+        return E('li', { class: 'lachma-prep-check-item' + (done ? ' done' : '') },
+          E('label', {}, box, E('span', { class: 'small' }, label)));
+      }))),
+    E('p', { class: 'small muted ceremony-hall-disclaimer' }, '🔒 순천아모르웨딩컨벤션 예식 진행 구성을 바탕으로 두 사람의 본식 리허설·낭독 준비를 위해 정리한 개인 전용 보드입니다. 하객 화면(?view=guest)에는 표시되지 않으며, 본인 예식 준비 및 담당 사회자 공유 외 무단 유포·제공을 금합니다.'));
+
+  const activePanel = ceremonySubTab === 'guests'
+    ? renderGuestListBoard(ctx)
+    : ceremonySubTab === 'gifts'
+      ? renderGiftLedgerBoard(ctx)
+      : rundownPanel;
+
   return [
     ctx.pageHeader(
-      '순천아모르 본식 타임테이블 · 식순 & 하객·축의금 관리',
-      `${inv.date ? formatDate(inv.date) : '예식일'} ${baseTime} (${inv.venue || '순천아모르웨딩컨벤션'}) 기준 ${isNoOfficiant ? '주례 없는 예식 12단계 식순, 사회자 대본, 혼인서약서·성혼선언문과 하객 명단·축의금 장부입니다.' : '일반 예식(주례사 중심) 식순 가이드와 현장 동선 큐시트, 혼인서약서·성혼선언문, 하객 명단·축의금 장부입니다.'}`,
-      ctx.editButton('식순·사회·낭독문 편집', () => openCeremonyEditor(ctx)),
+      '순천아모르 본식 식순 & 하객·축의금 관리',
+      `${inv.date ? formatDate(inv.date) : '예식일'} ${baseTime} (${inv.venue || '순천아모르웨딩컨벤션'}) 기준 식순·사회자 대본과 기기 전용 하객 명단·축의금 장부를 탭으로 나누어 관리해요.`,
+      ceremonySubTab === 'rundown' ? ctx.editButton('식순·사회·낭독문 편집', () => openCeremonyEditor(ctx)) : null,
       'AMOR WEDDING HALL · CEREMONY & GUEST MANAGEMENT'
     ),
-    E('section', { class: 'ceremony-planner', 'aria-label': '순천아모르 본식 타임테이블 및 낭독 보드' },
-      E('div', { class: 'ceremony-top-bar' },
-        E('div', { class: 'ceremony-summary-chips' },
-          E('span', { class: 'spec-chip highlight' }, `🔔 예식 형태: ${isNoOfficiant ? '주례 없는 예식 (아모르 12단계)' : '일반 예식 (주례사 중심)'}`),
-          E('span', { class: 'spec-chip' }, `🎤 사회자: ${cPlan.mc || '미정'}`),
-          E('span', { class: 'spec-chip' }, `🎵 축가: ${cPlan.song || '미정'}`),
-          E('span', { class: 'spec-chip' + (cPlan.banquetFloor ? ' direct' : ' highlight') }, `🍽️ 연회홀: ${cPlan.banquetFloor || '층수 확인 필요'}`),
-          E('span', { class: 'spec-chip direct' }, `✅ 식순 준비 체크: ${prepDone}/${CEREMONY_PREP_ITEMS.length}`)),
-        E('div', { class: 'page-actions ceremony-action-bar' },
-          button('📋 타임테이블·식순 복사', () => copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant), 'button quiet'),
-          button('🎤 사회자 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet'),
-          button('🖨️ 서약서·선언문 인쇄', printCeremonyPapersOnly, 'button quiet'),
-          button('🖨️ 전체 인쇄 / PDF', () => window.print(), 'button quiet'))),
-      E('div', { class: 'amor-cue-grid', 'aria-label': '순천아모르웨딩컨벤션 현장 진행 핵심 포인트' },
-        E('div', { class: 'amor-cue-card' },
-          E('span', { class: 'amor-cue-tag' }, '🪑 홀 하객석 방향'),
-          E('strong', {}, '사회자 단상 쪽 = 신랑 측'),
-          E('p', { class: 'small muted' }, '단상 반대쪽이 신부 측 좌석입니다. 개식 예고 멘트와 접수대 안내 시 함께 확인하세요.')),
-        E('div', { class: 'amor-cue-card' },
-          E('span', { class: 'amor-cue-tag' }, '🚶 신랑·신부 입장 큐'),
-          E('strong', {}, '신랑 버진로드 대기 · 신부 2단계'),
-          E('p', { class: 'small muted' }, '신부는 ① 신부문 전 ‘신부 등장’ 박수 유도 후 ② 문 앞 아버님 손 잡고 ‘신부 입장’으로 진행됩니다.')),
-        E('div', { class: 'amor-cue-card' },
-          E('span', { class: 'amor-cue-tag' }, '🙇 혼주 인사 → 축가 순서'),
-          E('strong', {}, '신부측 → 신랑측 → 중앙 내빈 → 축가'),
-          E('p', { class: 'small muted' }, '양가 부모님 포옹·내빈 인사 후 축가가 진행되며, 드레스 정리 완료 확인 뒤 행진합니다.')),
-        E('div', { class: 'amor-cue-card' },
-          E('span', { class: 'amor-cue-tag' }, '🍽️ 폐회식 연회홀 안내'),
-          E('strong', {}, cPlan.banquetFloor ? `${cPlan.banquetFloor} 연회홀 반영됨` : '연회홀 층수 사전 확인'),
-          E('p', { class: 'small muted' }, '폐회식 직후 가족·친지·친구 원판 촬영 안내와 함께 연회홀 층수를 멘트로 안내합니다.'))),
-      E('div', { class: 'ceremony-grid' },
-        E('article', { class: 'ceremony-box' },
-          E('h3', {}, `⏰ ${baseTime} 본식 기준 당일 타임테이블`),
-          E('ol', { class: 'timetable-list' }, timeline.map(([t, title, desc]) => E('li', { class: 'timetable-row' + (t === baseTime ? ' highlight' : '') },
-            E('strong', { class: 'timetable-time' }, t),
-            E('div', { class: 'timetable-detail' },
-              E('strong', {}, title),
-              E('p', { class: 'small muted' }, desc)))))),
-        E('article', { class: 'ceremony-box' },
-          E('h3', {}, `📋 ${isNoOfficiant ? '순천아모르 주례 없는 예식 12단계 식순' : '일반 예식 식순 가이드'}`),
-          E('ol', { class: 'ceremony-order-list' }, orderSteps.map(step => E('li', {}, step))),
-          cPlan.note ? E('div', { class: 'ceremony-note-box' },
-            E('strong', { class: 'small' }, '🎼 식순·BGM·진행 메모'),
-            E('p', { class: 'small record-body' }, cPlan.note)) :
-            E('p', { class: 'small muted' }, '‘식순·사회·낭독문 편집’ 버튼에서 사회자·축가·연회홀 층수·BGM과 서약서 문구를 다듬을 수 있어요.'))),
-      E('div', { class: 'ceremony-docs-stack' },
-        E('details', { class: 'disclosure ceremony-doc-details' },
-          E('summary', {}, `🎤 [사회자 진행 대본] ${isNoOfficiant ? '주례 없는 결혼식순 12단계 멘트 & 동선 큐시트' : '일반 예식(주례사 중심) 사회자 멘트 & 아모르 동선 큐시트'} (${inv.partner1 || '신랑'} · ${inv.partner2 || '신부'} 자동 반영)`),
-          E('div', { class: 'ceremony-doc-body' },
-            E('div', { class: 'ceremony-doc-toolbar' },
-              E('span', { class: 'small muted' }, `사회자에게 전달하기 전 성함·${isNoOfficiant ? '축가자' : '주례·축가자'}·연회홀 층수를 확인해 주세요. 복사 시 8번 순서에 성혼선언문이 함께 포함됩니다.`),
-              E('div', { class: 'lachma-official-links' },
-                button('📋 사회자 전체 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet small-copy-btn'),
-                button('✏️ 사회자·연회홀 입력', () => openCeremonyEditor(ctx), 'button quiet small-copy-btn'))),
-            E('ol', { class: 'mc-script-list' }, mcSteps.map(([no, title, cue, scripts]) => E('li', { class: 'mc-step-card' },
-              E('div', { class: 'mc-step-head' },
-                E('span', { class: 'lachma-step-badge' }, `STEP ${no}`),
-                E('strong', { class: 'mc-step-title' }, title),
-                E('span', { class: 'mc-step-cue small' }, cue)),
-              E('div', { class: 'mc-step-lines' }, scripts.map(line => E('p', { class: 'mc-script-line' }, line)))))))),
-        E('div', { class: 'ceremony-papers-grid' },
-          E('article', { class: 'ceremony-paper-card' },
-            E('div', { class: 'ceremony-paper-head' },
-              E('div', {},
-                E('span', { class: 'lachma-step-badge' }, cPlan.vows ? '직접 다듬은 문안' : '아모르 기본 4가지 서약 예문'),
-                E('h3', {}, '💍 혼인서약서 (신랑·신부 함께 낭독)')),
-              E('div', { class: 'lachma-official-links' },
-                button('📋 복사', () => ctx.copyTextToClipboard(vowsText, '혼인서약서 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
-                button('✏️ 문구 수정', () => openCeremonyEditor(ctx, 'vows'), 'button quiet small-copy-btn'))),
-            E('pre', { class: 'ceremony-paper-text' }, vowsText)),
-          E('article', { class: 'ceremony-paper-card' },
-            E('div', { class: 'ceremony-paper-head' },
-              E('div', {},
-                E('span', { class: 'lachma-step-badge' }, cPlan.declaration ? '직접 다듬은 문안' : (isNoOfficiant ? '사회자 낭독용 기본 예문' : '주례·사회 낭독용 기본 예문')),
-                E('h3', {}, isNoOfficiant ? '📜 성혼선언문 (사회자용)' : '📜 성혼선언문 (주례·사회자용)')),
-              E('div', { class: 'lachma-official-links' },
-                button('📋 복사', () => ctx.copyTextToClipboard(declText, '성혼선언문 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
-                button('✏️ 문구 수정', () => openCeremonyEditor(ctx, 'declaration'), 'button quiet small-copy-btn'))),
-            E('pre', { class: 'ceremony-paper-text' }, declText)))),
-      E('div', { class: 'ceremony-prep-box' },
-        E('div', { class: 'lachma-prep-head' },
-          E('strong', {}, `✅ 본식 식순 · 낭독문 사전 준비 체크 (${prepDone}/${CEREMONY_PREP_ITEMS.length} 완료)`),
-          prepDone > 0 ? button('체크 초기화', () => {
-            if (!confirm('본식 식순 사전 준비 체크 표시를 초기화할까요?')) return;
-            ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), ceremonyChecks: [] }).then(ok => { if (ok) ctx.render(); return ok; }));
-          }, 'checklist-note-btn') : null),
-        E('ul', { class: 'ceremony-prep-list' }, CEREMONY_PREP_ITEMS.map(([cid, label]) => {
-          const done = checkedSet.has(cid);
-          const box = E('input', { type: 'checkbox' });
-          box.checked = done;
-          box.addEventListener('change', () => togglePrepCheck(cid, box.checked));
-          return E('li', { class: 'lachma-prep-check-item' + (done ? ' done' : '') },
-            E('label', {}, box, E('span', { class: 'small' }, label)));
-        }))),
-      E('p', { class: 'small muted ceremony-hall-disclaimer' }, '🔒 순천아모르웨딩컨벤션 예식 진행 구성을 바탕으로 두 사람의 본식 리허설·낭독 준비를 위해 정리한 개인 전용 보드입니다. 하객 화면(?view=guest)에는 표시되지 않으며, 본인 예식 준비 및 담당 사회자 공유 외 무단 유포·제공을 금합니다.')),
-    renderGuestListBoard(ctx),
-    renderGiftLedgerBoard(ctx)
+    subTabBar,
+    activePanel
   ];
 }

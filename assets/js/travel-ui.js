@@ -1,6 +1,6 @@
-import { $, E, button, externalLink } from './dom.js?v=wedding-features-50';
-import { safeUrl } from './content.js?v=wedding-features-50';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-50';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-51';
+import { safeUrl } from './content.js?v=wedding-features-51';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-51';
 import {
   COST_LABELS,
   budgetSummary,
@@ -13,7 +13,7 @@ import {
   currentBudgetText,
   climateReview,
   climateBadgeInfo
-} from './travel.js?v=wedding-features-50';
+} from './travel.js?v=wedding-features-51';
 
 let tripSort = 'recommended';
 let tripFavoritesOnly = false;
@@ -24,6 +24,19 @@ let tripAgencyFilter = 'all';
 let tripSearchQuery = '';
 let overviewExpanded = false;
 let packingExpanded = false;
+let tripCompactMode = true;
+let tripVisibleLimit = 12;
+const TRIP_PAGE_STEP = 12;
+
+export function ensureTripVisible(ctx, tripId) {
+  const ordered = sortedTrips(ctx);
+  const idx = ordered.findIndex(item => item.id === tripId);
+  if (idx >= tripVisibleLimit) {
+    tripVisibleLimit = Math.ceil((idx + 1) / TRIP_PAGE_STEP) * TRIP_PAGE_STEP;
+    return true;
+  }
+  return false;
+}
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 
@@ -104,8 +117,19 @@ function matchesTripAgency(item, agencyFilter = tripAgencyFilter) {
   return style.agencyKey === agencyFilter;
 }
 
+export function activeTripFilterCount(guestMode = false) {
+  return [
+    !guestMode && tripFavoritesOnly,
+    !guestMode && withTripNoteOnly,
+    tripQuickFilter !== 'all',
+    tripRegionFilter !== 'all',
+    tripAgencyFilter !== 'all',
+    Boolean(tripSearchQuery.trim())
+  ].filter(Boolean).length;
+}
+
 export function hasActiveTripFilters(guestMode = false) {
-  return Boolean((!guestMode && (tripFavoritesOnly || withTripNoteOnly)) || tripQuickFilter !== 'all' || tripRegionFilter !== 'all' || tripAgencyFilter !== 'all' || tripSearchQuery.trim());
+  return activeTripFilterCount(guestMode) > 0;
 }
 
 export function resetTripFilters() {
@@ -115,6 +139,7 @@ export function resetTripFilters() {
   tripRegionFilter = 'all';
   tripAgencyFilter = 'all';
   tripSearchQuery = '';
+  tripVisibleLimit = TRIP_PAGE_STEP;
 }
 
 function matchesTripPool(ctx, item, omitKey = '') {
@@ -356,7 +381,11 @@ export function updateTripChoices(ctx) {
   }
   const region = $('#trip-comparison-region'), comparison = tripComparison(ctx);
   if (region) region.replaceChildren(...(comparison ? [comparison] : []));
-  $('#selected-trip-region')?.replaceChildren(selectedTripSummary(ctx));
+  const selRegion = $('#selected-trip-region');
+  if (selRegion) {
+    selRegion.classList.toggle('is-unselected', !prefs.tripSelected);
+    selRegion.replaceChildren(selectedTripSummary(ctx));
+  }
   if (anchor?.isConnected) window.scrollBy(0, anchor.getBoundingClientRect().top - before);
 }
 
@@ -583,22 +612,28 @@ function tripSortControl(ctx) {
   agencySelect.addEventListener('change', () => {
     const before = agencySelect.getBoundingClientRect().top;
     tripAgencyFilter = agencySelect.value;
+    tripVisibleLimit = TRIP_PAGE_STEP;
     ctx.render();
     const target = $('#trip-agency-filter');
     target?.focus({ preventScroll: true });
     if (target) window.scrollBy(0, target.getBoundingClientRect().top - before);
   });
-  const searchInput = E('input', { type: 'search', id: 'trip-search', placeholder: '리조트·풀빌라·여행사·특전 검색 (예: 아야나, 노쇼핑, 스냅, 골드패스)', 'aria-label': '신혼여행 후보 검색' });
-  searchInput.value = tripSearchQuery;
-  searchInput.addEventListener('input', () => {
-    const before = searchInput.getBoundingClientRect().top, start = searchInput.selectionStart, end = searchInput.selectionEnd;
-    tripSearchQuery = searchInput.value;
-    ctx.render();
-    const target = $('#trip-search');
-    if (target) {
-      target.focus({ preventScroll: true });
-      try { target.setSelectionRange(start, end); } catch {}
-      window.scrollBy(0, target.getBoundingClientRect().top - before);
+  const search = searchBox({
+    id: 'trip-search',
+    value: tripSearchQuery,
+    placeholder: '리조트·풀빌라·여행사·특전 검색 (예: 아야나, 노쇼핑, 스냅)',
+    ariaLabel: '신혼여행 후보 검색',
+    onInput: (val, el) => {
+      const before = el.getBoundingClientRect().top, start = el.selectionStart, end = el.selectionEnd;
+      tripSearchQuery = val;
+      tripVisibleLimit = TRIP_PAGE_STEP;
+      ctx.render();
+      const target = $('#trip-search');
+      if (target) {
+        target.focus({ preventScroll: true });
+        try { target.setSelectionRange(start, end); } catch {}
+        window.scrollBy(0, target.getBoundingClientRect().top - before);
+      }
     }
   });
   const favCheck = E('input', { type: 'checkbox', id: 'trip-favorites-only' });
@@ -606,6 +641,7 @@ function tripSortControl(ctx) {
   favCheck.addEventListener('change', () => {
     const before = favCheck.getBoundingClientRect().top;
     tripFavoritesOnly = favCheck.checked;
+    tripVisibleLimit = TRIP_PAGE_STEP;
     ctx.render();
     const target = $('#trip-favorites-only');
     target?.focus({ preventScroll: true });
@@ -616,6 +652,7 @@ function tripSortControl(ctx) {
   noteCheck.addEventListener('change', () => {
     const before = noteCheck.getBoundingClientRect().top;
     withTripNoteOnly = noteCheck.checked;
+    tripVisibleLimit = TRIP_PAGE_STEP;
     ctx.render();
     const target = $('#trip-notes-only');
     target?.focus({ preventScroll: true });
@@ -628,12 +665,12 @@ function tripSortControl(ctx) {
       ['package', `📦 패키지·반자유 (${quickPool.filter(item => matchesTripQuickFilter(item, 'package')).length})`],
       ['fit', `🧳 자유여행 (${quickPool.filter(item => matchesTripQuickFilter(item, 'fit')).length})`]
     ] : []),
-    ['direct', `✈️ 직항 노선 (${quickPool.filter(item => matchesTripQuickFilter(item, 'direct')).length})`],
-    ['dry', `☀️ 건기·맑은 시기 (${quickPool.filter(item => matchesTripQuickFilter(item, 'dry')).length})`],
-    ['under6m', `💸 600만 원 이하 (${quickPool.filter(item => matchesTripQuickFilter(item, 'under6m')).length})`],
-    ...(content.honeymoon.some(item => matchesTripQuickFilter(item, 'poolvilla')) || tripQuickFilter === 'poolvilla' ? [['poolvilla', `🏡 풀빌라 포함 (${quickPool.filter(item => matchesTripQuickFilter(item, 'poolvilla')).length})`]] : []),
-    ...(content.honeymoon.some(item => matchesTripQuickFilter(item, 'noshopping')) || tripQuickFilter === 'noshopping' ? [['noshopping', `🚫 노쇼핑·노옵션 (${quickPool.filter(item => matchesTripQuickFilter(item, 'noshopping')).length})`]] : []),
-    ['longstay', `🏖️ 6~7박 일정 (${quickPool.filter(item => matchesTripQuickFilter(item, 'longstay')).length})`]
+    ['direct', `✈️ 직항 (${quickPool.filter(item => matchesTripQuickFilter(item, 'direct')).length})`],
+    ['dry', `☀️ 건기·맑음 (${quickPool.filter(item => matchesTripQuickFilter(item, 'dry')).length})`],
+    ['under6m', `💸 600만 이하 (${quickPool.filter(item => matchesTripQuickFilter(item, 'under6m')).length})`],
+    ...(content.honeymoon.some(item => matchesTripQuickFilter(item, 'poolvilla')) || tripQuickFilter === 'poolvilla' ? [['poolvilla', `🏡 풀빌라 (${quickPool.filter(item => matchesTripQuickFilter(item, 'poolvilla')).length})`]] : []),
+    ...(content.honeymoon.some(item => matchesTripQuickFilter(item, 'noshopping')) || tripQuickFilter === 'noshopping' ? [['noshopping', `🚫 노쇼핑 (${quickPool.filter(item => matchesTripQuickFilter(item, 'noshopping')).length})`]] : []),
+    ['longstay', `🏖️ 6~7박 (${quickPool.filter(item => matchesTripQuickFilter(item, 'longstay')).length})`]
   ];
   const filterBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '여행지 핵심 조건 빠른 필터' },
     quickFilters.map(([key, label]) => E('button', {
@@ -643,6 +680,7 @@ function tripSortControl(ctx) {
       'aria-pressed': String(tripQuickFilter === key),
       onclick: () => {
         tripQuickFilter = tripQuickFilter === key && key !== 'all' ? 'all' : key;
+        tripVisibleLimit = TRIP_PAGE_STEP;
         ctx.render();
         main.querySelector(`[data-trip-filter="${tripQuickFilter}"]`)?.focus({ preventScroll: true });
       }
@@ -664,25 +702,39 @@ function tripSortControl(ctx) {
       'aria-pressed': String(tripRegionFilter === key),
       onclick: () => {
         tripRegionFilter = tripRegionFilter === key && key !== 'all' ? 'all' : key;
+        tripVisibleLimit = TRIP_PAGE_STEP;
         ctx.render();
         main.querySelector(`[data-trip-region="${tripRegionFilter}"]`)?.focus({ preventScroll: true });
       }
     }, `${label} (${cnt})`))) : null;
   const visibleCount = sortedTrips(ctx).length;
-  const resetBtn = hasActiveTripFilters(guestMode) ? button('필터 초기화', () => { resetTripFilters(); ctx.render(); $('#trip-sort')?.focus({ preventScroll: true }); }, 'text-button') : null;
+  const activeCount = activeTripFilterCount(guestMode);
+  const resetBtn = activeCount ? button(`✕ 필터 초기화 (${activeCount})`, () => { resetTripFilters(); ctx.render(); $('#trip-sort')?.focus({ preventScroll: true }); }, 'filter-reset-chip') : null;
+  const densityToggle = E('div', { class: 'density-toggle', role: 'group', 'aria-label': '여행 카드 보기 밀도' },
+    E('button', {
+      type: 'button',
+      class: 'density-btn' + (tripCompactMode ? ' is-active' : ''),
+      'aria-pressed': String(tripCompactMode),
+      onclick: () => { if (!tripCompactMode) { tripCompactMode = true; ctx.render(); } }
+    }, '간략 카드'),
+    E('button', {
+      type: 'button',
+      class: 'density-btn' + (!tripCompactMode ? ' is-active' : ''),
+      'aria-pressed': String(!tripCompactMode),
+      onclick: () => { if (tripCompactMode) { tripCompactMode = false; ctx.render(); } }
+    }, '전체 상세'));
   return E('div', { class: 'travel-tools' },
-    E('div', { class: 'travel-search-row' }, searchInput, agencySelect),
+    E('div', { class: 'travel-search-row' }, search.wrap, agencySelect),
     E('div', { class: 'travel-tools-row' },
-      E('label', { for: 'trip-sort' }, '후보 정렬'),
+      E('label', { for: 'trip-sort' }, '정렬'),
       select,
-      guestMode ? null : E('label', { class: 'check-label', for: 'trip-favorites-only' }, favCheck, '관심 여행지만 보기'),
-      guestMode ? null : E('label', { class: 'check-label', for: 'trip-notes-only' }, noteCheck, '📝 메모 남긴 여행지만 보기'),
-      E('span', { class: 'small muted trip-result-count', 'aria-live': 'polite' }, `표시 ${visibleCount} / 전체 ${content.honeymoon.length}곳`),
+      guestMode ? null : E('label', { class: 'check-label', for: 'trip-favorites-only' }, favCheck, '관심만'),
+      guestMode ? null : E('label', { class: 'check-label', for: 'trip-notes-only' }, noteCheck, '📝 메모 있음'),
+      densityToggle,
       resetBtn,
-      E('p', { class: 'small muted' }, '정렬·필터는 화면 표시만 바꾸며 저장된 후보와 비교 선택은 유지됩니다.')),
+      E('span', { class: 'small muted trip-result-count', 'aria-live': 'polite' }, `${visibleCount} / ${content.honeymoon.length}곳`)),
     regionBar,
-    filterBar,
-    E('p', { class: 'small muted' }, '기후 필터는 확인된 기준 월의 계절 경향입니다. 여행 월이 달라지거나 요약 분류가 미입력인 후보는 제외하며 해당 기간의 날씨를 보장하지 않습니다.'));
+    filterBar);
 }
 
 function travelOverview(ctx) {
@@ -700,30 +752,34 @@ function travelOverview(ctx) {
   const budgets = ordered.map(item => item.budget).filter(b => typeof b === 'number');
   const minBudget = budgets.length ? Math.round(Math.min(...budgets) / 10000).toLocaleString('ko-KR') : '';
   const maxBudget = budgets.length ? Math.round(Math.max(...budgets) / 10000).toLocaleString('ko-KR') : '';
-  return E('section', { class: 'travel-overview', 'aria-labelledby': 'travel-overview-title' },
-    E('div', { class: 'overview-head' },
-      E('div', {},
-        E('h2', { id: 'travel-overview-title' }, '인천 직항 후보 한눈에 보기'),
-        E('p', { class: 'small muted' }, '자유여행 가안과 종합여행사 대표 허니문·세미패키지를 6월 기후·직항 이동성·계획예산 기준으로 모았습니다.')),
-      E('div', { class: 'overview-stats' },
-        E('span', { class: 'spec-chip' }, pkgCount ? `총 ${ordered.length}곳 (자유 ${fitCount} · 패키지 ${pkgCount})` : `총 ${ordered.length}곳`),
-        E('span', { class: 'spec-chip direct' }, directCount === ordered.length ? `✈️ 전 노선 인천 직항 (${directCount}곳)` : `✈️ 직항 ${directCount}곳 · 경유 ${ordered.length - directCount}곳`),
-        budgets.length ? E('span', { class: 'spec-chip highlight' }, `💰 2인 계획예산 ${minBudget}만~${maxBudget}만 원`) : null)),
-    E('details', {
-      class: 'overview-disclosure',
-      open: overviewExpanded,
-      ontoggle: event => { if (event.currentTarget.isConnected) overviewExpanded = event.currentTarget.open; }
-    },
-      E('summary', {}, `후보 요약 ${ordered.length}곳 비교 보드 펼치기·접기`),
+  return E('details', {
+    class: 'travel-overview-compact',
+    open: overviewExpanded,
+    ontoggle: event => { if (event.currentTarget.isConnected) overviewExpanded = event.currentTarget.open; }
+  },
+    E('summary', { class: 'travel-overview-summary' },
+      E('span', { class: 'travel-overview-summary-title' }, `📊 30곳 요약 보드 & 항공·예산 산정 기준`),
+      E('span', { class: 'travel-overview-summary-chips' },
+        E('span', { class: 'spec-chip' }, pkgCount ? `자유 ${fitCount} · 패키지 ${pkgCount}` : `${ordered.length}곳`),
+        E('span', { class: 'spec-chip direct' }, directCount === ordered.length ? `✈️ 전 노선 직항` : `✈️ 직항 ${directCount}곳`),
+        budgets.length ? E('span', { class: 'spec-chip highlight' }, `💰 ${minBudget}만~${maxBudget}만 원`) : null)),
+    E('div', { class: 'travel-overview-body' },
+      E('p', { class: 'form-note honeymoon-note' }, '성인 2명·인천 출발 직항·일반석·객실 1실 기준. 자유여행 가안(5곳)은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 배분이며, 종합여행사 패키지·세미패키지 후보(25곳)는 공개 상품 구성을 바탕으로 잡은 2027년 6월 계획예산 배분으로 실제 예약이나 확정 견적은 아닙니다. 기후 필터는 확인된 기준 월의 계절 경향이며 해당 기간의 날씨를 보장하지 않습니다.'),
       E('ol', { class: 'overview-board' }, ordered.map(item => {
         const flight = tripFlightBadge(item);
         const style = tripStyleInfo(item);
         return E('li', {},
           E('div', { class: 'overview-row-top' },
             button(item.title, () => {
-              if (!matchesAllTripFilters(ctx, item)) { resetTripFilters(); ctx.render(); }
+              if (!matchesAllTripFilters(ctx, item)) resetTripFilters();
+              ensureTripVisible(ctx, item.id);
+              ctx.render();
               const card = main.querySelector(`[data-trip-id="${item.id}"]`);
-              if (card) { card.querySelector('.travel-details').open = true; ctx.focusTrip(item.id); }
+              if (card) {
+                const det = card.querySelector('.travel-details');
+                if (det) det.open = true;
+                ctx.focusTrip(item.id);
+              }
             }, 'text-button'),
             E('span', { class: 'small muted' }, item.country || ''),
             E('strong', {}, '2인 목표 ' + won(item.budget))),
@@ -903,37 +959,58 @@ export function renderHoneymoon(ctx) {
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
   const visibleTrips = sortedTrips(ctx);
+  const shownTrips = visibleTrips.slice(0, tripVisibleLimit);
+  const remaining = visibleTrips.length - shownTrips.length;
   const emptyMsg = tripFavoritesOnly && !withTripNoteOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
     ? '등록한 관심 여행지가 없습니다.'
     : withTripNoteOnly && !tripFavoritesOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
       ? '메모를 남긴 여행 후보가 없습니다.'
       : '선택한 조건에 맞는 여행 후보가 없습니다.';
+
+  const pagerBar = remaining > 0
+    ? E('div', { class: 'list-pager-bar' },
+      button(`여행 후보 ${Math.min(TRIP_PAGE_STEP, remaining)}곳 더 보기 (남은 ${remaining}곳)`, () => {
+        tripVisibleLimit += TRIP_PAGE_STEP;
+        ctx.render();
+      }, 'button quiet'),
+      remaining > TRIP_PAGE_STEP ? button(`전체 ${visibleTrips.length}곳 한 번에 보기`, () => {
+        tripVisibleLimit = visibleTrips.length;
+        ctx.render();
+      }, 'text-button') : null)
+    : (visibleTrips.length > TRIP_PAGE_STEP
+      ? E('div', { class: 'list-pager-bar' },
+        E('span', { class: 'small muted' }, `필터된 ${visibleTrips.length}곳을 모두 보고 있어요.`),
+        button('처음 12곳만 보기', () => {
+          tripVisibleLimit = TRIP_PAGE_STEP;
+          ctx.render();
+          $('.travel-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 'text-button'))
+      : null);
+
   return [
     ctx.pageHeader('둘만의 첫 여행을 그리며', '가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',
       E('div', { class: 'page-actions' },
         ctx.editButton('여행지 추가', () => ctx.openEditor('honeymoon')),
         button('🖨️ 선택·비교 요약 인쇄', printHoneymoonSummary, 'button quiet')),
       'HONEYMOON'),
-    E('p', { class: 'form-note honeymoon-note' }, '성인 2명·인천 출발 직항·일반석·객실 1실 기준. 자유여행 가안(5곳)은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 배분이며, 종합여행사 패키지·세미패키지 후보(25곳)는 공개 상품 구성을 바탕으로 잡은 2027년 6월 계획예산 배분으로 실제 예약이나 확정 견적은 아닙니다. 각 후보 상세에서 왕복 일정·현지 숙박 날짜·가이드 경비·선택관광·세금 포함 범위와 미확인 비용을 확인하세요.'),
     tripSortControl(ctx),
     travelOverview(ctx),
-    E('div', { id: 'selected-trip-region' }, selectedTripSummary(ctx)),
+    E('div', { id: 'selected-trip-region', class: prefs.tripSelected ? '' : 'is-unselected' }, selectedTripSummary(ctx)),
     E('div', { id: 'trip-comparison-region' }, tripComparison(ctx)),
-    renderHoneymoonPackingList(ctx),
     content.honeymoon.length
-      ? (visibleTrips.length
-        ? E('section', { class: 'travel-grid' }, visibleTrips.map(item => {
+      ? (shownTrips.length
+        ? E('section', { class: 'travel-grid' + (tripCompactMode ? ' is-compact-grid' : '') }, shownTrips.map(item => {
           const style = tripStyleInfo(item);
-          return E('article', { class: 'travel-card', 'data-trip-id': item.id },
+          return E('article', { class: 'travel-card' + (tripCompactMode ? ' is-compact' : ''), 'data-trip-id': item.id },
             E('div', { class: 'trip-card-topline' },
               E('p', { class: 'country' }, item.country || '우리의 여행 후보'),
               E('span', { class: 'trip-style-pill ' + (style.isPackage ? 'is-package' : 'is-fit') }, style.badge)),
             E('h2', {}, item.title),
             tripQuickSpecs(ctx, item),
             tripBudgetBar(item),
-            tripBudgetStatus(item),
-            tripQuoteStatus(item),
-            tripStayStatus(item),
+            tripCompactMode ? null : tripBudgetStatus(item),
+            tripCompactMode ? null : tripQuoteStatus(item),
+            tripCompactMode ? null : tripStayStatus(item),
             tripProsCons(item),
             !guestMode && prefs.tripNotes?.[item.id] ? E('p', { class: 'checklist-item-note small trip-private-note' }, `📝 우리의 상담 메모: ${prefs.tripNotes[item.id]}`) : null,
             E('dl', { class: 'trip-meta-dl' },
@@ -941,7 +1018,7 @@ export function renderHoneymoon(ctx) {
               E('dt', {}, '한국 도착'), E('dd', {}, item.endDate || '미정'),
               E('dt', {}, '2인 계획예산'), E('dd', {}, item.budget === null ? '미정' : `${item.budget.toLocaleString('ko-KR')}원`),
               E('dt', {}, '숙박 요약'), E('dd', {}, staySummary(item))),
-            tripVideoLinks(ctx, item),
+            tripCompactMode ? null : tripVideoLinks(ctx, item),
             travelDetails(item),
             tripControls(ctx, item),
             ctx.recordActions('honeymoon', item));
@@ -949,6 +1026,8 @@ export function renderHoneymoon(ctx) {
         : E('div', { class: 'no-results-box' },
           E('p', { class: 'no-results' }, emptyMsg),
           hasActiveTripFilters(guestMode) ? button('모든 필터·검색 초기화', () => { resetTripFilters(); ctx.render(); $('#trip-search')?.focus({ preventScroll: true }); }, 'button quiet') : null))
-      : ctx.empty('어디로 떠나고 싶나요?', '아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.', '여행 후보 남기기', () => ctx.openEditor('honeymoon'))
+      : ctx.empty('어디로 떠나고 싶나요?', '아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.', '여행 후보 남기기', () => ctx.openEditor('honeymoon')),
+    pagerBar,
+    renderHoneymoonPackingList(ctx)
   ];
 }

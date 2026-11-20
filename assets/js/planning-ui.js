@@ -1,10 +1,10 @@
-import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-50';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-50';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-50';
-import { quoteReview } from './travel.js?v=wedding-features-50';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-50';
-import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-50';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-50';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-51';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-51';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-51';
+import { quoteReview } from './travel.js?v=wedding-features-51';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-51';
+import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-51';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-51';
 
 export const DEFAULT_VENDOR_SCHEDULES = [
   {
@@ -28,6 +28,11 @@ export const WEDDING_BUDGET_CATEGORIES = [
 
 export function activeVendorSchedules(prefs) {
   return prefs?.vendorSchedules !== undefined ? prefs.vendorSchedules : structuredClone(DEFAULT_VENDOR_SCHEDULES);
+}
+
+let tipsSubTab = 'tips';
+export function setTipsSubTab(tab) {
+  if (['tips', 'budget', 'schedule'].includes(tab)) tipsSubTab = tab;
 }
 
 let tipFilter = '';
@@ -662,33 +667,113 @@ function openTipNoteModal(ctx, item) {
   }
 }
 
+let tipVisibleLimit = 12;
+const TIP_PAGE_STEP = 12;
+
 export function renderTips(ctx) {
   const guestMode = ctx.isGuestMode();
   if (guestMode) return ctx.guestRestrictedView('결혼에 관한 모든 정보', '신랑·신부의 결혼 준비 예산·일정·꿀팁을 관리하는 공간입니다.', 'WEDDING GUIDE');
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
+
+  const bPlan = prefs.budgetPlan || {};
+  const bSummary = weddingBudgetSummary(bPlan, WEDDING_BUDGET_CATEGORIES.map(([key]) => key));
+  const budgetBadge = bSummary.planned.known !== null
+    ? `${Math.round(bSummary.planned.known / 10000).toLocaleString('ko-KR')}만`
+    : '미입력';
+  const vList = activeVendorSchedules(prefs);
+  const vDone = vList.filter(v => v.done).length;
+
+  const subTabs = [
+    ['tips', '🎬 결혼 꿀팁', `${content.tips.length}건`],
+    ['budget', '💰 통합 예산·시뮬레이터', budgetBadge],
+    ['schedule', '🗓️ 주요 업체 일정', `${vDone}/${vList.length}`]
+  ];
+  const subTabBar = E('div', { class: 'subtab-bar', role: 'tablist', 'aria-label': '결혼 정보·예산·일정 화면 전환' },
+    subTabs.map(([key, label, badge]) => {
+      const selected = tipsSubTab === key;
+      return E('button', {
+        type: 'button',
+        role: 'tab',
+        class: 'subtab-btn' + (selected ? ' is-active' : ''),
+        'aria-selected': String(selected),
+        'data-tips-tab': key,
+        onclick: () => {
+          tipsSubTab = key;
+          ctx.render();
+          document.querySelector(`[data-tips-tab="${key}"]`)?.focus({ preventScroll: true });
+        }
+      }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));
+    }));
+
+  if (tipsSubTab === 'budget') {
+    return [
+      ctx.pageHeader('결혼에 관한 모든 정보', '6대 결혼 예산·웨딩홀 식대·스드메 현장 추가금을 한눈에 시뮬레이션해요.', null, 'WEDDING GUIDE'),
+      subTabBar,
+      renderBudgetCalculator(ctx)
+    ];
+  }
+  if (tipsSubTab === 'schedule') {
+    return [
+      ctx.pageHeader('결혼에 관한 모든 정보', '라크마 웨딩촬영부터 피팅·시식·잔금 일정까지 날짜순으로 챙겨요.', null, 'WEDDING GUIDE'),
+      subTabBar,
+      renderVendorScheduleBoard(ctx)
+    ];
+  }
+
   const categories = ['all', ...new Set(content.tips.map(item => item.category || '기타'))];
   if (!categories.includes(tipCategory)) tipCategory = 'all';
-  const search = E('input', { type: 'search', id: 'tip-search', placeholder: '꿀팁 제목·분야·핵심 키워드 검색', 'aria-label': '결혼 정보 꿀팁 검색' });
-  search.value = tipFilter;
   const favCheck = E('input', { type: 'checkbox', id: 'tip-favorites-only' });
   favCheck.checked = tipFavoritesOnly;
   const noteCheck = E('input', { type: 'checkbox', id: 'tip-notes-only' });
   noteCheck.checked = withTipNoteOnly;
   const count = E('span', { class: 'small muted', 'aria-live': 'polite' });
+  const resetWrap = E('span', { class: 'filter-reset-slot' });
   const catBar = E('div', { class: 'tip-categories', role: 'group', 'aria-label': '꿀팁 분야 선택' });
   const grid = E('section', { class: 'tips-grid', id: 'tips-results' });
+  const pagerWrap = E('div', { class: 'list-pager-bar' });
+
+  const search = searchBox({
+    id: 'tip-search',
+    value: tipFilter,
+    placeholder: '꿀팁 제목·분야·핵심 키워드 검색',
+    ariaLabel: '결혼 정보 꿀팁 검색',
+    onInput: val => { tipFilter = val; tipVisibleLimit = TIP_PAGE_STEP; draw(); }
+  });
+
+  const resetTipFilters = () => {
+    tipFilter = '';
+    tipCategory = 'all';
+    tipFavoritesOnly = false;
+    withTipNoteOnly = false;
+    tipVisibleLimit = TIP_PAGE_STEP;
+    search.input.value = '';
+    search.syncClear();
+    favCheck.checked = false;
+    noteCheck.checked = false;
+    draw();
+  };
+
   const draw = () => {
     catBar.replaceChildren(...categories.map(cat => {
       const total = cat === 'all' ? content.tips.length : content.tips.filter(item => (item.category || '기타') === cat).length;
       const label = cat === 'all' ? `전체 (${total})` : `${cat} (${total})`;
-      const btn = button(label, () => { tipCategory = cat; draw(); }, 'button quiet');
+      const btn = button(label, () => { tipCategory = cat; tipVisibleLimit = TIP_PAGE_STEP; draw(); }, 'button quiet');
       btn.setAttribute('aria-pressed', String(tipCategory === cat));
       return btn;
     }));
+    const activeCount = [
+      tipCategory !== 'all',
+      tipFavoritesOnly,
+      withTipNoteOnly,
+      Boolean(tipFilter.trim())
+    ].filter(Boolean).length;
+    resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetTipFilters, 'filter-reset-chip')] : []));
+
     const list = filteredTips(ctx);
-    count.textContent = `${list.length}개의 꿀팁`;
-    grid.replaceChildren(...(list.length ? list.map(item => {
+    const shown = list.slice(0, tipVisibleLimit);
+    count.textContent = list.length > shown.length ? `${shown.length} / ${list.length}개의 꿀팁` : `${list.length}개의 꿀팁`;
+    grid.replaceChildren(...(shown.length ? shown.map(item => {
       const num = content.tips.findIndex(t => t.id === item.id) + 1;
       const hasYt = Boolean(youtubeVideoId(item.url));
       const note = !guestMode ? (prefs.tipNotes?.[item.id] || '') : '';
@@ -706,27 +791,48 @@ export function renderTips(ctx) {
             externalLink(isYoutubeUrl(item.url) ? '유튜브 새 탭 ↗' : '참고 링크 열기 ↗', item.url, 'button quiet'),
             !guestMode ? button(note ? '📝 메모 수정' : '📝 메모', () => openTipNoteModal(ctx, item), 'button quiet') : null),
           ctx.recordActions('tips', item)));
-    }) : [E('p', { class: 'no-results' }, tipFavoritesOnly && !withTipNoteOnly ? '등록한 관심 꿀팁이 없습니다.' : withTipNoteOnly && !tipFavoritesOnly ? '실천 메모를 남긴 꿀팁이 없습니다.' : '검색 조건에 맞는 결혼 정보 꿀팁이 없습니다.')]));
+    }) : [E('div', { class: 'no-results-box' },
+      E('p', { class: 'no-results' }, tipFavoritesOnly && !withTipNoteOnly ? '등록한 관심 꿀팁이 없습니다.' : withTipNoteOnly && !tipFavoritesOnly ? '실천 메모를 남긴 꿀팁이 없습니다.' : '검색 조건에 맞는 결혼 정보 꿀팁이 없습니다.'),
+      activeCount ? button('모든 필터 초기화', resetTipFilters, 'button quiet') : null)]));
+
+    const remaining = list.length - shown.length;
+    if (remaining > 0) {
+      const step = Math.min(TIP_PAGE_STEP, remaining);
+      pagerWrap.hidden = false;
+      pagerWrap.replaceChildren(...[
+        button(`꿀팁 ${step}건 더 보기 (남은 ${remaining}건)`, () => { tipVisibleLimit += TIP_PAGE_STEP; draw(); }, 'button quiet'),
+        remaining > TIP_PAGE_STEP ? button(`전체 ${list.length}건 모두 보기`, () => { tipVisibleLimit = list.length; draw(); }, 'text-button') : null
+      ].filter(Boolean));
+    } else if (list.length > TIP_PAGE_STEP) {
+      pagerWrap.hidden = false;
+      pagerWrap.replaceChildren(
+        E('span', { class: 'small muted' }, `전체 ${list.length}건을 모두 보고 있어요.`),
+        button('처음 12건만 보기', () => { tipVisibleLimit = TIP_PAGE_STEP; draw(); document.querySelector('.tips-directory')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 'text-button')
+      );
+    } else {
+      pagerWrap.hidden = true;
+      pagerWrap.replaceChildren();
+    }
   };
-  search.addEventListener('input', () => { tipFilter = search.value; draw(); });
-  favCheck.addEventListener('change', () => { tipFavoritesOnly = favCheck.checked; draw(); });
-  noteCheck.addEventListener('change', () => { withTipNoteOnly = noteCheck.checked; draw(); });
+  favCheck.addEventListener('change', () => { tipFavoritesOnly = favCheck.checked; tipVisibleLimit = TIP_PAGE_STEP; draw(); });
+  noteCheck.addEventListener('change', () => { withTipNoteOnly = noteCheck.checked; tipVisibleLimit = TIP_PAGE_STEP; draw(); });
   redrawTips = draw;
   draw();
   return [
-    ctx.pageHeader('결혼에 관한 모든 정보', '상견례·웨딩홀·스드메·본식부터 예산·신혼집까지, 꼭 알아두면 좋은 결혼식 꿀팁 유튜브 영상과 핵심 요약을 모았어요.', ctx.editButton('꿀팁 추가', () => ctx.openEditor('tips')), 'WEDDING GUIDE'),
-    renderBudgetCalculator(ctx),
-    renderVendorScheduleBoard(ctx),
+    ctx.pageHeader('결혼에 관한 모든 정보', '결혼 준비 꿀팁 영상 50선, 통합 예산·시뮬레이터, 주요 업체 일정을 탭으로 깔끔하게 나누어 관리해요.', ctx.editButton('꿀팁 추가', () => ctx.openEditor('tips')), 'WEDDING GUIDE'),
+    subTabBar,
     content.tips.length
       ? E('section', { class: 'tips-directory' },
         catBar,
         E('div', { class: 'directory-controls' },
-          search,
+          search.wrap,
           E('div', { class: 'directory-filters' },
             E('label', { class: 'check-label', for: 'tip-favorites-only' }, favCheck, '관심 꿀팁만 보기'),
             E('label', { class: 'check-label', for: 'tip-notes-only' }, noteCheck, '📝 메모 남긴 꿀팁만 보기'),
+            resetWrap,
             count)),
-        grid)
+        grid,
+        pagerWrap)
       : ctx.empty('첫 결혼 준비 꿀팁을 남겨 볼까요?', '도움이 되었던 유튜브 영상이나 체크리스트를 추가해 둘 수 있어요.', '꿀팁 추가하기', () => ctx.openEditor('tips'))
   ];
 }

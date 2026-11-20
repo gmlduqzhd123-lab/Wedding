@@ -1,7 +1,7 @@
-import { E, button, downloadText } from './dom.js?v=wedding-features-50';
-import { formatDate } from './content.js?v=wedding-features-50';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-50';
-import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, buildThankYouMessage } from './planning.js?v=wedding-features-50';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-51';
+import { formatDate } from './content.js?v=wedding-features-51';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-51';
+import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, buildThankYouMessage } from './planning.js?v=wedding-features-51';
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
@@ -529,8 +529,6 @@ export function renderGuestListBoard(ctx) {
   const syncTarget = summary.attendingHeadcount > 0 ? summary.attendingHeadcount : summary.possibleHeadcount;
   const syncModeLabel = summary.attendingHeadcount > 0 ? '참석 확정' : '불참 제외 예정';
 
-  const searchInput = E('input', { type: 'search', id: 'guest-search', placeholder: '하객 이름·관계·메모 검색', 'aria-label': '하객 명단 검색' });
-  searchInput.value = guestQuery;
   const rsvpSelect = E('select', { id: 'guest-rsvp-filter', 'aria-label': '참석 여부 필터' },
     [['all', '참석 전체'], ...RSVP_STATUSES.map(v => [v, v])].map(([v, label]) => E('option', { value: v }, label)));
   rsvpSelect.value = guestRsvpFilter;
@@ -541,15 +539,39 @@ export function renderGuestListBoard(ctx) {
   const sideBar = E('div', { class: 'ledger-side-pills', role: 'group', 'aria-label': '하객 양가 필터' });
   const listWrap = E('div', { class: 'ledger-items-wrap' });
   const countNode = E('span', { class: 'small muted', 'aria-live': 'polite' });
+  const resetWrap = E('span', { class: 'filter-reset-slot' });
 
-  const updateGuestField = (guestId, patch) => {
+  const search = searchBox({
+    id: 'guest-search',
+    value: guestQuery,
+    placeholder: '하객 이름·관계·메모 검색',
+    ariaLabel: '하객 명단 검색',
+    onInput: val => { guestQuery = val; draw(); }
+  });
+
+  const updateGuestField = (guestId, patch, toastMsg = '') => {
     ctx.queuePreference(async () => {
       const cur = ctx.getPrefs().guestList || [];
       const next = cur.map(item => (item.id === guestId ? { ...item, ...patch } : item));
       const saved = await ctx.savePrefs({ ...ctx.getPrefs(), guestList: next });
-      if (saved) ctx.render();
+      if (saved) {
+        ctx.render();
+        if (toastMsg) ctx.toast(toastMsg);
+      }
       return saved;
     });
+  };
+
+  const resetGuestFilters = () => {
+    guestSideFilter = 'all';
+    guestRsvpFilter = 'all';
+    guestInviteFilter = 'all';
+    guestQuery = '';
+    search.input.value = '';
+    search.syncClear();
+    rsvpSelect.value = 'all';
+    inviteSelect.value = 'all';
+    draw();
   };
 
   const draw = () => {
@@ -559,6 +581,14 @@ export function renderGuestListBoard(ctx) {
       btn.setAttribute('aria-pressed', String(guestSideFilter === side));
       return btn;
     }));
+    const activeCount = [
+      guestSideFilter !== 'all',
+      guestRsvpFilter !== 'all',
+      guestInviteFilter !== 'all',
+      Boolean(guestQuery.trim())
+    ].filter(Boolean).length;
+    resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetGuestFilters, 'filter-reset-chip')] : []));
+
     const q = guestQuery.trim().toLocaleLowerCase();
     const filtered = list.filter(item =>
       (guestSideFilter === 'all' || item.side === guestSideFilter) &&
@@ -572,32 +602,42 @@ export function renderGuestListBoard(ctx) {
       return;
     }
     if (!filtered.length) {
-      listWrap.replaceChildren(E('p', { class: 'small muted ledger-empty-note' }, '선택한 필터 조건에 맞는 하객이 없습니다.'));
+      listWrap.replaceChildren(E('div', { class: 'no-results-box ledger-empty-box' },
+        E('p', { class: 'no-results' }, '선택한 필터 조건에 맞는 하객이 없습니다.'),
+        activeCount ? button('모든 필터 초기화', resetGuestFilters, 'button quiet') : null));
       return;
     }
     listWrap.replaceChildren(E('ul', { class: 'ledger-list' }, filtered.map(item => {
-      const rsvpQuick = E('select', { class: 'ledger-inline-select', 'aria-label': `${item.name} 참석 여부 변경` },
-        RSVP_STATUSES.map(v => E('option', { value: v }, v)));
-      rsvpQuick.value = item.rsvp;
-      rsvpQuick.addEventListener('change', () => updateGuestField(item.id, { rsvp: rsvpQuick.value }));
+      const nextInvite = INVITE_STATUSES[(INVITE_STATUSES.indexOf(item.inviteStatus) + 1) % INVITE_STATUSES.length];
+      const inviteCycleBtn = E('button', {
+        type: 'button',
+        class: 'quick-cycle-btn' + (item.inviteStatus !== '미발송' ? ' is-done' : ''),
+        title: `눌러서 발송 상태 변경 → ${nextInvite}`,
+        'aria-label': `${item.name} 청첩장 발송 상태 변경 (현재 ${item.inviteStatus}, 누르면 ${nextInvite})`,
+        onclick: () => updateGuestField(item.id, { inviteStatus: nextInvite }, `${item.name}님 발송 상태를 ‘${nextInvite}’(으)로 변경했습니다.`)
+      }, `📨 ${item.inviteStatus} ↻`);
 
-      const inviteQuick = E('select', { class: 'ledger-inline-select', 'aria-label': `${item.name} 청첩장 발송 상태 변경` },
-        INVITE_STATUSES.map(v => E('option', { value: v }, v)));
-      inviteQuick.value = item.inviteStatus;
-      inviteQuick.addEventListener('change', () => updateGuestField(item.id, { inviteStatus: inviteQuick.value }));
+      const nextRsvp = RSVP_STATUSES[(RSVP_STATUSES.indexOf(item.rsvp) + 1) % RSVP_STATUSES.length];
+      const rsvpTone = item.rsvp === '참석' ? ' is-done' : (item.rsvp === '불참' ? ' is-muted' : ' is-warn');
+      const rsvpCycleBtn = E('button', {
+        type: 'button',
+        class: 'quick-cycle-btn' + rsvpTone,
+        title: `눌러서 참석 여부 변경 → ${nextRsvp}`,
+        'aria-label': `${item.name} 참석 여부 변경 (현재 ${item.rsvp}, 누르면 ${nextRsvp})`,
+        onclick: () => updateGuestField(item.id, { rsvp: nextRsvp }, `${item.name}님 참석 여부를 ‘${nextRsvp}’(으)로 변경했습니다.`)
+      }, `${item.rsvp === '참석' ? '✓' : item.rsvp === '불참' ? '✕' : '•'} ${item.rsvp} ↻`);
 
-      const rsvpTone = item.rsvp === '참석' ? ' direct' : (item.rsvp === '불참' ? '' : ' highlight');
       return E('li', { class: 'ledger-row', 'data-guest-id': item.id },
         E('div', { class: 'ledger-row-main' },
           E('div', { class: 'ledger-row-head' },
             E('strong', { class: 'ledger-row-name' }, item.name),
             E('span', { class: 'spec-chip' }, `${item.side} · ${item.group}`),
-            E('span', { class: 'spec-chip' + rsvpTone }, `${item.partySize}명 · ${item.rsvp}`),
+            E('span', { class: 'spec-chip' }, `${item.partySize}명`),
             E('span', { class: 'spec-chip' }, item.mealTicket === false ? '🎁 미식사(답례품)' : '🍽️ 식사')),
           item.note ? E('p', { class: 'small muted ledger-row-note' }, item.note) : null),
         E('div', { class: 'ledger-row-controls' },
-          inviteQuick,
-          rsvpQuick,
+          inviteCycleBtn,
+          rsvpCycleBtn,
           button('+ 장부', () => openGiftEditor(ctx, null, item), 'checklist-note-btn'),
           button('수정', () => openGuestEditor(ctx, item), 'checklist-note-btn'),
           button('삭제', () => {
@@ -612,7 +652,6 @@ export function renderGuestListBoard(ctx) {
     })));
   };
 
-  searchInput.addEventListener('input', () => { guestQuery = searchInput.value; draw(); });
   rsvpSelect.addEventListener('change', () => { guestRsvpFilter = rsvpSelect.value; draw(); });
   inviteSelect.addEventListener('change', () => { guestInviteFilter = inviteSelect.value; draw(); });
   draw();
@@ -636,7 +675,7 @@ export function renderGuestListBoard(ctx) {
       E('div', {},
         E('p', { class: 'eyebrow' }, 'PRIVATE GUEST LIST & RSVP TRACKER'),
         E('h2', { id: 'guest-board-title' }, '👥 하객 명단 · 청첩장 발송 · 예상 인원 집계'),
-        E('p', {}, '양가 하객 명단, 청첩장 발송 상태, 참석·식사 여부를 정리하고 웨딩홀 식대 시뮬레이터의 예상 인원과 연동할 수 있습니다. (이 기기 전용 · 방문자 화면 및 공개 site.json 제외)')),
+        E('p', {}, '양가 하객 명단, 청첩장 발송 상태, 참석·식사 여부를 정리하고 배지를 한 번 눌러 발송·참석 상태를 빠르게 바꿀 수 있습니다. (이 기기 전용)')),
       E('div', { class: 'page-actions guest-board-toolbar' },
         button('+ 하객 추가', () => openGuestEditor(ctx)),
         button('📤 CSV 가져오기', () => openGuestCsvImportModal(ctx), 'button quiet'),
@@ -665,7 +704,7 @@ export function renderGuestListBoard(ctx) {
         E('span', { class: 'small muted' }, `공통 ${summary.bySide['공통'].possible}명 · 전체 ${summary.totalInvitedHeadcount}명`))),
     E('div', { class: 'ledger-filter-bar guest-board-toolbar' },
       sideBar,
-      E('div', { class: 'ledger-filter-controls' }, searchInput, inviteSelect, rsvpSelect, countNode)),
+      E('div', { class: 'ledger-filter-controls' }, search.wrap, inviteSelect, rsvpSelect, resetWrap, countNode)),
     listWrap);
 }
 
@@ -675,8 +714,6 @@ export function renderGiftLedgerBoard(ctx) {
   const list = prefs.giftLedger || [];
   const summary = giftLedgerSummary(list);
 
-  const searchInput = E('input', { type: 'search', id: 'gift-search', placeholder: '성함·관계·메모 검색', 'aria-label': '축의금 장부 검색' });
-  searchInput.value = giftQuery;
   const channelSelect = E('select', { id: 'gift-channel-filter', 'aria-label': '전달 방식 필터' },
     [['all', '방식 전체'], ...GIFT_CHANNELS.map(v => [v, v])].map(([v, label]) => E('option', { value: v }, label)));
   channelSelect.value = giftChannelFilter;
@@ -686,6 +723,15 @@ export function renderGiftLedgerBoard(ctx) {
   const sideBar = E('div', { class: 'ledger-side-pills', role: 'group', 'aria-label': '축의금 양가 필터' });
   const listWrap = E('div', { class: 'ledger-items-wrap' });
   const countNode = E('span', { class: 'small muted', 'aria-live': 'polite' });
+  const resetWrap = E('span', { class: 'filter-reset-slot' });
+
+  const search = searchBox({
+    id: 'gift-search',
+    value: giftQuery,
+    placeholder: '성함·관계·메모 검색',
+    ariaLabel: '축의금 장부 검색',
+    onInput: val => { giftQuery = val; draw(); }
+  });
 
   const toggleGiftFlag = (giftId, key, val) => {
     ctx.queuePreference(async () => {
@@ -697,6 +743,18 @@ export function renderGiftLedgerBoard(ctx) {
     });
   };
 
+  const resetGiftFilters = () => {
+    giftSideFilter = 'all';
+    giftChannelFilter = 'all';
+    giftPendingOnly = false;
+    giftQuery = '';
+    search.input.value = '';
+    search.syncClear();
+    channelSelect.value = 'all';
+    pendingCheck.checked = false;
+    draw();
+  };
+
   const draw = () => {
     sideBar.replaceChildren(...['all', ...GUEST_SIDES].map(side => {
       const label = side === 'all' ? `전체 (${list.length})` : `${side} (${summary.bySide[side]?.count || 0})`;
@@ -704,6 +762,14 @@ export function renderGiftLedgerBoard(ctx) {
       btn.setAttribute('aria-pressed', String(giftSideFilter === side));
       return btn;
     }));
+    const activeCount = [
+      giftSideFilter !== 'all',
+      giftChannelFilter !== 'all',
+      giftPendingOnly,
+      Boolean(giftQuery.trim())
+    ].filter(Boolean).length;
+    resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetGiftFilters, 'filter-reset-chip')] : []));
+
     const q = giftQuery.trim().toLocaleLowerCase();
     const filtered = list.filter(item =>
       (giftSideFilter === 'all' || item.side === giftSideFilter) &&
@@ -719,7 +785,9 @@ export function renderGiftLedgerBoard(ctx) {
       return;
     }
     if (!filtered.length) {
-      listWrap.replaceChildren(E('p', { class: 'small muted ledger-empty-note' }, '선택한 필터 조건에 맞는 축의금 기록이 없습니다.'));
+      listWrap.replaceChildren(E('div', { class: 'no-results-box ledger-empty-box' },
+        E('p', { class: 'no-results' }, '선택한 필터 조건에 맞는 축의금 기록이 없습니다.'),
+        activeCount ? button('모든 필터 초기화', resetGiftFilters, 'button quiet') : null));
       return;
     }
     listWrap.replaceChildren(E('ul', { class: 'ledger-list' }, filtered.map(item => {
@@ -757,7 +825,6 @@ export function renderGiftLedgerBoard(ctx) {
     })));
   };
 
-  searchInput.addEventListener('input', () => { giftQuery = searchInput.value; draw(); });
   channelSelect.addEventListener('change', () => { giftChannelFilter = channelSelect.value; draw(); });
   pendingCheck.addEventListener('change', () => { giftPendingOnly = pendingCheck.checked; draw(); });
   draw();
@@ -795,9 +862,10 @@ export function renderGiftLedgerBoard(ctx) {
     E('div', { class: 'ledger-filter-bar gift-ledger-toolbar' },
       sideBar,
       E('div', { class: 'ledger-filter-controls' },
-        searchInput,
+        search.wrap,
         channelSelect,
         E('label', { class: 'check-label', for: pendingCheck.id }, pendingCheck, '미완료만 보기'),
+        resetWrap,
         countNode)),
     listWrap);
 }
