@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-52';
-import { safeUrl } from './content.js?v=wedding-features-52';
-import { StorageConflict } from './storage.js?v=wedding-features-52';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-52';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-52';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-53';
+import { safeUrl } from './content.js?v=wedding-features-53';
+import { StorageConflict } from './storage.js?v=wedding-features-53';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-53';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-53';
 
 const fieldSpecs = {
   invitation: [
@@ -486,7 +486,17 @@ export function openEditor(ctx, type, item = null) {
 
   if (type === 'albums') {
     const previews = E('div', { class: 'photo-editor' });
+    const countBar = E('div', { class: 'album-batch-bar' });
+    const batchProgress = E('div', { class: 'album-batch-progress', hidden: true, 'aria-live': 'polite' });
     const draw = (focusIndex, action) => {
+      countBar.replaceChildren(
+        E('span', { class: 'small muted' }, `등록된 사진 ${albumImages.length} / 100장 (첫 번째 사진이 앨범·청첩장 대표 사진)`),
+        albumImages.length >= 2 ? button('전체 사진 비우기', () => {
+          if (!confirm(`등록된 사진 ${albumImages.length}장을 모두 비울까요?`)) return;
+          albumImages.length = 0;
+          draw();
+          ctx.toast('앨범 사진 목록을 비웠습니다.');
+        }, 'text-button small') : null);
       previews.replaceChildren(...albumImages.map((src, index) => {
         const move = target => { [albumImages[index], albumImages[target]] = [albumImages[target], albumImages[index]]; draw(target, '앞으로'); };
         const previous = button('앞으로', () => move(index - 1), 'button quiet');
@@ -517,25 +527,54 @@ export function openEditor(ctx, type, item = null) {
       draw();
     };
     form.appendChild(button('주소에서 사진 추가', () => { try { addUrls(); } catch (error) { ctx.toast(error.message, true); } }, 'button quiet'));
-    const files = E('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true, class: 'file-input', 'aria-label': '사진 파일 추가' });
+    const files = E('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true, class: 'file-input', 'aria-label': '사진 파일 여러 장 추가' });
     const albumDropzone = createPhotoDropzone({
       input: files,
-      label: '웨딩 사진 여러 장 드래그·선택 (최대 100장)',
-      hint: 'JPG·PNG·WEBP 사진을 여러 장 한 번에 끌어다 놓거나 파일을 선택하세요. 첫 번째 사진이 대표 사진입니다.',
+      label: '웨딩 사진 여러 장 한꺼번에 드래그·선택 (최대 100장)',
+      hint: 'JPG·PNG·WEBP 사진 여러 장을 한 번에 끌어다 놓거나 파일 선택창에서 다중 선택하세요. 자동 축소·최적화됩니다.',
       multiple: true,
       onFiles: async fileList => {
         if (!fileList.length) return;
         processing = true;
         submit.disabled = true;
         files.disabled = true;
+        batchProgress.hidden = false;
         try {
-          if (albumImages.length + fileList.length > 100) throw new Error('앨범당 사진은 100장까지 추가할 수 있습니다.');
+          const remaining = 100 - albumImages.length;
+          if (remaining <= 0) throw new Error('앨범당 사진은 100장까지 추가할 수 있습니다.');
+          const batch = fileList.slice(0, remaining);
+          const overflowCount = fileList.length - batch.length;
           const additions = [];
-          for (const file of fileList) additions.push(await shrinkPhoto(file));
+          const failedNames = [];
+          for (let i = 0; i < batch.length; i++) {
+            const pct = Math.round(((i + 1) / batch.length) * 100);
+            batchProgress.replaceChildren(
+              E('span', { class: 'small' }, `🖼️ 사진 최적화 중… (${i + 1} / ${batch.length}장)`),
+              E('div', { class: 'checklist-progress-track', 'aria-hidden': 'true' },
+                E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` })));
+            try {
+              additions.push(await shrinkPhoto(batch[i]));
+            } catch {
+              failedNames.push(batch[i].name || `${i + 1}번 파일`);
+            }
+          }
           if (!form.isConnected || !ctx.isDialogOpen()) return;
-          albumImages.push(...additions);
-          draw();
-          ctx.toast(`사진 ${additions.length}장을 초안용 크기로 줄여 추가했습니다.`);
+          if (additions.length) {
+            albumImages.push(...additions);
+            draw();
+          }
+          if (!additions.length && failedNames.length) {
+            ctx.toast('JPG, PNG, WEBP 형식(20MB 이하)의 사진만 추가할 수 있습니다.', true);
+          } else if (failedNames.length || overflowCount > 0) {
+            const notes = [
+              `사진 ${additions.length}장을 추가했습니다.`,
+              failedNames.length ? `형식·용량 오류 ${failedNames.length}건 건너뜀(${failedNames.slice(0, 2).join(', ')})` : '',
+              overflowCount > 0 ? `100장 한도 초과 ${overflowCount}건 제외` : ''
+            ].filter(Boolean);
+            ctx.toast(notes.join(' · '));
+          } else {
+            ctx.toast(`사진 ${additions.length}장을 한 번에 최적화해 추가했습니다.`);
+          }
         } catch (error) {
           ctx.toast(error.message, true);
         } finally {
@@ -543,10 +582,12 @@ export function openEditor(ctx, type, item = null) {
           submit.disabled = false;
           files.disabled = false;
           files.value = '';
+          batchProgress.hidden = true;
+          batchProgress.replaceChildren();
         }
       }
     });
-    form.append(albumDropzone, E('p', { class: 'small muted' }, '사진은 초안용으로 줄여 저장합니다. 첫 번째 사진이 대표 사진입니다. 원본은 별도로 보관해 주세요.'), previews);
+    form.append(albumDropzone, batchProgress, countBar, previews);
     draw();
   }
 

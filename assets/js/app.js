@@ -1,32 +1,33 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationCountdownInfo, invitationLiveCountdown, extractPhoneNumber, extractAccountNumber, safeUrl, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-52';
-import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, mergePreferences, summarizePreferencesMerge, CHECKLIST_STAGES } from './preferences.js?v=wedding-features-52';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-52';
-import { dateSpan } from './travel.js?v=wedding-features-52';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-52';
-import { weddingBudgetSummary, guestListSummary, giftLedgerSummary } from './planning.js?v=wedding-features-52';
-import { renderQrSvgString } from './qrcode.js?v=wedding-features-52';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner, downloadText, downloadJson } from './dom.js?v=wedding-features-52';
-import { stopInvitationBgm, renderInvitationBgmButton } from './bgm.js?v=wedding-features-52';
-import { formatKoreanTimeLabel, buildInvitationShareMessages, renderInvitationCornerMarks, renderInvitationDivider, renderBotanicalLeaf, renderInvitationHeroVisual, renderInvitationCalendar, downloadInvitationCardPng } from './invitation-card.js?v=wedding-features-52';
-import { renderStudios as renderStudiosModule } from './studio-ui.js?v=wedding-features-52';
-import { CEREMONY_PREP_ITEMS, setCeremonySubTab, renderCeremony as renderCeremonyModule } from './ceremony-ui.js?v=wedding-features-52';
-import { PRENATAL_CHECK_ITEMS, renderPrenatal as renderPrenatalModule } from './prenatal-ui.js?v=wedding-features-52';
-import { tripFlightBadge, sortedTrips, updateTripChoices, ensureTripVisible, renderHoneymoon as renderHoneymoonModule } from './travel-ui.js?v=wedding-features-52';
-import { WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, filteredTips, setTipsSubTab, renderTips as renderTipsModule } from './planning-ui.js?v=wedding-features-52';
-import { openEditor as openEditorModule } from './editor-ui.js?v=wedding-features-52';
+import { parseContent, validateContent, formatDate, weddingDday, invitationCountdownInfo, invitationLiveCountdown, extractPhoneNumber, extractAccountNumber, safeUrl, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-53';
+import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, mergePreferences, summarizePreferencesMerge, CHECKLIST_STAGES } from './preferences.js?v=wedding-features-53';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-53';
+import { dateSpan } from './travel.js?v=wedding-features-53';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-53';
+import { weddingBudgetSummary, guestListSummary, giftLedgerSummary, prenatalDeadlineSummary, homeItemsSummary } from './planning.js?v=wedding-features-53';
+import { renderQrSvgString } from './qrcode.js?v=wedding-features-53';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner, downloadText, downloadJson } from './dom.js?v=wedding-features-53';
+import { stopInvitationBgm, renderInvitationBgmButton } from './bgm.js?v=wedding-features-53';
+import { formatKoreanTimeLabel, buildInvitationShareMessages, renderInvitationCornerMarks, renderInvitationDivider, renderBotanicalLeaf, renderInvitationHeroVisual, renderInvitationCalendar, downloadInvitationCardPng } from './invitation-card.js?v=wedding-features-53';
+import { renderStudios as renderStudiosModule } from './studio-ui.js?v=wedding-features-53';
+import { CEREMONY_PREP_ITEMS, setCeremonySubTab, renderCeremony as renderCeremonyModule } from './ceremony-ui.js?v=wedding-features-53';
+import { PRENATAL_CHECK_ITEMS, renderPrenatal as renderPrenatalModule } from './prenatal-ui.js?v=wedding-features-53';
+import { tripFlightBadge, sortedTrips, updateTripChoices, ensureTripVisible, renderHoneymoon as renderHoneymoonModule } from './travel-ui.js?v=wedding-features-53';
+import { WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, filteredTips, setTipsSubTab, renderTips as renderTipsModule } from './planning-ui.js?v=wedding-features-53';
+import { openEditor as openEditorModule } from './editor-ui.js?v=wedding-features-53';
 
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
 const DRAFT_KEY='wedding:v1:draft', PREF_KEY='wedding:v1:preferences', LARGE_TEXT_KEY='wedding:v1:largeText';
 const routes=['home','invitation','story','albums','studios','honeymoon','ceremony','prenatal','tips'];
+const MENU_ICONS={home:'🏡',invitation:'💌',story:'📖',albums:'📷',studios:'📸',honeymoon:'✈️',ceremony:'💍',prenatal:'🩺',tips:'📚'};
 const menus=[
   ['invitation','청첩장','소중한 분들을 초대하는 우리의 첫 인사.','INVITATION'],
   ['story','우리의 일대기','첫 만남부터 오늘까지, 함께 쌓아 온 시간.','OUR STORY'],
   ['albums','포토 앨범','오래 꺼내 보고 싶은 두 사람의 순간들.','PHOTO ALBUM'],
   ['studios','스튜디오','라크마 촬영 일정과 당일 동선·준비물 안내.','STUDIOS'],
   ['honeymoon','신혼여행','결혼 후 첫 여행, 가고 싶은 곳부터 차근차근.','HONEYMOON'],
-  ['ceremony','본식 식순','순천아모르 식순·사회자 대본, 혼인서약서와 하객·축의금 관리.','CEREMONY & VOWS'],
-  ['prenatal','산전검사','순천 현대여성아동병원 안내와 산전검사 지원금 수령 절차.','PRENATAL CARE'],
-  ['tips','결혼에 관한 모든 정보','상견례·웨딩홀·스드메·본식·혼수까지 결혼 준비 꿀팁 모음.','WEDDING GUIDE']
+  ['ceremony','본식 식순','순천아모르 식순·사회자 대본, 하객·축의금과 당일 역할·봉투 관리.','CEREMONY & VOWS'],
+  ['prenatal','산전검사','순천 현대여성아동병원 안내와 지원금 신청·마감일 계산기.','PRENATAL CARE'],
+  ['tips','결혼에 관한 모든 정보','결혼 꿀팁·예산·혼수 가전·순천/정부 신혼부부 혜택 원스톱 보드.','WEDDING GUIDE']
 ];
 let baseContent, content, studios=[], prefs={}, isDraft=false, toastTimer;
 const DEFAULT_STUDIO_ID='studio-09';
@@ -195,8 +196,8 @@ function conflictDetails(error){
     E('p',{},'서로 다른 항목의 변경은 함께 보존됩니다.'));
 }
 function conflictLabel(path){
-  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',groomParents:'신랑 측 혼주',brideParents:'신부 측 혼주',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',venueMapImage:'예식장 약도 이미지',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처 안내',groomAccounts:'신랑 측 계좌',brideAccounts:'신부 측 계좌',rsvpUrl:'RSVP 설문 링크',notes:'스튜디오 메모',tripNotes:'여행지 개인 메모',tipNotes:'꿀팁 영상 개인 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',shootChecklist:'촬영 준비 체크리스트',ceremonyChecks:'본식 식순 체크리스트',prenatalChecks:'산전검사 진행 체크리스트',prenatalNote:'산전검사 개인 메모',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',vendorSchedules:'주요 업체 일정',ceremonyPlan:'본식 식순 플래너',guestList:'하객 명단',giftLedger:'축의금 장부',venueSim:'웨딩홀 비용 시뮬레이터',sdmSim:'스드메 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'신혼여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
-  const planningLabels={planned:'목표 예산',actual:'실제 지출·계약 견적',mealPrice:'1인 식대',guestCount:'예상 하객 수',minGuarantee:'최소 보증인원',hallFee:'대관료·연출료',deposit:'기납부 계약금',packageFee:'스드메 패키지 기본가',helperFee:'당일 헬퍼비',extraFee:'기타 추가금',roadScene:'로드씬 옵션',nightShoot:'야간씬 옵션',name:'일정 이름',done:'완료 여부',note:'메모',style:'예식 진행 형태',mc:'사회자',song:'축가',speech:'축사·덕담·주례',banquetFloor:'연회홀 층수',vows:'혼인서약서 문안',declaration:'성혼선언문 문안',sdm:'스튜디오·드레스·메이크업',snap:'본식 촬영·진행',rings:'예물·예복·한복·예단',living:'혼수·가전·가구'};
+  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',groomParents:'신랑 측 혼주',brideParents:'신부 측 혼주',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',venueMapImage:'예식장 약도 이미지',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처 안내',groomAccounts:'신랑 측 계좌',brideAccounts:'신부 측 계좌',rsvpUrl:'RSVP 설문 링크',notes:'스튜디오 메모',tripNotes:'여행지 개인 메모',tipNotes:'꿀팁 영상 개인 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',shootChecklist:'촬영 준비 체크리스트',ceremonyChecks:'본식 식순 체크리스트',prenatalChecks:'산전검사 진행 체크리스트',prenatalNote:'산전검사 개인 메모',prenatalSchedule:'산전검사 일정·지원금 기한',marriageRegDate:'혼인신고(예정)일',benefitChecks:'신혼부부 혜택 체크리스트',benefitNote:'혼인신고·혜택 메모',homeItems:'신혼집·혼수 품목 목록',weddingDayRoles:'본식 당일 역할 분담',weddingDayEnvelopes:'본식 현금 봉투 리스트',photoOrderNote:'본식 원판 촬영 순서표',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',vendorSchedules:'주요 업체 일정',ceremonyPlan:'본식 식순 플래너',guestList:'하객 명단',giftLedger:'축의금 장부',venueSim:'웨딩홀 비용 시뮬레이터',sdmSim:'스드메 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'신혼여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
+  const planningLabels={planned:'목표 예산',actual:'실제 지출·계약 견적',mealPrice:'1인 식대',guestCount:'예상 하객 수',minGuarantee:'최소 보증인원',hallFee:'대관료·연출료',deposit:'기납부 계약금',packageFee:'스드메 패키지 기본가',helperFee:'당일 헬퍼비',extraFee:'기타 추가금',roadScene:'로드씬 옵션',nightShoot:'야간씬 옵션',name:'일정 이름',done:'완료 여부',note:'메모',style:'예식 진행 형태',mc:'사회자',song:'축가',speech:'축사·덕담·주례',banquetFloor:'연회홀 층수',vows:'혼인서약서 문안',declaration:'성혼선언문 문안',sdm:'스튜디오·드레스·메이크업',snap:'본식 촬영·진행',rings:'예물·예복·한복·예단',living:'혼수·가전·가구',appliedDate:'지원 신청일',visitDate:'병원 예약일',examDate:'검사 완료일',claimed:'지원금 청구 완료'};
   return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||planningLabels[key]||studios.find(item=>item.id===key)?.name||content?.honeymoon?.find(item=>item.id===key)?.title||content?.tips?.find(item=>item.id===key)?.title||activeVendorSchedules().find(item=>item.id===key)?.name||'기록').join(' · ');
 }
 function storageMessage(error){
@@ -395,6 +396,8 @@ async function copyPreparationSummary(){
   const bHas=Object.keys(bPlan).length>0;
   const gSummary=guestListSummary(prefs.guestList||[]);
   const giftSummary=giftLedgerSummary(prefs.giftLedger||[]);
+  const pSched=prenatalDeadlineSummary(prefs.prenatalSchedule);
+  const hSum=homeItemsSummary(prefs.homeItems||[]);
   const stages=allChecklistStages();
   const allItems=stages.flatMap(g=>g[2]);
   const checkedSet=new Set(prefs.checklist||[]);
@@ -410,6 +413,8 @@ async function copyPreparationSummary(){
     `• 스튜디오: ${selectedStudio?`${selectedStudio.name}${shootInfo}`:`라크마 (2027-02-03 수요일 12:00 촬영 확정 · ${weddingDday('2027-02-03')})`}`,
     `• 신혼여행: ${selectedTrip?`${selectedTrip.title} (2인 계획예산 ${won(selectedTrip.budget)})`:`후보 검토 중 (관심 ${(prefs.tripFavorites||[]).length}곳)`}`,
     `• 통합 예산: ${bHas?`목표 ${budget.planned.known===null?'미입력':won(budget.planned.known)} / 실제·견적 ${budget.actual.known===null?'미입력':won(budget.actual.known)}`:'미입력'}`,
+    ...(hSum.totalCount?[`• 신혼집·혼수: ${hSum.totalCount}품목 (완료 ${hSum.doneCount} · 실제 ${hSum.actualTotal===null?'미입력':won(hSum.actualTotal)})`]:[]),
+    ...(pSched.status!=='empty'?[`• 산전검사 일정: ${pSched.statusLabel}${pSched.claimDeadline&&!pSched.claimed?` (청구 마감 ${pSched.claimDeadline})`:pSched.examDeadline&&!pSched.examDate?` (검사 마감 ${pSched.examDeadline})`:pSched.visitDate?` (예약 ${pSched.visitDate})`:''}`]:[]),
     ...(gSummary.totalRecords?[`• 하객 명단: ${gSummary.totalRecords}건 · 참석 확정 ${gSummary.attendingHeadcount}명 (불참 제외 예상 ${gSummary.possibleHeadcount}명 · 발송 ${gSummary.sentCount}/${gSummary.totalRecords})`]:[]),
     ...(giftSummary.totalRecords?[`• 축의금 장부: ${giftSummary.totalRecords}건 · 총 ${won(giftSummary.totalAmount)} · 식권 ${giftSummary.totalMealTickets}매`]:[]),
     `• 다가오는 업체 일정: ${nextVendor?`${nextVendor.category} ${nextVendor.name}${nextVendor.date?` (${nextVendor.date} · ${weddingDday(nextVendor.date)})`:''}`:'등록된 미완료 일정 없음'}`,
@@ -438,6 +443,8 @@ function renderHomeDashboard(){
   const bHas=Object.keys(bPlan).length>0;
   const gSummary=guestListSummary(prefs.guestList||[]);
   const giftSummary=giftLedgerSummary(prefs.giftLedger||[]);
+  const pSched=prenatalDeadlineSummary(prefs.prenatalSchedule);
+  const hSum=homeItemsSummary(prefs.homeItems||[]);
   const stages=allChecklistStages();
   const allItems=stages.flatMap(g=>g[2]);
   const checkedSet=new Set(prefs.checklist||[]);
@@ -446,15 +453,25 @@ function renderHomeDashboard(){
   const vList=activeVendorSchedules(prefs).filter(v=>!v.done).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
   const nextVendor=vList[0];
   const shootSched=selectedStudio?.deepGuide?.schedule;
+  const prenatalStrip=pSched.status!=='empty'?E('div',{class:'dashboard-prenatal-strip'+(pSched.urgent?' is-urgent':'')},
+    E('div',{class:'dashboard-prenatal-info'},
+      E('strong',{},`🩺 산전검사 지원금 · ${pSched.statusLabel}`),
+      E('span',{class:'small muted'},[
+        pSched.visitDate?`현대여성아동병원 예약 ${pSched.visitDate}`:'',
+        pSched.examDeadline&&!pSched.examDate?`검사 마감 ${pSched.examDeadline}`:'',
+        pSched.claimDeadline&&!pSched.claimed?`청구 마감 ${pSched.claimDeadline}`:''
+      ].filter(Boolean).join(' · ')||'산전검사 탭에서 일정과 구비서류를 확인하세요.')),
+    linkButton('산전검사 일정 보기 →','#/prenatal',true)):null;
   return E('section',{class:'home-dashboard','aria-labelledby':'home-dashboard-title'},
     E('div',{class:'section-heading'},
       E('div',{},
         E('p',{class:'eyebrow'},'OUR SELECTION & BUDGET BOARD'),
         E('h2',{id:'home-dashboard-title'},'우리의 선택 & 예산 한눈에 보기'),
-        E('p',{},'스튜디오·신혼여행·통합 예산·하객·체크리스트 현황을 이 기기에서 바로 확인하세요.')),
+        E('p',{},'스튜디오·신혼여행·통합 예산·산전검사·하객·체크리스트 현황을 이 기기에서 바로 확인하세요.')),
       E('div',{class:'page-actions'},
         button('📋 준비 현황 요약 복사',copyPreparationSummary,'button quiet'),
         button('🖨️ 요약 인쇄 / PDF',()=>window.print(),'button quiet'))),
+    prenatalStrip,
     E('div',{class:'dashboard-grid'},
       E('article',{class:'dashboard-card'},
         E('span',{class:'small muted'},'📸 웨딩 스튜디오'),
@@ -467,10 +484,11 @@ function renderHomeDashboard(){
         E('p',{class:'small muted'},selectedTrip?`2인 계획예산 ${won(selectedTrip.budget)} · 관심 ${tripFavCount}곳`:`후보 ${content.honeymoon.length}곳 · 관심 ${tripFavCount}곳`),
         linkButton('신혼여행 후보 이동 →','#/honeymoon',true)),
       E('article',{class:'dashboard-card'},
-        E('span',{class:'small muted'},'💰 통합 예산 & 축의금'),
+        E('span',{class:'small muted'},'💰 통합 예산 & 축의금·혼수'),
         E('strong',{},bHas?`목표 ${budget.planned.complete?'합계':'입력 소계'} ${budget.planned.known===null?'미입력':won(budget.planned.known)}`:'6대 예산 미입력'),
         E('p',{class:'small muted'},bHas?`실제·견적 ${budget.actual.complete?'합계':'입력 소계'} ${budget.actual.known===null?'미입력':won(budget.actual.known)} (${budget.difference===null?'차액 미확인':budget.difference>=0?`여유 ${won(budget.difference)}`:`초과 ${won(-budget.difference)}`})`:'웨딩홀·스드메·신혼여행 통합 관리'),
-        giftSummary.totalRecords?E('p',{class:'small muted'},`💌 축의금 장부: ${giftSummary.totalRecords}건 · ${won(giftSummary.totalAmount)} · 식권 ${giftSummary.totalMealTickets}매`):(bHas?E('p',{class:'small muted'},`미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개`):null),
+        hSum.totalCount?E('p',{class:'small muted'},`🏠 혼수·가전: ${hSum.totalCount}품목 (완료 ${hSum.doneCount} · 실제 ${hSum.actualTotal===null?'미입력':won(hSum.actualTotal)})`):null,
+        giftSummary.totalRecords?E('p',{class:'small muted'},`💌 축의금 장부: ${giftSummary.totalRecords}건 · ${won(giftSummary.totalAmount)} · 식권 ${giftSummary.totalMealTickets}매`):(!hSum.totalCount&&bHas?E('p',{class:'small muted'},`미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개`):null),
         button('예산 계산기 이동 →',()=>{setTipsSubTab('budget');location.hash='#/tips';},'button quiet')),
       E('article',{class:'dashboard-card'},
         E('span',{class:'small muted'},'✅ 다음 할 일 & 하객 현황'),
@@ -661,8 +679,20 @@ function renderHome() {
     :null;
   const ceremonyDone=(prefs.ceremonyChecks||[]).filter(id=>CEREMONY_PREP_ITEMS.some(([cid])=>cid===id)).length;
   const prenatalDone=(prefs.prenatalChecks||[]).filter(id=>PRENATAL_CHECK_ITEMS.some(([pid])=>pid===id)).length;
+  const pSched=prenatalDeadlineSummary(prefs.prenatalSchedule);
   const gCount=(prefs.guestList||[]).length;
-  const statuses={invitation:info.date?'예식 일시·장소 안내':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:'2/3(수) 12:00 촬영 안내',honeymoon:`${content.honeymoon.length}개의 여행 후보`,ceremony:gCount?`체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 하객 ${gCount}건`:`준비 체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 12단계 식순`,prenatal:`순천현대병원 · 준비 체크 ${prenatalDone}/${PRENATAL_CHECK_ITEMS.length}`,tips:`${content.tips.length}개의 꿀팁 영상`};
+  const dayOpsCount=(prefs.weddingDayRoles||[]).length+(prefs.weddingDayEnvelopes||[]).length;
+  const hCount=(prefs.homeItems||[]).length;
+  const statuses={
+    invitation:info.date?'예식 일시·장소 안내':'첫 인사를 준비해요',
+    story:`${content.stories.length}개의 이야기`,
+    albums:`${content.albums.length}개의 앨범`,
+    studios:'2/3(수) 12:00 촬영 안내',
+    honeymoon:`${content.honeymoon.length}개의 여행 후보`,
+    ceremony:gCount?`체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 하객 ${gCount}건`:(dayOpsCount?`12단계 식순 · 당일 역할/봉투 ${dayOpsCount}건`:`준비 체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 12단계 식순`),
+    prenatal:pSched.status!=='empty'?`${pSched.statusLabel} · 체크 ${prenatalDone}/${PRENATAL_CHECK_ITEMS.length}`:`순천현대병원 · 준비 체크 ${prenatalDone}/${PRENATAL_CHECK_ITEMS.length}`,
+    tips:hCount?`꿀팁 ${content.tips.length}개 · 혼수 ${hCount}품목`:`꿀팁 ${content.tips.length}개 · 혼수·신혼혜택`
+  };
   const visibleMenus=guestMode?menus.filter(([route])=>isGuestVisibleRoute(route)):menus;
   return [hero,renderJourneyRibbon(info,dday),overview,renderHomeDashboard(),E('section',{},E('div',{class:'section-heading'},E('div',{},E('h2',{},guestMode?'예식 안내 바로가기':'함께 채워 갈 이야기'),E('p',{},guestMode?'모바일 청첩장과 오시는 길 안내를 확인하실 수 있습니다.':'필요한 순간에 하나씩, 우리의 속도로.'))),
     E('div',{class:'menu-grid'},visibleMenus.map(([route,title,description],index)=>E('a',{class:'menu-card',href:`#/${route}`},E('span',{class:'number'},String(index+1).padStart(2,'0')),E('h3',{},title),E('p',{},description),E('div',{class:'card-tail'},E('span',{},statuses[route]),E('span',{'aria-hidden':'true'},'↗')))))),renderHomeChecklist()];
@@ -1400,6 +1430,7 @@ function downloadContent(){return downloadSaved(DRAFT_KEY);}
 function downloadPrivate(){return downloadSaved(PREF_KEY);}
 function openManager() {
   if(guestMode)return;
+  closeMobileMenu(false);
   const managerBase=structuredClone(content),managerRaw=readStorage(DRAFT_KEY),prefRaw=readStorage(PREF_KEY);
   const byteLen=str=>str?new TextEncoder().encode(str).length:0;
   const draftBytes=byteLen(managerRaw),prefBytes=byteLen(prefRaw),totalBytes=draftBytes+prefBytes;
@@ -1422,20 +1453,22 @@ function openManager() {
           diff.guestsAdded?`하객 +${diff.guestsAdded}건`:'',
           diff.giftsAdded?`축의금 +${diff.giftsAdded}건`:'',
           diff.schedulesAdded?`업체 일정 +${diff.schedulesAdded}건`:'',
+          diff.homeItemsAdded?`혼수 품목 +${diff.homeItemsAdded}건`:'',
+          diff.dayOpsAdded?`당일 역할·봉투 +${diff.dayOpsAdded}건`:'',
           diff.checksAdded?`체크 +${diff.checksAdded}건`:'',
           diff.customItemsAdded?`직접 항목 +${diff.customItemsAdded}건`:'',
           diff.favoritesAdded?`관심 +${diff.favoritesAdded}건`:'',
           diff.notesUpdated?`메모 ${diff.notesUpdated}건 반영`:''
         ].filter(Boolean);
         const previewText=parts.length?parts.join(' · '):'기존 기록과 중복되지 않는 신규 항목은 없으며, 비어 있던 설정만 보완됩니다.';
-        if(!confirm(`백업 파일을 이 기기의 기존 기록에 합칠까요?\n\n예상 반영 내용: ${previewText}\n\n※ 기존 하객·축의금·메모·체크는 유지되고 새 항목만 안전하게 합쳐집니다.`))return;
+        if(!confirm(`백업 파일을 이 기기의 기존 기록에 합칠까요?\n\n예상 반영 내용: ${previewText}\n\n※ 기존 하객·축의금·혼수·당일 운영표·메모·체크는 유지되고 새 항목만 안전하게 합쳐집니다.`))return;
         if(await savePrefs(merged,currentPrefs,readStorage(PREF_KEY))){
           closeDialog();render();
           toast(parts.length?`개인 백업을 기존 기록과 합쳤습니다. (${parts.join(', ')})`:'개인 백업을 기존 기록과 확인·병합했습니다.');
         }
       }else{
-        if(!confirm('이 기기의 라크마 촬영 메모·준비물 체크, 여행·꿀팁 선택과 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정 보드, 본식 식순·낭독문 체크, 산전검사 체크·메모, 하객 명단·축의금 장부, 출국 준비물을 백업 내용으로 전체 덮어쓸까요?'))return;
-        if(await savePrefs(incoming,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·일정·식순·산전검사·하객·축의금 장부 설정을 복원했습니다.');}
+        if(!confirm('이 기기의 라크마 촬영 메모·준비물 체크, 여행·꿀팁 선택과 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 혼수·가전 목록, 신혼부부 혜택 체크, 업체 일정 보드, 본식 식순·당일 역할·현금 봉투·원판 순서, 산전검사 일정·체크·메모, 하객 명단·축의금 장부, 출국 준비물을 백업 내용으로 전체 덮어쓸까요?'))return;
+        if(await savePrefs(incoming,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·혼수·신혼혜택·당일 운영표·산전검사·하객·축의금 장부 설정을 복원했습니다.');}
       }
     }catch(error){toast(error.message,true);}finally{personal.value='';}
   });
@@ -1504,7 +1537,7 @@ function openManager() {
         E('span',{class:'checklist-progress-fill',style:`width:${pct}%`}))),
     E('section',{class:'manager-section'},
       E('h3',{},'개인 메모·선택 백업'),
-      E('p',{},'라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·주요 업체 일정 보드·본식 식순·산전검사 체크·메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
+      E('p',{},'라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·혼수 가전 목록·혼인신고 및 신혼부부 혜택 체크·주요 업체 일정 보드·본식 식순·당일 역할/현금 봉투/원판 순서·산전검사 일정/체크/메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
       button('개인 백업 저장',downloadPrivate,'button quiet'),
       E('div',{class:'pref-restore-modes',role:'radiogroup','aria-label':'개인 백업 불러오기 방식'},
         E('label',{class:'check-label',for:'pref-import-merge'},mergeRadio,'기존 기록에 합치기 (병합 · 권장 — 신랑·신부·양가 백업 통합)'),
@@ -1514,9 +1547,9 @@ function openManager() {
     isDraft&&draftRevision!==baseRevision?E('section',{class:'manager-section'},E('h3',{},'새 공개본 확인'),E('p',{},'현재 초안을 파일로 백업한 후 새 공개본을 확인하세요. 공개본으로 돌아가면 초안을 지우며 자동으로 합치지 않습니다.'),button('현재 초안 백업',downloadContent,'button quiet'),linkButton('새 공개본 미리보기','?view=guest#/home',true)):null,
     E('section',{class:'manager-section'},E('h3',{},'기본 정보'),E('p',{},'이름, 예식 일정과 장소, 청첩장 인사를 채워요.'),editButton('예식 정보 편집',()=>openEditor('invitation'),'button quiet')),
     renderDraftDiffSection(),
-    E('section',{class:'manager-section'},E('h3',{},'공개할 내용 파일로 저장'),E('p',{},'저장한 site.json 파일은 자동 배포되지 않으며, 저장소의 data/site.json에 반영한 뒤 main 브랜치에 push하면 GitHub Pages에 공개됩니다. 파일에는 청첩장·일대기·앨범·신혼여행·결혼 정보가 담기며, 개인 메모·예산·체크리스트·산전검사 메모·하객 명단·축의금 장부는 포함되지 않습니다.'),button('공개용 파일 저장',downloadContent)),
+    E('section',{class:'manager-section'},E('h3',{},'공개할 내용 파일로 저장'),E('p',{},'저장한 site.json 파일은 자동 배포되지 않으며, 저장소의 data/site.json에 반영한 뒤 main 브랜치에 push하면 GitHub Pages에 공개됩니다. 파일에는 청첩장·일대기·앨범·신혼여행·결혼 정보가 담기며, 개인 메모·예산·체크리스트·혼수·신혼혜택·당일 운영표·산전검사 일정·하객 명단·축의금 장부는 포함되지 않습니다.'),button('공개용 파일 저장',downloadContent)),
     E('section',{class:'manager-section'},E('h3',{},'이전에 저장한 내용 불러오기'),E('p',{},'이 앱에서 저장한 JSON 콘텐츠 파일을 선택해 주세요.'),file),
-    E('section',{class:'manager-section'},E('h3',{},'초안을 지우고 공개본 보기'),E('p',{},'이 기기의 콘텐츠 초안만 지웁니다. 라크마 촬영 메모와 여행·예산·체크리스트·산전검사 메모·하객 명단·축의금 장부 등 개인 설정은 유지됩니다.'),button('공개본으로 돌아가기',async()=>{
+    E('section',{class:'manager-section'},E('h3',{},'초안을 지우고 공개본 보기'),E('p',{},'이 기기의 콘텐츠 초안만 지웁니다. 라크마 촬영 메모와 여행·예산·체크리스트·혼수·당일 운영표·산전검사 일정·하객 명단·축의금 장부 등 개인 설정은 유지됩니다.'),button('공개본으로 돌아가기',async()=>{
       if(!confirm('이 기기의 콘텐츠 초안을 지울까요? 필요한 내용은 먼저 파일로 저장해 주세요.'))return;
       try{
         await navigator.locks.request(`wedding-storage:${DRAFT_KEY}`,()=>{
@@ -1526,8 +1559,8 @@ function openManager() {
         content=structuredClone(baseContent);syncMemoryPrefs();isDraft=false;draftRevision=baseRevision;closeDialog();render();toast('공개본으로 돌아왔습니다.');
       }catch(error){toast(error.message||'초안을 지우지 못했습니다.',true);}
     },'button danger')),
-    E('section',{class:'manager-section'},E('h3',{},'개인 설정·메모 초기화'),E('p',{},'이 기기에 저장된 라크마 촬영 메모·준비물 체크, 여행·꿀팁 관심 및 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정, 본식 식순, 산전검사 체크·메모, 하객 명단, 축의금 장부를 초기 상태로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),button('개인 설정·메모 초기화',async()=>{
-      if(!confirm('이 기기의 모든 개인 메모·관심 선택·예산·체크리스트·식순·산전검사·하객 명단·축의금 장부 설정을 초기화할까요?'))return;
+    E('section',{class:'manager-section'},E('h3',{},'개인 설정·메모 초기화'),E('p',{},'이 기기에 저장된 라크마 촬영 메모·준비물 체크, 여행·꿀팁 관심 및 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 혼수·가전 목록, 신혼부부 혜택 체크, 업체 일정, 본식 식순·당일 역할·현금 봉투·원판 순서, 산전검사 일정·체크·메모, 하객 명단, 축의금 장부를 초기 상태로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),button('개인 설정·메모 초기화',async()=>{
+      if(!confirm('이 기기의 모든 개인 메모·관심 선택·예산·혼수·신혼혜택·체크리스트·식순·당일 운영표·산전검사·하객 명단·축의금 장부 설정을 초기화할까요?'))return;
       if(await savePrefs(validatePreferences({}),validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('이 기기의 개인 설정과 메모를 초기화했습니다.');}
     },'button danger'))));
 }
@@ -1536,6 +1569,60 @@ function syncDraftFromStorage(){
   content=saved?parseContent(saved):structuredClone(baseContent);isDraft=Boolean(saved);draftRevision=saved?JSON.parse(saved).baseRevision??null:baseRevision;
   syncMemoryPrefs();
 }
+const mobileMenuBtn=$('#mobile-menu-btn');
+const mobileMenuSheet=$('#mobile-menu-sheet');
+const mobileMenuBackdrop=$('#mobile-menu-backdrop');
+const mobileMenuList=$('#mobile-menu-list');
+const mobileMenuClose=$('#mobile-menu-close');
+function renderMobileMenuSheet(){
+  if(!mobileMenuList)return;
+  const route=currentRoute();
+  const entries=[['home','홈',guestMode?'예식 안내 첫 화면':'결혼 준비 한눈에 보기'],...menus.map(([r,t,d])=>[r,t,d])];
+  const visible=guestMode?entries.filter(([r])=>isGuestVisibleRoute(r)):entries;
+  mobileMenuList.replaceChildren(...visible.map(([r,title,desc])=>{
+    const item=E('a',{
+      class:'mobile-menu-tile'+(r===route?' is-active':''),
+      href:`#/${r}`,
+      'data-mobile-route':r
+    },
+      E('span',{class:'mobile-menu-icon','aria-hidden':'true'},MENU_ICONS[r]||'•'),
+      E('span',{class:'mobile-menu-copy'},
+        E('strong',{},title),
+        E('span',{class:'small muted'},desc)));
+    if(r===route)item.setAttribute('aria-current','page');
+    item.addEventListener('click',()=>closeMobileMenu(false));
+    return item;
+  }));
+}
+function openMobileMenu(){
+  if(!mobileMenuSheet||!mobileMenuBackdrop)return;
+  renderMobileMenuSheet();
+  mobileMenuBackdrop.hidden=false;
+  mobileMenuSheet.hidden=false;
+  mobileMenuBtn?.setAttribute('aria-expanded','true');
+  document.body.classList.add('is-mobile-menu-open');
+  $('#mobile-menu-title')?.focus({preventScroll:true});
+}
+function closeMobileMenu(restoreFocus=false){
+  if(!mobileMenuSheet||mobileMenuSheet.hidden)return;
+  mobileMenuSheet.hidden=true;
+  if(mobileMenuBackdrop)mobileMenuBackdrop.hidden=true;
+  mobileMenuBtn?.setAttribute('aria-expanded','false');
+  document.body.classList.remove('is-mobile-menu-open');
+  if(restoreFocus)mobileMenuBtn?.focus({preventScroll:true});
+}
+mobileMenuBtn?.addEventListener('click',()=>{
+  if(mobileMenuSheet?.hidden)openMobileMenu();
+  else closeMobileMenu(true);
+});
+mobileMenuClose?.addEventListener('click',()=>closeMobileMenu(true));
+mobileMenuBackdrop?.addEventListener('click',()=>closeMobileMenu(true));
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&mobileMenuSheet&&!mobileMenuSheet.hidden){
+    event.preventDefault();
+    closeMobileMenu(true);
+  }
+});
 $('#close-dialog').addEventListener('click',requestClose);
 dialog.addEventListener('cancel',event=>{event.preventDefault();requestClose();});
 dialog.addEventListener('close',unloadDialogMedia);
@@ -1556,6 +1643,7 @@ document.addEventListener('click',event=>{
 },true);
 window.addEventListener('beforeunload',event=>{if(dirtyEditor()||pendingWrites||pendingWriteTasks.size){event.preventDefault();event.returnValue='';}});
 window.addEventListener('hashchange',()=>{
+  closeMobileMenu(false);
   if(!content||location.hash==='#main')return;
   if(!canLeaveEditor()){history.replaceState(null,'',location.pathname+location.search+previousHash);return;}
   previousHash=location.hash;closeDialog();render();window.scrollTo({top:0,behavior:'instant'});

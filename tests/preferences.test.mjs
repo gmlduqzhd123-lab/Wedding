@@ -207,3 +207,79 @@ test('prenatalChecks and prenatalNote validate strictly, survive private backup,
   assert.equal(summary.notesUpdated,1);
 });
 
+test('prenatalSchedule, marriage benefits, homeItems, and wedding-day ops validate strictly and merge cleanly',()=>{
+  const a=validatePreferences({
+    prenatalSchedule:{appliedDate:'2026-11-30',visitDate:'2026-12-12',examDate:'',claimed:false},
+    marriageRegDate:'2027-06-07',
+    benefitChecks:['bchk-reg'],
+    benefitNote:'순천시청 신청사 장명로 30 방문 예정',
+    homeItems:[
+      {id:'h1',category:'📺 가전',name:'냉장고',brand:'LG 오브제',status:'구매 확정',plannedPrice:2500000,actualPrice:2350000,deposit:300000,deliveryDate:'2027-05-10',note:'설치비 무료'}
+    ],
+    weddingDayRoles:[
+      {id:'r1',group:'축의대(신랑 측)',role:'신랑 측 축의대 접수',assignee:'김OO',phone:'010-1234-5678',note:'14:10 도착'}
+    ],
+    weddingDayEnvelopes:[
+      {id:'e1',payee:'사회자',amount:200000,recipient:'이OO',ready:true,note:'신권 준비'}
+    ],
+    photoOrderNote:'1. 양가 부모님\n2. 직계가족'
+  });
+  const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:a});
+  assert.deepEqual(parsePreferencesBackup(raw),a);
+
+  for(const bad of [
+    {prenatalSchedule:{appliedDate:'2026-02-30'}},
+    {prenatalSchedule:{claimed:'yes'}},
+    {marriageRegDate:'2027-13-01'},
+    {benefitChecks:['bad id!']},
+    {benefitNote:'x'.repeat(1001)},
+    {homeItems:[{id:'h1',category:'없는분류',name:'TV',status:'후보 비교',plannedPrice:100,actualPrice:null,deposit:null}]},
+    {homeItems:[{id:'h1',category:'📺 가전',name:'TV',status:'없는상태',plannedPrice:100,actualPrice:null,deposit:null}]},
+    {homeItems:[{id:'h1',category:'📺 가전',name:'TV',status:'후보 비교',plannedPrice:-10,actualPrice:null,deposit:null}]},
+    {homeItems:[{id:'h1',category:'📺 가전',name:'TV',status:'후보 비교',plannedPrice:null,actualPrice:null,deposit:null,deliveryDate:'2027-02-30'}]},
+    {weddingDayRoles:[{id:'r1',group:'없는그룹',role:'역할'}]},
+    {weddingDayRoles:[{id:'r1',group:'축의대(신랑 측)',role:''}]},
+    {weddingDayEnvelopes:[{id:'e1',payee:'없는항목',amount:100000,ready:false}]},
+    {weddingDayEnvelopes:[{id:'e1',payee:'사회자',amount:-1,ready:false}]},
+    {weddingDayEnvelopes:[{id:'e1',payee:'사회자',amount:100000,ready:'true'}]},
+    {photoOrderNote:'x'.repeat(2001)}
+  ]){
+    assert.throws(()=>validatePreferences(bad));
+  }
+
+  const b=validatePreferences({
+    prenatalSchedule:{examDate:'2026-12-12',claimed:true},
+    benefitChecks:['bchk-reg','bchk-congrats'],
+    benefitNote:'전남 아이톡 온라인 신청 확인',
+    homeItems:[
+      {id:'h-dup',category:'📺 가전',name:'냉장고',brand:'LG 오브제',status:'구매 확정',plannedPrice:2500000,actualPrice:2350000,deposit:300000},
+      {id:'h2',category:'🛋️ 가구',name:'침대',status:'후보 비교',plannedPrice:1800000,actualPrice:null,deposit:null}
+    ],
+    weddingDayRoles:[
+      {id:'r2',group:'신부 케어·가방순이',role:'가방순이',assignee:'박OO'}
+    ],
+    weddingDayEnvelopes:[
+      {id:'e2',payee:'촬영·본식 헬퍼',amount:250000,ready:false}
+    ],
+    photoOrderNote:'3. 신랑·신부 친구'
+  });
+
+  const merged=mergePreferences(a,b);
+  assert.equal(merged.prenatalSchedule.appliedDate,'2026-11-30');
+  assert.equal(merged.prenatalSchedule.examDate,'2026-12-12');
+  assert.equal(merged.prenatalSchedule.claimed,true);
+  assert.equal(merged.homeItems.length,2);
+  assert.equal(merged.weddingDayRoles.length,2);
+  assert.equal(merged.weddingDayEnvelopes.length,2);
+  assert.deepEqual(merged.benefitChecks,['bchk-reg','bchk-congrats']);
+  assert(merged.benefitNote.includes('장명로 30')&&merged.benefitNote.includes('전남 아이톡'));
+  assert(merged.photoOrderNote.includes('양가 부모님')&&merged.photoOrderNote.includes('친구'));
+
+  const diff=summarizePreferencesMerge(a,merged);
+  assert.equal(diff.homeItemsAdded,1);
+  assert.equal(diff.dayOpsAdded,2);
+  assert.equal(diff.checksAdded,1);
+  assert.equal(diff.notesUpdated,2);
+});
+
+

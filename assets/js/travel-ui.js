@@ -1,6 +1,6 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-52';
-import { safeUrl } from './content.js?v=wedding-features-52';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-52';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-53';
+import { safeUrl } from './content.js?v=wedding-features-53';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-53';
 import {
   COST_LABELS,
   budgetSummary,
@@ -13,7 +13,7 @@ import {
   currentBudgetText,
   climateReview,
   climateBadgeInfo
-} from './travel.js?v=wedding-features-52';
+} from './travel.js?v=wedding-features-53';
 
 let tripSort = 'recommended';
 let tripFavoritesOnly = false;

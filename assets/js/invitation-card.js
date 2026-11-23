@@ -1,6 +1,6 @@
-import { E, S, image } from './dom.js?v=wedding-features-52';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-52';
-import { renderQrSvgString } from './qrcode.js?v=wedding-features-52';
+import { E, S, image } from './dom.js?v=wedding-features-53';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-53';
+import { renderQrSvgString } from './qrcode.js?v=wedding-features-53';
 
 const MONTH_NAMES_EN = ['', 'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 

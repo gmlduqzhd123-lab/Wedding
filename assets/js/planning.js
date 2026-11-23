@@ -374,4 +374,202 @@ export function buildThankYouMessage(gift = {}, invitation = {}, variant = 'atte
   ].join('\n');
 }
 
+export function addCalendarMonths(dateStr, deltaMonths) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return null;
+  const year = Number(m[1]);
+  const monthIdx = Number(m[2]) - 1 + deltaMonths;
+  const day = Number(m[3]);
+  const targetYear = year + Math.floor(monthIdx / 12);
+  const targetMonth = ((monthIdx % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const clampedDay = Math.min(day, lastDay);
+  return `${String(targetYear).padStart(4, '0')}-${String(targetMonth + 1).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`;
+}
+
+function kstDayDiff(targetDateStr, now = new Date()) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(targetDateStr || '');
+  if (!m) return null;
+  const targetUtc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const kst = new Date(now.getTime() + 9 * 3600 * 1000);
+  const todayUtc = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate());
+  return Math.round((targetUtc - todayUtc) / 86400000);
+}
+
+export function prenatalDeadlineSummary(schedule = {}, now = new Date()) {
+  const appliedDate = schedule?.appliedDate || '';
+  const visitDate = schedule?.visitDate || '';
+  const examDate = schedule?.examDate || '';
+  const claimed = Boolean(schedule?.claimed);
+
+  const examDeadline = appliedDate ? addCalendarMonths(appliedDate, 3) : null;
+  const claimDeadline = examDate ? addCalendarMonths(examDate, 1) : null;
+  const examDaysLeft = examDeadline ? kstDayDiff(examDeadline, now) : null;
+  const visitDaysLeft = visitDate ? kstDayDiff(visitDate, now) : null;
+  const claimDaysLeft = claimDeadline ? kstDayDiff(claimDeadline, now) : null;
+
+  let status = 'empty';
+  let statusLabel = '일정 미입력';
+  let urgent = false;
+
+  if (claimed) {
+    status = 'claimed';
+    statusLabel = '지원금 청구 완료';
+  } else if (claimDeadline) {
+    if (claimDaysLeft < 0) {
+      status = 'claim-overdue';
+      statusLabel = `청구 기한 초과 (${Math.abs(claimDaysLeft)}일 경과)`;
+      urgent = true;
+    } else if (claimDaysLeft <= 7) {
+      status = 'claim-urgent';
+      statusLabel = claimDaysLeft === 0 ? '오늘 청구 마감!' : `청구 마감 D-${claimDaysLeft} 임박`;
+      urgent = true;
+    } else {
+      status = 'claim-pending';
+      statusLabel = `청구 마감 D-${claimDaysLeft}`;
+    }
+  } else if (examDeadline) {
+    if (examDaysLeft < 0) {
+      status = 'exam-overdue';
+      statusLabel = `검사 기한 초과 (보건소 취소·재신청 필요)`;
+      urgent = true;
+    } else if (examDaysLeft <= 14) {
+      status = 'exam-urgent';
+      statusLabel = examDaysLeft === 0 ? '오늘 검사 마감!' : `검사 마감 D-${examDaysLeft} 임박`;
+      urgent = true;
+    } else {
+      status = 'exam-pending';
+      statusLabel = `검사 마감 D-${examDaysLeft}`;
+    }
+  } else if (visitDate) {
+    status = 'visit-scheduled';
+    statusLabel = visitDaysLeft === 0 ? '오늘 병원 예약일' : visitDaysLeft > 0 ? `병원 예약 D-${visitDaysLeft}` : `예약일 경과 (검사일 입력 권장)`;
+  }
+
+  return {
+    appliedDate,
+    visitDate,
+    examDate,
+    claimed,
+    examDeadline,
+    claimDeadline,
+    examDaysLeft,
+    visitDaysLeft,
+    claimDaysLeft,
+    status,
+    statusLabel,
+    urgent
+  };
+}
+
+export function marriageBenefitTimeline(regDateStr, now = new Date()) {
+  if (!/^(\d{4})-(\d{2})-(\d{2})$/.test(regDateStr || '')) return null;
+  const congratsStart = addCalendarMonths(regDateStr, 6);
+  const congratsEnd = addCalendarMonths(regDateStr, 18);
+  const giftStart = addCalendarMonths(regDateStr, -24);
+  const giftEnd = addCalendarMonths(regDateStr, 24);
+  const regYear = Number(regDateStr.slice(0, 4));
+  const daysToStart = kstDayDiff(congratsStart, now);
+  const daysToEnd = kstDayDiff(congratsEnd, now);
+  let congratsStatus = 'upcoming';
+  if (daysToEnd < 0) congratsStatus = 'expired';
+  else if (daysToStart <= 0) congratsStatus = 'open';
+  return {
+    regDate: regDateStr,
+    regYear,
+    congratsStart,
+    congratsEnd,
+    giftStart,
+    giftEnd,
+    daysToStart,
+    daysToEnd,
+    congratsStatus,
+    taxNote: regYear <= 2026
+      ? '2026년 12월 31일까지 혼인신고 시 현행 결혼세액공제(1인 50만 원 · 부부 최대 100만 원) 적용 대상입니다.'
+      : '2027년 1월 1일 이후 혼인신고는 결혼세액공제 연장 또는 2027년 정부 예산안 「혼인지원금(부부 100만 원)」 전환 여부를 국세청·정부 최종 확정 공고로 확인하세요.'
+  };
+}
+
+export function homeItemsSummary(items = []) {
+  const list = Array.isArray(items) ? items : [];
+  let totalCount = 0, doneCount = 0, contractedCount = 0;
+  let plannedTotal = 0, plannedCount = 0;
+  let actualTotal = 0, actualCount = 0;
+  let depositTotal = 0;
+  const byCategory = {};
+  for (const item of list) {
+    totalCount++;
+    if (item?.status === '배송·설치 완료') doneCount++;
+    if (item?.status === '계약·결제 완료' || item?.status === '배송·설치 완료') contractedCount++;
+    if (known(item?.plannedPrice)) { plannedTotal += item.plannedPrice; plannedCount++; }
+    if (known(item?.actualPrice)) { actualTotal += item.actualPrice; actualCount++; }
+    if (known(item?.deposit)) depositTotal += item.deposit;
+    const cat = item?.category || '📦 기타';
+    if (!byCategory[cat]) byCategory[cat] = { count: 0, done: 0, planned: 0, actual: 0 };
+    byCategory[cat].count++;
+    if (item?.status === '배송·설치 완료') byCategory[cat].done++;
+    if (known(item?.plannedPrice)) byCategory[cat].planned += item.plannedPrice;
+    if (known(item?.actualPrice)) byCategory[cat].actual += item.actualPrice;
+  }
+  const balanceTotal = actualCount > 0 ? Math.max(0, actualTotal - depositTotal) : null;
+  return {
+    totalCount,
+    doneCount,
+    contractedCount,
+    plannedTotal: plannedCount > 0 ? plannedTotal : null,
+    actualTotal: actualCount > 0 ? actualTotal : null,
+    depositTotal,
+    balanceTotal,
+    byCategory
+  };
+}
+
+export function homeItemsToCsv(items = []) {
+  const header = ['분류', '품목명', '브랜드·모델', '진행 상태', '목표 예산(원)', '계약·실제가(원)', '계약금(원)', '잔금(원)', '배송·설치일', '메모'];
+  const rows = (Array.isArray(items) ? items : []).map(item => {
+    const balance = known(item?.actualPrice) ? Math.max(0, item.actualPrice - (known(item?.deposit) ? item.deposit : 0)) : '';
+    return [
+      item.category || '',
+      item.name || '',
+      item.brand || '',
+      item.status || '',
+      known(item?.plannedPrice) ? item.plannedPrice : '',
+      known(item?.actualPrice) ? item.actualPrice : '',
+      known(item?.deposit) ? item.deposit : '',
+      balance,
+      item.deliveryDate || '',
+      item.note || ''
+    ];
+  });
+  return '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
+}
+
+export function weddingDaySummary(roles = [], envelopes = []) {
+  const rList = Array.isArray(roles) ? roles : [];
+  const eList = Array.isArray(envelopes) ? envelopes : [];
+  let assignedRoles = 0;
+  for (const r of rList) {
+    if ((r?.assignee || '').trim()) assignedRoles++;
+  }
+  let readyCount = 0, totalEnvelopeAmount = 0, readyAmount = 0;
+  for (const env of eList) {
+    const amt = known(env?.amount) ? env.amount : 0;
+    totalEnvelopeAmount += amt;
+    if (env?.ready) {
+      readyCount++;
+      readyAmount += amt;
+    }
+  }
+  return {
+    roleCount: rList.length,
+    assignedRoles,
+    envelopeCount: eList.length,
+    readyCount,
+    totalEnvelopeAmount,
+    readyAmount,
+    pendingAmount: Math.max(0, totalEnvelopeAmount - readyAmount)
+  };
+}
+
+
 

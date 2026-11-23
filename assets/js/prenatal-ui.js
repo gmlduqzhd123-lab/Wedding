@@ -1,4 +1,6 @@
-import { E, button, externalLink } from './dom.js?v=wedding-features-52';
+import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-53';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-53';
+import { prenatalDeadlineSummary } from './planning.js?v=wedding-features-53';
 
 let prenatalSubTab = 'hospital';
 export function setPrenatalSubTab(tab) {
@@ -78,6 +80,12 @@ function buildPrenatalSummaryText(prefs) {
   const checkedSet = new Set(prefs.prenatalChecks || []);
   const doneCount = PRENATAL_CHECK_ITEMS.filter(([id]) => checkedSet.has(id)).length;
   const note = (prefs.prenatalNote || '').trim();
+  const sched = prenatalDeadlineSummary(prefs.prenatalSchedule || {});
+  const schedLines = [];
+  if (sched.appliedDate) schedLines.push(`• e보건소 신청일: ${sched.appliedDate} (3개월 검사 마감: ${sched.examDeadline})`);
+  if (sched.visitDate) schedLines.push(`• 순천 현대여성아동병원 예약일: ${sched.visitDate}`);
+  if (sched.examDate) schedLines.push(`• 산전검사 완료일: ${sched.examDate} (1개월 청구 마감: ${sched.claimDeadline})`);
+  if (sched.claimed) schedLines.push('• 지원금 청구 상태: 완료');
   return [
     '🩺 [산전검사 · 순천 현대여성아동병원 & 지원금 핵심 요약]',
     '',
@@ -97,7 +105,8 @@ function buildPrenatalSummaryText(prefs) {
     '• 신혼(예비)부부 건강검진: 순천시 주민등록 예비·신혼부부 남녀 각 최대 4만 원 (지정 병원 검진 후 보건소 신청, 난임진단검사비 중복 불가)',
     '• 예비부모 엽산제: 첫 임신 계획 혼인(예정) 3년 이내 남녀 각 3개월분(총 6갑)',
     '',
-    `4) 우리 준비 체크 현황: ${doneCount}/${PRENATAL_CHECK_ITEMS.length} 완료`,
+    `4) 우리 준비 체크 현황: ${doneCount}/${PRENATAL_CHECK_ITEMS.length} 완료 (${sched.statusLabel})`,
+    ...schedLines,
     ...(note ? ['', `📝 개인 메모: ${note}`] : []),
     '',
     '※ 확인 기준일: 2026-11 (방문·신청 전 병원 및 순천시 보건소 최신 운영·예산 현황을 꼭 확인하세요.)'
@@ -118,6 +127,7 @@ export function renderPrenatal(ctx) {
   const checkDone = PRENATAL_CHECK_ITEMS.filter(([id]) => checkedSet.has(id)).length;
   const checkTotal = PRENATAL_CHECK_ITEMS.length;
   const savedNote = prefs.prenatalNote || '';
+  const sched = prenatalDeadlineSummary(prefs.prenatalSchedule || {});
 
   const switchSubTab = nextTab => {
     setPrenatalSubTab(nextTab);
@@ -149,15 +159,15 @@ export function renderPrenatal(ctx) {
       E('span', { class: 'prenatal-kpi-label' }, '👨 국가 지원 (남성)'),
       E('strong', { class: 'prenatal-kpi-val' }, '최대 5만 원'),
       E('span', { class: 'small muted' }, '정액검사(정밀형태) · 생애 3주기')),
-    E('article', { class: 'prenatal-kpi-card' },
-      E('span', { class: 'prenatal-kpi-label' }, '🏛️ 순천시 자체 지원'),
-      E('strong', { class: 'prenatal-kpi-val' }, '남녀 각 최대 4만 원'),
-      E('span', { class: 'small muted' }, '신혼·예비부부 검진 + 엽산제 6갑')));
+    E('article', { class: 'prenatal-kpi-card' + (sched.urgent ? ' is-urgent' : '') },
+      E('span', { class: 'prenatal-kpi-label' }, sched.status === 'empty' ? '🏛️ 순천시 자체 지원' : '⏰ 지원금 마감 현황'),
+      E('strong', { class: 'prenatal-kpi-val' }, sched.status === 'empty' ? '남녀 각 최대 4만 원' : sched.statusLabel),
+      E('span', { class: 'small muted' }, sched.status === 'empty' ? '신혼·예비부부 검진 + 엽산제 6갑' : (sched.claimDeadline ? `청구 마감 ${sched.claimDeadline}` : sched.examDeadline ? `검사 마감 ${sched.examDeadline}` : `예약일 ${sched.visitDate}`))));
 
   const subTabBar = E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '산전검사 세부 메뉴' },
     [
       ['hospital', '🏥 순천 현대여성아동병원', '조례동'],
-      ['subsidy', '💰 지원금 & 신청 절차', '5단계'],
+      ['subsidy', '💰 지원금 & 신청 절차', sched.status === 'empty' ? '5단계' : sched.statusLabel],
       ['guide', '🩺 검사항목 & 준비 체크', `${checkDone}/${checkTotal}`]
     ].map(([id, label, badgeText]) => E('button', {
       type: 'button',
@@ -252,7 +262,118 @@ export function renderPrenatal(ctx) {
         externalLink('🌐 순천시 보건소 홈페이지 ↗', HOSPITAL_INFO.suncheonHealthUrl, 'button quiet'),
         externalLink('🌐 순천시청 출산장려지원 ↗', HOSPITAL_INFO.suncheonCityUrl, 'button quiet'))));
 
+  const appliedIn = E('input', { type: 'date', id: 'prenatal-applied-date' });
+  appliedIn.value = sched.appliedDate;
+  const visitIn = E('input', { type: 'date', id: 'prenatal-visit-date' });
+  visitIn.value = sched.visitDate;
+  const examIn = E('input', { type: 'date', id: 'prenatal-exam-date' });
+  examIn.value = sched.examDate;
+  const claimedIn = E('input', { type: 'checkbox', id: 'prenatal-claimed-check' });
+  claimedIn.checked = sched.claimed;
+
+  const saveSchedule = () => {
+    const nextSched = {
+      ...(appliedIn.value.trim() ? { appliedDate: appliedIn.value.trim() } : {}),
+      ...(visitIn.value.trim() ? { visitDate: visitIn.value.trim() } : {}),
+      ...(examIn.value.trim() ? { examDate: examIn.value.trim() } : {}),
+      claimed: claimedIn.checked
+    };
+    ctx.queuePreference(async () => {
+      const latest = ctx.getPrefs();
+      const ok = await ctx.savePrefs({ ...latest, prenatalSchedule: nextSched });
+      if (ok) {
+        if (ctx.currentRoute() === 'prenatal') ctx.render();
+        ctx.toast('산전검사 일정과 지원금 마감일을 저장했습니다.');
+      }
+      return ok;
+    });
+  };
+
+  const calButtons = [];
+  if (sched.visitDate) {
+    const visitPayload = {
+      title: '[산전검사] 순천 현대여성아동병원 방문',
+      date: sched.visitDate,
+      location: HOSPITAL_INFO.address,
+      description: '지참물: 신분증, e보건소 검사의뢰서 · 수납 시 진료비 영수증 + 진료비 세부내역서 요청 (061-720-1111)'
+    };
+    try {
+      calButtons.push(externalLink('📅 병원 예약 구글캘린더 ↗', scheduleGoogleCalendarUrl(visitPayload), 'button quiet small-copy-btn'));
+      calButtons.push(button('📥 병원 예약 .ics', () => {
+        downloadText(scheduleCalendar(visitPayload), 'prenatal-hospital-visit.ics', 'text/calendar;charset=utf-8');
+        ctx.toast('순천 현대여성아동병원 예약 일정(.ics)을 저장했습니다.');
+      }, 'button quiet small-copy-btn'));
+    } catch {}
+  }
+  if (sched.claimDeadline && !sched.claimed) {
+    const claimPayload = {
+      title: '[산전검사 지원금] e보건소 검사비 청구 마감일',
+      date: sched.claimDeadline,
+      location: '공공보건포털 e보건소 / 순천시 보건소 모자보건실',
+      description: `검사일(${sched.examDate})로부터 1개월 청구 마감일 · 제출서류: 진료비 영수증, 진료비 세부내역서, 본인 통장사본`
+    };
+    try {
+      calButtons.push(externalLink('⏰ 청구 마감 구글캘린더 ↗', scheduleGoogleCalendarUrl(claimPayload), 'button quiet small-copy-btn'));
+      calButtons.push(button('📥 청구 마감 .ics', () => {
+        downloadText(scheduleCalendar(claimPayload), 'prenatal-subsidy-claim-deadline.ics', 'text/calendar;charset=utf-8');
+        ctx.toast('지원금 청구 마감일(.ics)을 저장했습니다.');
+      }, 'button quiet small-copy-btn'));
+    } catch {}
+  } else if (sched.examDeadline && !sched.examDate && !sched.claimed) {
+    const examPayload = {
+      title: '[산전검사 지원금] 3개월 검사 완료 마감일',
+      date: sched.examDeadline,
+      location: HOSPITAL_INFO.address,
+      description: `e보건소 신청일(${sched.appliedDate})로부터 3개월 내 참여 병원 검사 완료 기한`
+    };
+    try {
+      calButtons.push(externalLink('⏰ 검사 마감 구글캘린더 ↗', scheduleGoogleCalendarUrl(examPayload), 'button quiet small-copy-btn'));
+      calButtons.push(button('📥 검사 마감 .ics', () => {
+        downloadText(scheduleCalendar(examPayload), 'prenatal-exam-deadline.ics', 'text/calendar;charset=utf-8');
+        ctx.toast('산전검사 완료 마감일(.ics)을 저장했습니다.');
+      }, 'button quiet small-copy-btn'));
+    } catch {}
+  }
+
+  const deadlineCalcCard = E('article', { class: 'prenatal-card prenatal-deadline-card' + (sched.urgent ? ' is-urgent' : '') },
+    E('div', { class: 'prenatal-card-head' },
+      E('div', {},
+        E('p', { class: 'eyebrow' }, 'DEADLINE CALCULATOR & CALENDAR · PRIVATE'),
+        E('h2', {}, '📅 산전검사 일정 · 지원금 마감일 계산기'),
+        E('p', { class: 'small muted' }, '신청일·예약일·검사일을 기록하면 3개월 검사 기한과 1개월 청구 마감 D-Day를 자동 계산하고 캘린더에 바로 등록할 수 있어요.')),
+      E('span', { class: 'spec-chip ' + (sched.claimed ? 'direct' : sched.urgent ? 'highlight' : '') }, sched.statusLabel)),
+    E('div', { class: 'prenatal-date-inputs' },
+      E('label', { class: 'field', for: appliedIn.id }, '① e보건소 신청일 (의뢰서)', appliedIn),
+      E('label', { class: 'field', for: visitIn.id }, '② 현대여성아동병원 예약일', visitIn),
+      E('label', { class: 'field', for: examIn.id }, '③ 산전검사 완료일', examIn)),
+    E('div', { class: 'prenatal-date-actions' },
+      E('label', { class: 'check-label', for: claimedIn.id }, claimedIn, '✅ 지원금 청구 완료'),
+      E('div', { class: 'page-actions' },
+        button('💾 일정·마감일 저장', saveSchedule, 'button'),
+        (sched.appliedDate || sched.visitDate || sched.examDate || sched.claimed) ? button('일정 비우기', () => {
+          appliedIn.value = '';
+          visitIn.value = '';
+          examIn.value = '';
+          claimedIn.checked = false;
+          saveSchedule();
+        }, 'button quiet') : null)),
+    (sched.examDeadline || sched.claimDeadline || sched.visitDate) ? E('div', { class: 'prenatal-summary-3col' },
+      E('div', { class: 'prenatal-mini-card' },
+        E('span', { class: 'prenatal-mini-kicker' }, '3개월 검사 완료 마감'),
+        E('strong', {}, sched.examDeadline || '신청일 미입력'),
+        E('p', { class: 'small muted' }, sched.examDeadline ? (sched.examDaysLeft >= 0 ? `마감까지 D-${sched.examDaysLeft}` : `기한 ${Math.abs(sched.examDaysLeft)}일 초과 (보건소 취소·재신청 필요)`) : 'e보건소 신청일을 입력하면 자동 계산됩니다.')),
+      E('div', { class: 'prenatal-mini-card' },
+        E('span', { class: 'prenatal-mini-kicker' }, '순천 현대여성아동병원 예약일'),
+        E('strong', {}, sched.visitDate || '예약일 미입력'),
+        E('p', { class: 'small muted' }, sched.visitDate ? (sched.visitDaysLeft > 0 ? `방문까지 D-${sched.visitDaysLeft}` : sched.visitDaysLeft === 0 ? '오늘 방문 예정일입니다!' : `방문일 ${Math.abs(sched.visitDaysLeft)}일 경과`) : '병원 전화 예약 후 날짜를 기록해 두세요.')),
+      E('div', { class: 'prenatal-mini-card ' + (sched.urgent ? 'is-accent' : '') },
+        E('span', { class: 'prenatal-mini-kicker' }, '1개월 검사비 청구 마감'),
+        E('strong', {}, sched.claimDeadline || '검사일 미입력'),
+        E('p', { class: 'small muted' }, sched.claimed ? '지원금 청구를 완료했습니다 🎉' : sched.claimDeadline ? (sched.claimDaysLeft >= 0 ? `청구 마감까지 D-${sched.claimDaysLeft} (영수증·세부내역서·통장사본)` : `기한 ${Math.abs(sched.claimDaysLeft)}일 초과`) : '검사 완료일을 입력하면 1개월 청구 마감일이 표시됩니다.'))) : null,
+    calButtons.length ? E('div', { class: 'page-actions prenatal-link-row' }, ...calButtons) : null);
+
   const subsidyPanel = E('section', { class: 'prenatal-panel', 'aria-label': '산전검사 지원금 제도 및 수령 절차' },
+    deadlineCalcCard,
     E('div', { class: 'prenatal-alert-banner', role: 'note' },
       E('strong', {}, '⚠️ 지원금 받기 전 가장 중요한 주의사항 2가지'),
       E('p', { class: 'small' }, '① 반드시 보건소 승인(검사의뢰서 발급)을 먼저 받은 뒤에 병원에서 검사하세요. 의뢰서 발급 전에 미리 받은 검사는 소급 지원이 불가합니다.'),

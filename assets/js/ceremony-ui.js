@@ -1,10 +1,11 @@
-import { E, button } from './dom.js?v=wedding-features-52';
-import { formatDate } from './content.js?v=wedding-features-52';
-import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-52';
+import { E, button } from './dom.js?v=wedding-features-53';
+import { formatDate } from './content.js?v=wedding-features-53';
+import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-53';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-53';
 
 let ceremonySubTab = 'rundown';
 export function setCeremonySubTab(tab) {
-  if (['rundown', 'guests', 'gifts'].includes(tab)) ceremonySubTab = tab;
+  if (['rundown', 'guests', 'gifts', 'dayops'].includes(tab)) ceremonySubTab = tab;
 }
 
 function shiftTime(hhmm, deltaMinutes) {
@@ -390,12 +391,14 @@ export function renderCeremony(ctx) {
   };
   const guestCount = (prefs.guestList || []).length;
   const giftCount = (prefs.giftLedger || []).length;
+  const dayOpsCount = (prefs.weddingDayRoles || []).length + (prefs.weddingDayEnvelopes || []).length;
   const subTabs = [
     ['rundown', '📋 본식 식순·대본', `${prepDone}/${CEREMONY_PREP_ITEMS.length}`],
     ['guests', '👥 하객 명단', `${guestCount}건`],
-    ['gifts', '💌 축의금·식권 장부', `${giftCount}건`]
+    ['gifts', '💌 축의금·식권 장부', `${giftCount}건`],
+    ['dayops', '💼 당일 역할·봉투·원판', dayOpsCount ? `${dayOpsCount}건` : '운영표']
   ];
-  const subTabBar = E('div', { class: 'subtab-bar', role: 'tablist', 'aria-label': '본식·하객·축의금 화면 전환' },
+  const subTabBar = E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '본식·하객·축의금·당일운영 화면 전환' },
     subTabs.map(([key, label, badge]) => {
       const selected = ceremonySubTab === key;
       return E('button', {
@@ -512,14 +515,16 @@ export function renderCeremony(ctx) {
     ? renderGuestListBoard(ctx)
     : ceremonySubTab === 'gifts'
       ? renderGiftLedgerBoard(ctx)
-      : rundownPanel;
+      : ceremonySubTab === 'dayops'
+        ? renderWeddingDayOpsBoard(ctx)
+        : rundownPanel;
 
   return [
     ctx.pageHeader(
-      '순천아모르 본식 식순 & 하객·축의금 관리',
-      `${inv.date ? formatDate(inv.date) : '예식일'} ${baseTime} (${inv.venue || '순천아모르웨딩컨벤션'}) 기준 식순·사회자 대본과 기기 전용 하객 명단·축의금 장부를 탭으로 나누어 관리해요.`,
+      '순천아모르 본식 식순 & 하객·축의금·당일 운영',
+      `${inv.date ? formatDate(inv.date) : '예식일'} ${baseTime} (${inv.venue || '순천아모르웨딩컨벤션'}) 기준 식순·사회자 대본, 하객 명단·축의금 장부와 본식 당일 역할·현금 봉투·원판 순서를 탭으로 나누어 관리해요.`,
       ceremonySubTab === 'rundown' ? ctx.editButton('식순·사회·낭독문 편집', () => openCeremonyEditor(ctx)) : null,
-      'AMOR WEDDING HALL · CEREMONY & GUEST MANAGEMENT'
+      'AMOR WEDDING HALL · CEREMONY & DAY OPERATIONS'
     ),
     subTabBar,
     activePanel

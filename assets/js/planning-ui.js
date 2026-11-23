@@ -1,10 +1,11 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-52';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-52';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-52';
-import { quoteReview } from './travel.js?v=wedding-features-52';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-52';
-import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-52';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-52';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-53';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-53';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-53';
+import { quoteReview } from './travel.js?v=wedding-features-53';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-53';
+import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-53';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-53';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-53';
 
 export const DEFAULT_VENDOR_SCHEDULES = [
   {
@@ -32,7 +33,7 @@ export function activeVendorSchedules(prefs) {
 
 let tipsSubTab = 'tips';
 export function setTipsSubTab(tab) {
-  if (['tips', 'budget', 'schedule'].includes(tab)) tipsSubTab = tab;
+  if (['tips', 'budget', 'schedule', 'home', 'benefits'].includes(tab)) tipsSubTab = tab;
 }
 
 let tipFilter = '';
@@ -683,13 +684,18 @@ export function renderTips(ctx) {
     : '미입력';
   const vList = activeVendorSchedules(prefs);
   const vDone = vList.filter(v => v.done).length;
+  const hList = prefs.homeItems || [];
+  const hDone = hList.filter(i => i.status === '배송·설치 완료').length;
+  const bDone = (prefs.benefitChecks || []).filter(id => BENEFIT_CHECK_ITEMS.some(([bid]) => bid === id)).length;
 
   const subTabs = [
     ['tips', '🎬 결혼 꿀팁', `${content.tips.length}건`],
-    ['budget', '💰 통합 예산·시뮬레이터', budgetBadge],
-    ['schedule', '🗓️ 주요 업체 일정', `${vDone}/${vList.length}`]
+    ['budget', '💰 통합 예산', budgetBadge],
+    ['schedule', '🗓️ 업체 일정', `${vDone}/${vList.length}`],
+    ['home', '🏠 혼수·가전', hList.length ? `${hDone}/${hList.length}` : '관리'],
+    ['benefits', '🏛️ 혼인신고·혜택', `${bDone}/${BENEFIT_CHECK_ITEMS.length}`]
   ];
-  const subTabBar = E('div', { class: 'subtab-bar', role: 'tablist', 'aria-label': '결혼 정보·예산·일정 화면 전환' },
+  const subTabBar = E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '결혼 정보·예산·일정·혼수·혜택 화면 전환' },
     subTabs.map(([key, label, badge]) => {
       const selected = tipsSubTab === key;
       return E('button', {
@@ -718,6 +724,20 @@ export function renderTips(ctx) {
       ctx.pageHeader('결혼에 관한 모든 정보', '라크마 웨딩촬영부터 피팅·시식·잔금 일정까지 날짜순으로 챙겨요.', null, 'WEDDING GUIDE'),
       subTabBar,
       renderVendorScheduleBoard(ctx)
+    ];
+  }
+  if (tipsSubTab === 'home') {
+    return [
+      ctx.pageHeader('결혼에 관한 모든 정보', '신혼집 가전·가구 품목별 견적·계약금·배송일을 관리하고 통합 예산에 연동해요.', null, 'NEWLYWED HOME'),
+      subTabBar,
+      renderHomeItemsBoard(ctx)
+    ];
+  }
+  if (tipsSubTab === 'benefits') {
+    return [
+      ctx.pageHeader('결혼에 관한 모든 정보', '순천시청 신청사 혼인신고 절차와 순천시·전남·정부 신혼부부 핵심 혜택을 한눈에 챙겨요.', null, 'MARRIAGE BENEFITS'),
+      subTabBar,
+      renderBenefitsGuideBoard(ctx)
     ];
   }
 

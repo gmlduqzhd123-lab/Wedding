@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,buildThankYouMessage} from '../assets/js/planning.js';
+import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,buildThankYouMessage,addCalendarMonths,prenatalDeadlineSummary,marriageBenefitTimeline,homeItemsSummary,homeItemsToCsv,weddingDaySummary} from '../assets/js/planning.js';
 import {buildInvitationShareMessages} from '../assets/js/invitation-card.js';
 
 const keys=['venue','sdm','snap','rings','honeymoon','living'];
@@ -130,3 +130,65 @@ test('buildThankYouMessage and buildInvitationShareMessages format couple detail
  assert.equal(minimal.length,3);
  assert(!minimal[0].text.includes('· 일시:')&&!minimal[0].text.includes('▶ 모바일 청첩장 보기'));
 });
+
+test('addCalendarMonths, prenatalDeadlineSummary, and marriageBenefitTimeline calculate month-end clamped deadlines accurately',()=>{
+ assert.equal(addCalendarMonths('2026-11-30',3),'2027-02-28');
+ assert.equal(addCalendarMonths('2027-01-31',1),'2027-02-28');
+ assert.equal(addCalendarMonths('2027-06-05',6),'2027-12-05');
+ assert.equal(addCalendarMonths('2027-06-05',18),'2028-12-05');
+ assert.equal(addCalendarMonths('2027-06-05',-24),'2025-06-05');
+
+ const now=new Date('2027-01-25T03:00:00Z'); // 2027-01-25 KST
+ const urgentClaim=prenatalDeadlineSummary({appliedDate:'2026-11-10',examDate:'2026-12-30',claimed:false},now);
+ assert.equal(urgentClaim.examDeadline,'2027-02-10');
+ assert.equal(urgentClaim.claimDeadline,'2027-01-30');
+ assert.equal(urgentClaim.claimDaysLeft,5);
+ assert.equal(urgentClaim.status,'claim-urgent');
+ assert.equal(urgentClaim.urgent,true);
+
+ const claimed=prenatalDeadlineSummary({appliedDate:'2026-11-10',examDate:'2026-12-30',claimed:true},now);
+ assert.equal(claimed.status,'claimed');
+ assert.equal(claimed.urgent,false);
+
+ const timeline2027=marriageBenefitTimeline('2027-06-07',new Date('2027-12-10T03:00:00Z'));
+ assert.equal(timeline2027.congratsStart,'2027-12-07');
+ assert.equal(timeline2027.congratsEnd,'2028-12-07');
+ assert.equal(timeline2027.giftStart,'2025-06-07');
+ assert.equal(timeline2027.giftEnd,'2029-06-07');
+ assert.equal(timeline2027.congratsStatus,'open');
+ assert(timeline2027.taxNote.includes('2027'));
+
+ const timeline2026=marriageBenefitTimeline('2026-12-01',new Date('2026-12-10T03:00:00Z'));
+ assert.equal(timeline2026.congratsStatus,'upcoming');
+ assert(timeline2026.taxNote.includes('결혼세액공제'));
+});
+
+test('homeItemsSummary, homeItemsToCsv, and weddingDaySummary aggregate totals and escape CSV formulas',()=>{
+ const hSum=homeItemsSummary([
+  {id:'h1',category:'📺 가전',name:'냉장고',brand:'LG',status:'배송·설치 완료',plannedPrice:2500000,actualPrice:2300000,deposit:500000,deliveryDate:'2027-05-01',note:'=SUM(A1)'},
+  {id:'h2',category:'🛋️ 가구',name:'침대',status:'계약·결제 완료',plannedPrice:2000000,actualPrice:1900000,deposit:400000}
+ ]);
+ assert.equal(hSum.totalCount,2);
+ assert.equal(hSum.doneCount,1);
+ assert.equal(hSum.contractedCount,2);
+ assert.equal(hSum.plannedTotal,4500000);
+ assert.equal(hSum.actualTotal,4200000);
+ assert.equal(hSum.depositTotal,900000);
+ assert.equal(hSum.balanceTotal,3300000);
+ const csv=homeItemsToCsv([{category:'📺 가전',name:'냉장고',brand:'LG',status:'배송·설치 완료',plannedPrice:2500000,actualPrice:2300000,deposit:500000,deliveryDate:'2027-05-01',note:'=SUM(A1)'}]);
+ assert(csv.startsWith('\uFEFF분류,품목명,브랜드·모델'));
+ assert(csv.includes("'=SUM(A1)"));
+
+ const dSum=weddingDaySummary(
+  [{id:'r1',group:'축의대(신랑 측)',role:'접수',assignee:'김OO'},{id:'r2',group:'축의대(신부 측)',role:'접수',assignee:''}],
+  [{id:'e1',payee:'사회자',amount:200000,ready:true},{id:'e2',payee:'촬영·본식 헬퍼',amount:250000,ready:false}]
+ );
+ assert.equal(dSum.roleCount,2);
+ assert.equal(dSum.assignedRoles,1);
+ assert.equal(dSum.envelopeCount,2);
+ assert.equal(dSum.readyCount,1);
+ assert.equal(dSum.totalEnvelopeAmount,450000);
+ assert.equal(dSum.readyAmount,200000);
+ assert.equal(dSum.pendingAmount,250000);
+});
+

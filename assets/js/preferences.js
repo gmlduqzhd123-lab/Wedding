@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-52';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-53';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -9,6 +9,10 @@ export const GUEST_GROUPS = ['가족·친척', '친구', '직장·동료', '지�
 export const INVITE_STATUSES = ['미발송', '모바일 발송', '종이 전달', '모바일+종이'];
 export const RSVP_STATUSES = ['미확인', '참석', '미정', '불참'];
 export const GIFT_CHANNELS = ['축의대(현금)', '계좌이체', '선물·기타'];
+export const HOME_ITEM_CATEGORIES = ['📺 가전', '🛋️ 가구', '🍳 주방·생활', '🏠 입주·인테리어', '📦 기타'];
+export const HOME_ITEM_STATUSES = ['후보 비교', '구매 확정', '계약·결제 완료', '배송·설치 완료'];
+export const DAY_ROLE_GROUPS = ['축의대(신랑 측)', '축의대(신부 측)', '신부 케어·가방순이', '진행·안내·운전', '촬영·부케·기타'];
+export const ENVELOPE_PAYEES = ['사회자', '축가자', '촬영·본식 헬퍼', '본식 스냅·DVD', '원판·가족사진', '웨딩카·운전', '혼주·기타'];
 const id = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value);
 const validMoney = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000000000);
 const validGuestCount = value => value === null || value === undefined || (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 10000);
@@ -33,6 +37,118 @@ export function validatePreferences(input) {
   if (input.prenatalNote !== undefined) {
     if (typeof input.prenatalNote !== 'string' || input.prenatalNote.length > 1000) throw new Error('산전검사 개인 메모는 1,000자 이하로 입력해 주세요.');
     if (input.prenatalNote.trim()) result.prenatalNote = input.prenatalNote.trim();
+  }
+  if (input.prenatalSchedule !== undefined) {
+    if (!input.prenatalSchedule || typeof input.prenatalSchedule !== 'object' || Array.isArray(input.prenatalSchedule)) throw new Error('산전검사 일정 형식을 확인해 주세요.');
+    const ps = {};
+    for (const dKey of ['appliedDate', 'visitDate', 'examDate']) {
+      const raw = input.prenatalSchedule[dKey] ?? '';
+      if (typeof raw !== 'string') throw new Error('산전검사 일정 날짜 형식을 확인해 주세요.');
+      const trimmed = raw.trim();
+      if (trimmed && !validDate(trimmed)) throw new Error('산전검사 일정 날짜가 올바르지 않습니다.');
+      if (trimmed) ps[dKey] = trimmed;
+    }
+    if (input.prenatalSchedule.claimed !== undefined && typeof input.prenatalSchedule.claimed !== 'boolean') throw new Error('지원금 청구 완료 여부를 확인해 주세요.');
+    ps.claimed = Boolean(input.prenatalSchedule.claimed);
+    result.prenatalSchedule = ps;
+  }
+  if (input.benefitChecks !== undefined) result.benefitChecks = ids(input.benefitChecks);
+  if (input.benefitNote !== undefined) {
+    if (typeof input.benefitNote !== 'string' || input.benefitNote.length > 1000) throw new Error('혼인신고·혜택 개인 메모는 1,000자 이하로 입력해 주세요.');
+    if (input.benefitNote.trim()) result.benefitNote = input.benefitNote.trim();
+  }
+  if (input.marriageRegDate !== undefined) {
+    if (typeof input.marriageRegDate !== 'string') throw new Error('혼인신고 날짜 형식을 확인해 주세요.');
+    const trimmed = input.marriageRegDate.trim();
+    if (trimmed && !validDate(trimmed)) throw new Error('혼인신고 날짜가 올바르지 않습니다.');
+    if (trimmed) result.marriageRegDate = trimmed;
+  }
+  if (input.homeItems !== undefined) {
+    if (!Array.isArray(input.homeItems) || input.homeItems.length > 150) throw new Error('혼수·가전·가구 항목은 150개까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.homeItems = input.homeItems.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !HOME_ITEM_CATEGORIES.includes(item.category) || !HOME_ITEM_STATUSES.includes(item.status) || typeof item.name !== 'string') {
+        throw new Error('혼수·가전·가구 항목 형식을 확인해 주세요.');
+      }
+      const name = item.name.trim();
+      if (!name || name.length > 100 || seen.has(item.id)) throw new Error('혼수 품목명과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      const brand = item.brand === undefined || item.brand === null ? '' : item.brand;
+      if (typeof brand !== 'string' || brand.length > 100) throw new Error('브랜드·모델명은 100자 이하로 입력해 주세요.');
+      if (!validMoney(item.plannedPrice) || !validMoney(item.actualPrice) || !validMoney(item.deposit)) {
+        throw new Error('혼수 금액은 0원 이상의 정수로 입력해 주세요.');
+      }
+      const deliveryDate = item.deliveryDate === undefined || item.deliveryDate === null ? '' : String(item.deliveryDate).trim();
+      if (deliveryDate && !validDate(deliveryDate)) throw new Error('배송·설치 예정일을 확인해 주세요.');
+      const note = item.note === undefined || item.note === null ? '' : item.note;
+      if (typeof note !== 'string' || note.length > 300) throw new Error('혼수 품목 메모는 300자 이하로 입력해 주세요.');
+      return {
+        id: item.id,
+        category: item.category,
+        name,
+        ...(brand.trim() ? { brand: brand.trim() } : {}),
+        status: item.status,
+        plannedPrice: item.plannedPrice ?? null,
+        actualPrice: item.actualPrice ?? null,
+        deposit: item.deposit ?? null,
+        ...(deliveryDate ? { deliveryDate } : {}),
+        ...(note.trim() ? { note: note.trim() } : {})
+      };
+    });
+  }
+  if (input.weddingDayRoles !== undefined) {
+    if (!Array.isArray(input.weddingDayRoles) || input.weddingDayRoles.length > 60) throw new Error('본식 역할 분담은 60건까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.weddingDayRoles = input.weddingDayRoles.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !DAY_ROLE_GROUPS.includes(item.group) || typeof item.role !== 'string') {
+        throw new Error('본식 당일 역할 형식을 확인해 주세요.');
+      }
+      const role = item.role.trim();
+      if (!role || role.length > 80 || seen.has(item.id)) throw new Error('역할 이름과 중복 여부를 확인해 주세요.');
+      seen.add(item.id);
+      const assignee = item.assignee === undefined || item.assignee === null ? '' : item.assignee;
+      const phone = item.phone === undefined || item.phone === null ? '' : item.phone;
+      const note = item.note === undefined || item.note === null ? '' : item.note;
+      if (typeof assignee !== 'string' || assignee.length > 60) throw new Error('담당자 이름은 60자 이하로 입력해 주세요.');
+      if (typeof phone !== 'string' || phone.length > 40) throw new Error('연락처는 40자 이하로 입력해 주세요.');
+      if (typeof note !== 'string' || note.length > 300) throw new Error('역할 메모는 300자 이하로 입력해 주세요.');
+      return {
+        id: item.id,
+        group: item.group,
+        role,
+        ...(assignee.trim() ? { assignee: assignee.trim() } : {}),
+        ...(phone.trim() ? { phone: phone.trim() } : {}),
+        ...(note.trim() ? { note: note.trim() } : {})
+      };
+    });
+  }
+  if (input.weddingDayEnvelopes !== undefined) {
+    if (!Array.isArray(input.weddingDayEnvelopes) || input.weddingDayEnvelopes.length > 60) throw new Error('당일 현금 봉투 항목은 60건까지 보관할 수 있습니다.');
+    const seen = new Set();
+    result.weddingDayEnvelopes = input.weddingDayEnvelopes.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || !ENVELOPE_PAYEES.includes(item.payee) || typeof item.ready !== 'boolean') {
+        throw new Error('당일 현금 봉투 형식을 확인해 주세요.');
+      }
+      if (seen.has(item.id)) throw new Error('현금 봉투 ID가 중복되었습니다.');
+      seen.add(item.id);
+      if (!validMoney(item.amount)) throw new Error('봉투 금액은 0원 이상의 정수로 입력해 주세요.');
+      const recipient = item.recipient === undefined || item.recipient === null ? '' : item.recipient;
+      const note = item.note === undefined || item.note === null ? '' : item.note;
+      if (typeof recipient !== 'string' || recipient.length > 80) throw new Error('수령인·업체명은 80자 이하로 입력해 주세요.');
+      if (typeof note !== 'string' || note.length > 300) throw new Error('봉투 메모는 300자 이하로 입력해 주세요.');
+      return {
+        id: item.id,
+        payee: item.payee,
+        amount: item.amount ?? null,
+        ...(recipient.trim() ? { recipient: recipient.trim() } : {}),
+        ready: item.ready,
+        ...(note.trim() ? { note: note.trim() } : {})
+      };
+    });
+  }
+  if (input.photoOrderNote !== undefined) {
+    if (typeof input.photoOrderNote !== 'string' || input.photoOrderNote.length > 2000) throw new Error('원판 촬영 순서표는 2,000자 이하로 입력해 주세요.');
+    if (input.photoOrderNote.trim()) result.photoOrderNote = input.photoOrderNote.trim();
   }
   if (input.checklistNotes !== undefined) {
     if (!input.checklistNotes || typeof input.checklistNotes !== 'object' || Array.isArray(input.checklistNotes) || Object.keys(input.checklistNotes).length > 200) throw new Error('체크리스트 메모 형식을 확인해 주세요.');
@@ -312,19 +428,37 @@ export function mergePreferences(currentInput, incomingInput) {
     tripCompare: mergeIdList(cur.tripCompare, inc.tripCompare, 2) || []
   };
 
-  for (const key of ['tipFavorites', 'checklist', 'packingList', 'shootChecklist', 'ceremonyChecks', 'prenatalChecks']) {
+  for (const key of ['tipFavorites', 'checklist', 'packingList', 'shootChecklist', 'ceremonyChecks', 'prenatalChecks', 'benefitChecks']) {
     const list = mergeIdList(cur[key], inc[key], 1000);
     if (list !== undefined) merged[key] = list;
   }
-  if (cur.prenatalNote !== undefined || inc.prenatalNote !== undefined) {
-    const prev = String(cur.prenatalNote || '').trim();
-    const next = String(inc.prenatalNote || '').trim();
-    if (!prev && next) merged.prenatalNote = next.slice(0, 1000);
-    else if (prev && (!next || prev === next || prev.includes(next))) merged.prenatalNote = prev;
-    else if (prev && next) {
-      const combined = `${prev}\n---\n${next}`;
-      merged.prenatalNote = combined.length <= 1000 ? combined : prev;
+  const mergeTextNote = (prevRaw, nextRaw, maxLen) => {
+    const prev = String(prevRaw || '').trim();
+    const next = String(nextRaw || '').trim();
+    if (!prev && !next) return undefined;
+    if (!prev && next) return next.slice(0, maxLen);
+    if (prev && (!next || prev === next || prev.includes(next))) return prev;
+    const combined = `${prev}\n---\n${next}`;
+    return combined.length <= maxLen ? combined : prev;
+  };
+  for (const [key, maxLen] of [['prenatalNote', 1000], ['benefitNote', 1000], ['photoOrderNote', 2000]]) {
+    if (cur[key] !== undefined || inc[key] !== undefined) {
+      const val = mergeTextNote(cur[key], inc[key], maxLen);
+      if (val) merged[key] = val;
     }
+  }
+  if (cur.prenatalSchedule !== undefined || inc.prenatalSchedule !== undefined) {
+    const a = cur.prenatalSchedule || {};
+    const b = inc.prenatalSchedule || {};
+    merged.prenatalSchedule = {
+      ...((a.appliedDate || b.appliedDate) ? { appliedDate: a.appliedDate || b.appliedDate } : {}),
+      ...((a.visitDate || b.visitDate) ? { visitDate: a.visitDate || b.visitDate } : {}),
+      ...((a.examDate || b.examDate) ? { examDate: a.examDate || b.examDate } : {}),
+      claimed: Boolean(a.claimed || b.claimed)
+    };
+  }
+  if (cur.marriageRegDate || inc.marriageRegDate) {
+    merged.marriageRegDate = cur.marriageRegDate || inc.marriageRegDate;
   }
   const checklistNotes = mergeNoteMap(cur.checklistNotes, inc.checklistNotes, 300, 200);
   if (checklistNotes !== undefined) merged.checklistNotes = checklistNotes;
@@ -343,6 +477,12 @@ export function mergePreferences(currentInput, incomingInput) {
   if (guestList !== undefined) merged.guestList = guestList;
   const giftLedger = mergeRecordList(cur.giftLedger, inc.giftLedger, { cap: 500, dedupeKey: item => `${item.side}|${item.name}|${item.group}|${item.channel}|${item.amount}` });
   if (giftLedger !== undefined) merged.giftLedger = giftLedger;
+  const homeItems = mergeRecordList(cur.homeItems, inc.homeItems, { cap: 150, dedupeKey: item => `${item.category}|${item.name}|${item.brand || ''}` });
+  if (homeItems !== undefined) merged.homeItems = homeItems;
+  const weddingDayRoles = mergeRecordList(cur.weddingDayRoles, inc.weddingDayRoles, { cap: 60, dedupeKey: item => `${item.group}|${item.role}` });
+  if (weddingDayRoles !== undefined) merged.weddingDayRoles = weddingDayRoles;
+  const weddingDayEnvelopes = mergeRecordList(cur.weddingDayEnvelopes, inc.weddingDayEnvelopes, { cap: 60, dedupeKey: item => `${item.payee}|${item.recipient || ''}|${item.amount ?? ''}` });
+  if (weddingDayEnvelopes !== undefined) merged.weddingDayEnvelopes = weddingDayEnvelopes;
 
   if (cur.ceremonyPlan !== undefined || inc.ceremonyPlan !== undefined) {
     const a = cur.ceremonyPlan || {};
@@ -417,10 +557,15 @@ export function summarizePreferencesMerge(currentInput, mergedInput) {
     guestsAdded: diffLen(cur.guestList, mer.guestList),
     giftsAdded: diffLen(cur.giftLedger, mer.giftLedger),
     schedulesAdded: diffLen(cur.vendorSchedules, mer.vendorSchedules),
-    checksAdded: diffLen(cur.checklist, mer.checklist) + diffLen(cur.shootChecklist, mer.shootChecklist) + diffLen(cur.ceremonyChecks, mer.ceremonyChecks) + diffLen(cur.prenatalChecks, mer.prenatalChecks) + diffLen(cur.packingList, mer.packingList),
+    homeItemsAdded: diffLen(cur.homeItems, mer.homeItems),
+    dayOpsAdded: diffLen(cur.weddingDayRoles, mer.weddingDayRoles) + diffLen(cur.weddingDayEnvelopes, mer.weddingDayEnvelopes),
+    checksAdded: diffLen(cur.checklist, mer.checklist) + diffLen(cur.shootChecklist, mer.shootChecklist) + diffLen(cur.ceremonyChecks, mer.ceremonyChecks) + diffLen(cur.prenatalChecks, mer.prenatalChecks) + diffLen(cur.benefitChecks, mer.benefitChecks) + diffLen(cur.packingList, mer.packingList),
     customItemsAdded: diffLen(cur.customChecklist, mer.customChecklist) + diffLen(cur.customPackingList, mer.customPackingList),
     favoritesAdded: diffLen(cur.favorites, mer.favorites) + diffLen(cur.tripFavorites, mer.tripFavorites) + diffLen(cur.tipFavorites, mer.tipFavorites),
-    notesUpdated: diffKeys(cur.notes, mer.notes) + diffKeys(cur.tripNotes, mer.tripNotes) + diffKeys(cur.tipNotes, mer.tipNotes) + diffKeys(cur.checklistNotes, mer.checklistNotes) + ((cur.prenatalNote || '') !== (mer.prenatalNote || '') ? 1 : 0)
+    notesUpdated: diffKeys(cur.notes, mer.notes) + diffKeys(cur.tripNotes, mer.tripNotes) + diffKeys(cur.tipNotes, mer.tipNotes) + diffKeys(cur.checklistNotes, mer.checklistNotes)
+      + ((cur.prenatalNote || '') !== (mer.prenatalNote || '') ? 1 : 0)
+      + ((cur.benefitNote || '') !== (mer.benefitNote || '') ? 1 : 0)
+      + ((cur.photoOrderNote || '') !== (mer.photoOrderNote || '') ? 1 : 0)
   };
 }
 

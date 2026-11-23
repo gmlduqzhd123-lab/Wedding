@@ -10,14 +10,14 @@
   <meta property="og:title" content="김희엽 &amp; 유미혜 · 우리의 결혼 기록">
   <meta property="og:description" content="2027년 6월 5일 토요일 · 15:00 · 순천아모르웨딩컨벤션 1층">
   <meta property="og:url" content="https://gmlduqzhd123-lab.github.io/Wedding/?view=guest">
-  <meta property="og:image" content="https://gmlduqzhd123-lab.github.io/Wedding/assets/share-card.png?v=wedding-features-52">
+  <meta property="og:image" content="https://gmlduqzhd123-lab.github.io/Wedding/assets/share-card.png?v=wedding-features-53">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="김희엽 &amp; 유미혜 · 2027년 6월 5일 토요일 · 15:00 · 순천아모르웨딩컨벤션 1층">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="김희엽 &amp; 유미혜 · 우리의 결혼 기록">
   <meta name="twitter:description" content="2027년 6월 5일 토요일 · 15:00 · 순천아모르웨딩컨벤션 1층">
-  <meta name="twitter:image" content="https://gmlduqzhd123-lab.github.io/Wedding/assets/share-card.png?v=wedding-features-52">
+  <meta name="twitter:image" content="https://gmlduqzhd123-lab.github.io/Wedding/assets/share-card.png?v=wedding-features-53">
   <title>김희엽 &amp; 유미혜 · 우리의 결혼 기록</title>
   <link rel="canonical" href="https://gmlduqzhd123-lab.github.io/Wedding/">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -25,8 +25,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
   <link rel="preload" href="./assets/fonts/Paperlogy-7Bold.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./assets/fonts/SUITE-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="./assets/css/app.css?v=wedding-features-52">
-  <script type="module" src="./assets/js/app.js?v=wedding-features-52"></script>
+  <link rel="stylesheet" href="./assets/css/app.css?v=wedding-features-53">
+  <script type="module" src="./assets/js/app.js?v=wedding-features-53"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로 이동</a>
@@ -51,7 +51,10 @@
         </nav>
         <button class="nav-scroll-cue is-right" id="nav-scroll-right" type="button" aria-label="다음 메뉴 더 보기" hidden>›</button>
       </div>
-      <button class="button quiet manage-button" id="manage-content" type="button">내용 관리</button>
+      <div class="header-actions">
+        <button class="button quiet mobile-menu-btn" id="mobile-menu-btn" type="button" aria-expanded="false" aria-controls="mobile-menu-sheet" aria-label="전체 메뉴 열기">☰ 메뉴</button>
+        <button class="button quiet manage-button" id="manage-content" type="button">내용 관리</button>
+      </div>
     </div>
   </header>
   <div class="draft-banner" id="draft-banner" hidden>
@@ -65,6 +68,17 @@
     <span>함께 준비하고, 오래 기억할 우리의 이야기.</span>
   </footer>
   <button class="scroll-top-btn" id="scroll-top-btn" type="button" aria-label="화면 맨 위로 이동" hidden>↑ 맨 위로</button>
+  <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" hidden></div>
+  <aside class="mobile-menu-sheet" id="mobile-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" hidden>
+    <div class="mobile-menu-head">
+      <div>
+        <p class="eyebrow">QUICK NAVIGATION</p>
+        <h2 id="mobile-menu-title" tabindex="-1">전체 메뉴 이동</h2>
+      </div>
+      <button class="button quiet" id="mobile-menu-close" type="button" aria-label="전체 메뉴 닫기">닫기</button>
+    </div>
+    <nav class="mobile-menu-grid" id="mobile-menu-list" aria-label="전체 메뉴 목록"></nav>
+  </aside>
   <dialog class="editor-dialog" id="editor-dialog" aria-labelledby="editor-title">
     <div class="dialog-heading"><h2 id="editor-title" tabindex="-1"></h2><button class="button quiet" id="close-dialog" type="button" aria-label="창 닫기">닫기</button></div>
     <div id="dialog-notice" class="dialog-notice" role="status" tabindex="-1" hidden></div>
