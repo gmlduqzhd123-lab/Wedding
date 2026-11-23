@@ -1,4 +1,4 @@
-import {validDate} from './content.js?v=wedding-features-53';
+import {validDate} from './content.js?v=wedding-features-54';
 
 // RFC 5545: TEXT escaping, CRLF and UTF-8 content-line folding.
 const text=value=>String(value??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');
@@ -27,8 +27,10 @@ function invitationEvent(info){
 function scheduleEvent(spec={}){
   const summary=String(spec.summary||spec.title||'').trim();
   const dateStr=String(spec.date||'').trim();
+  const endDateStr=String(spec.endDate||'').trim();
   const timeStr=String(spec.time||'').trim();
   if(!validDate(dateStr)||!summary)throw new Error('일정 날짜와 제목을 먼저 확인해 주세요.');
+  if(endDateStr&&(!validDate(endDateStr)||endDateStr<dateStr))throw new Error('종료 날짜를 먼저 확인해 주세요.');
   if(timeStr&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeStr))throw new Error('일정 시간을 먼저 확인해 주세요.');
   const location=String(spec.location||'').trim();
   const baseDesc=String(spec.description||spec.details||'').trim();
@@ -40,7 +42,7 @@ function scheduleEvent(spec={}){
     return {allDay:false,start,summary,location,description,uid:`${uidSlug}@gmlduqzhd123-lab.github.io`};
   }
   const startDate=dateStr.replace(/-/g,'');
-  return {allDay:true,startDate,endDate:nextDayCompact(dateStr),summary,location,description,uid:`${uidSlug}@gmlduqzhd123-lab.github.io`};
+  return {allDay:true,startDate,endDate:nextDayCompact(endDateStr||dateStr),summary,location,description,uid:`${uidSlug}@gmlduqzhd123-lab.github.io`};
 }
 export function googleCalendarUrl(info){
   const event=invitationEvent(info),url=new URL('https://calendar.google.com/calendar/r/eventedit');
@@ -66,12 +68,34 @@ export function scheduleGoogleCalendarUrl(spec){
   url.search=new URLSearchParams(params).toString();
   return url.href;
 }
+function eventLines(event,dtstamp){
+  const lines=['BEGIN:VEVENT',`UID:${event.uid}`,`DTSTAMP:${dtstamp}`];
+  if(event.allDay){
+    lines.push(`DTSTART;VALUE=DATE:${event.startDate}`,`DTEND;VALUE=DATE:${event.endDate}`);
+  }else{
+    lines.push(`DTSTART:${event.start}`);
+  }
+  lines.push('SUMMARY:'+text(event.summary));
+  if(event.location)lines.push('LOCATION:'+text(event.location));
+  lines.push('DESCRIPTION:'+text(event.description),'END:VEVENT');
+  return lines;
+}
 export function scheduleCalendar(spec,now=new Date()){
   const event=scheduleEvent(spec);
-  const dtStart=event.allDay?`DTSTART;VALUE=DATE:${event.startDate}`:`DTSTART:${event.start}`;
-  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Wedding Journal//KO','CALSCALE:GREGORIAN','BEGIN:VEVENT',
-    `UID:${event.uid}`,`DTSTAMP:${stamp(now)}`,dtStart,'SUMMARY:'+text(event.summary)];
-  if(event.location)lines.push('LOCATION:'+text(event.location));
-  lines.push('DESCRIPTION:'+text(event.description),'END:VEVENT','END:VCALENDAR');
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Wedding Journal//KO','CALSCALE:GREGORIAN',...eventLines(event,stamp(now)),'END:VCALENDAR'];
+  return lines.map(fold).join('\r\n')+'\r\n';
+}
+export function multiScheduleCalendar(specs=[],now=new Date()){
+  if(!Array.isArray(specs)||!specs.length)throw new Error('내보낼 결혼 준비 일정이 없습니다.');
+  const dtstamp=stamp(now);
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Wedding Journal//KO','CALSCALE:GREGORIAN','X-WR-CALNAME:우리의 결혼 준비 일정'];
+  const seenUids=new Set();
+  for(let i=0;i<specs.length;i++){
+    const event=scheduleEvent({...specs[i],uid:specs[i]?.uid||specs[i]?.id||`event-${i+1}`});
+    if(seenUids.has(event.uid))event.uid=`${i+1}-${event.uid}`;
+    seenUids.add(event.uid);
+    lines.push(...eventLines(event,dtstamp));
+  }
+  lines.push('END:VCALENDAR');
   return lines.map(fold).join('\r\n')+'\r\n';
 }

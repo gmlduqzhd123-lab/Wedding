@@ -1,6 +1,6 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-53';
-import { safeUrl } from './content.js?v=wedding-features-53';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-53';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-54';
+import { safeUrl } from './content.js?v=wedding-features-54';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-54';
 import {
   COST_LABELS,
   budgetSummary,
@@ -12,8 +12,11 @@ import {
   formatCostAllocation,
   currentBudgetText,
   climateReview,
-  climateBadgeInfo
-} from './travel.js?v=wedding-features-53';
+  climateBadgeInfo,
+  tripFlightBadge
+} from './travel.js?v=wedding-features-54';
+
+export { tripFlightBadge };
 
 let tripSort = 'recommended';
 let tripFavoritesOnly = false;
@@ -70,27 +73,6 @@ export function tripRegionKey(item) {
   if (/guam|괌|투몬/i.test(text)) return 'guam';
   if (/hawaii|하와이|와이키키|오아후/i.test(text)) return 'hawaii';
   return 'other';
-}
-
-export function tripFlightBadge(item) {
-  const line = (item.plan?.transport || '').split(/\r?\n/)[0] || '';
-  const cleaned = line
-    .replace(/^\d{4}-\d{2}-\d{2}\s*(조회|조사(?:\s*당시)?)\s*항공:\s*/, '')
-    .replace(/\s*직항\s*기준\s*패키지\s*구성\.?$/, '')
-    .replace(/\s*Economy\s*(Standard|Saver)/i, '')
-    .replace(/\s*\([^)]*\)/g, '')
-    .trim();
-  const text = `${line} ${item.plan?.itinerary || ''} ${item.plan?.quote?.flightSource || ''}`;
-  if (/직항/.test(text) && !/경유/.test(line)) {
-    const airline = cleaned.split('.')[0]?.replace(/\s*직항$/, '').trim();
-    return { direct: true, short: '✈️ 직항', detail: airline ? `✈️ ${airline} · 직항` : '✈️ 인천 출발 직항' };
-  }
-  if (/경유/.test(text)) {
-    const airline = cleaned.split('.')[0]?.trim() || '';
-    const hop = line.match(/(?:왕복\s*)?([A-Z·]+\s*)?\d회 경유/)?.[0]?.replace(/^왕복\s*/, '') || '경유';
-    return { direct: false, short: `✈️ ${hop}`, detail: airline ? `✈️ ${airline} · ${hop}` : `✈️ ${hop}` };
-  }
-  return { direct: false, short: '✈️ 항공 미정', detail: '✈️ 항공편 별도 확인' };
 }
 
 function tripClimateBadge(item) {

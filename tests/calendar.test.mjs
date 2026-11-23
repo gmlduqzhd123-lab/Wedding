@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl} from '../assets/js/calendar.js';
+import {invitationCalendar,googleCalendarUrl,scheduleCalendar,scheduleGoogleCalendarUrl,multiScheduleCalendar} from '../assets/js/calendar.js';
 const info=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8')).invitation;
 const now=new Date('2026-11-04T00:00:00Z');
 const unfold=raw=>raw.replace(/\r\n[ \t]/g,'');
@@ -54,4 +54,21 @@ test('schedule calendar and Google URL support both timed studio shoots and date
   const vendorUrl=new URL(scheduleGoogleCalendarUrl(vendor));
   assert.equal(vendorUrl.searchParams.get('dates'),'20270315/20270316');
   assert.throws(()=>scheduleCalendar({summary:'',date:'2027-02-03'}),/날짜와 제목/);
+});
+
+test('multiScheduleCalendar bundles multiple timed, single-day, and multi-day events into one RFC 5545 file',()=>{
+  const raw=multiScheduleCalendar([
+    {id:'evt-shoot',title:'라크마 웨딩촬영',date:'2027-02-03',time:'12:00',location:'광주 남구 중앙로 117'},
+    {id:'evt-trip',title:'신혼여행 · 발리',date:'2027-06-06',endDate:'2027-06-13',description:'6박 8일'},
+    {id:'evt-shoot',title:'중복 UID 안전 처리',date:'2027-06-15'}
+  ],now);
+  const data=unfold(raw);
+  assert.equal(data.match(/^BEGIN:VEVENT$/gm).length,3);
+  assert.match(data,/DTSTART:20270203T030000Z\r\n/);
+  assert.match(data,/DTSTART;VALUE=DATE:20270606\r\nDTEND;VALUE=DATE:20270614\r\n/);
+  const uids=data.match(/^UID:.+$/gm);
+  assert.equal(new Set(uids).size,3,'Duplicate UIDs should be disambiguated');
+  for(const line of raw.split('\r\n'))assert(Buffer.byteLength(line,'utf8')<=75);
+  assert.throws(()=>multiScheduleCalendar([]),/내보낼 결혼 준비 일정/);
+  assert.throws(()=>multiScheduleCalendar([{title:'역전',date:'2027-06-13',endDate:'2027-06-06'}]),/종료 날짜/);
 });

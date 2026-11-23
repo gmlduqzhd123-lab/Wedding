@@ -1,35 +1,21 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-53';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-53';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-53';
-import { quoteReview } from './travel.js?v=wedding-features-53';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-53';
-import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-53';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-53';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-53';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-54';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-54';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-54';
+import { quoteReview } from './travel.js?v=wedding-features-54';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-54';
+import {
+  DEFAULT_VENDOR_SCHEDULES,
+  WEDDING_BUDGET_CATEGORIES,
+  activeVendorSchedules,
+  venueEstimate,
+  weddingBudgetSummary,
+  sdmEstimate,
+  guestListSummary
+} from './planning.js?v=wedding-features-54';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-54';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-54';
 
-export const DEFAULT_VENDOR_SCHEDULES = [
-  {
-    id: 'vsched-lachma-shoot',
-    category: '📸 스튜디오',
-    name: '라크마 스튜디오 웨딩촬영 (낮 12시)',
-    date: '2027-02-03',
-    done: false,
-    note: '2027년 2월 3일 수요일 12:00 확정 (062-714-1970~1 · 월·화 휴무) · STEP1 루나메이크업(광주 남구 천변좌로 432 1층) → STEP2 라크마 스튜디오(광주 남구 중앙로 117, 예약 5~10분 전 도착 필수) · 당일 현금 헬퍼비 25만 원·실리콘 누브라·검정 긴 양말·어두운 구두·한 입 간식 준비'
-  }
-];
-
-export const WEDDING_BUDGET_CATEGORIES = [
-  ['venue', '🏛️ 웨딩홀·식대·대관료', 'seg-airfare', '대관료·식대·연출·꽃장식'],
-  ['sdm', '👗 스튜디오·드레스·메이크업', 'seg-lodging', '촬영·본식 드레스·메이크업·추가금'],
-  ['snap', '📸 본식스냅·DVD·부케·진행', 'seg-other', '본식스냅·영상·부케·사회/축가'],
-  ['rings', '💍 예물·예복·한복·예단', 'seg-reserve', '웨딩밴드·신랑 예복·혼주 한복'],
-  ['honeymoon', '✈️ 신혼여행 (항공·숙박·현지)', 'seg-honeymoon', '선택 여행지 2인 계획예산 연동 가능'],
-  ['living', '🛋️ 혼수·가전·가구·기타 예비비', 'seg-living', '가전·가구·청첩장·답례품·예비비']
-];
-
-export function activeVendorSchedules(prefs) {
-  return prefs?.vendorSchedules !== undefined ? prefs.vendorSchedules : structuredClone(DEFAULT_VENDOR_SCHEDULES);
-}
+export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
 let tipsSubTab = 'tips';
 export function setTipsSubTab(tab) {

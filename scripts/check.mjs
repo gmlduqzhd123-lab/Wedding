@@ -36,12 +36,19 @@ for(const name of await readdir(new URL('assets/js/',root))){
   const fileUrl=new URL('assets/js/'+name,root);
   execFileSync(process.execPath,['--check',fileURLToPath(fileUrl)]);
   const source=await readFile(fileUrl,'utf8');
-  for(const [,spec]of source.matchAll(/from\s+['"](\.\/[^'"]+)['"]/g)){
+  for(const [,spec]of source.matchAll(/(?:from\s+|import\s*\(\s*)['"](\.\/[^'"]+)['"]/g)){
     const ver=new URL(spec,'https://example.invalid/').searchParams.get('v');
     assert(ver,`Missing ?v= cache version on ${spec} in assets/js/${name}`);
     versions.add(ver);
   }
 }
+const swUrl=new URL('sw.js',root);
+await access(swUrl);
+execFileSync(process.execPath,['--check',fileURLToPath(swUrl)]);
+const swSource=await readFile(swUrl,'utf8');
+const swVerMatch=swSource.match(/const\s+CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+assert(swVerMatch,'sw.js must define CACHE_VERSION');
+versions.add(swVerMatch[1]);
 for(const [,imgUrl]of html.matchAll(/<meta (?:property="og:image"|name="twitter:image") content="([^"]+)"/g)){
   const ver=new URL(imgUrl).searchParams.get('v');
   assert(ver,`Missing ?v= cache version on share image ${imgUrl} in index.html`);
@@ -51,7 +58,7 @@ const sharingSource=await readFile(new URL('assets/js/sharing.js',root),'utf8');
 const shareConstMatch=sharingSource.match(/SHARE_IMAGE_URL=['"]([^'"]+)['"]/);
 assert(shareConstMatch,'sharing.js must export SHARE_IMAGE_URL');
 versions.add(new URL(shareConstMatch[1]).searchParams.get('v'));
-assert.equal(versions.size,1,`Expected a single uniform asset ?v= version across index.html, share-card, and assets/js/*.js, found: ${[...versions].join(', ')}`);
+assert.equal(versions.size,1,`Expected a single uniform asset ?v= version across index.html, sw.js, share-card, and assets/js/*.js, found: ${[...versions].join(', ')}`);
 const css=await readFile(new URL('assets/css/app.css',root),'utf8');
 const definedCssVars=new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map(m=>m[1]));
 const undefinedCssVars=[...new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].map(m=>m[1]))].filter(v=>!definedCssVars.has(v));
@@ -62,4 +69,4 @@ await access(new URL('404.html',root));
 const manifest=JSON.parse(await readFile(new URL('manifest.webmanifest',root),'utf8'));
 assert(manifest.name&&manifest.short_name&&Array.isArray(manifest.icons)&&manifest.icons.length>=2,'manifest.webmanifest must define name, short_name, and icons.');
 for(const icon of manifest.icons)await access(new URL(String(icon.src||'').replace(/^\.\//,''),root));
-console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, manifest, 404 fallback, CSS tokens, asset versions and JavaScript syntax verified.');
+console.log('Content, 50 wedding tips, all 30 studios, 60 photographs, contacts, manifest, sw.js, 404 fallback, CSS tokens, asset versions and JavaScript syntax verified.');

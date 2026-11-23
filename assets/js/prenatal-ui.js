@@ -1,22 +1,13 @@
-import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-53';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-53';
-import { prenatalDeadlineSummary } from './planning.js?v=wedding-features-53';
+import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-54';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-54';
+import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-54';
+
+export { PRENATAL_CHECK_ITEMS };
 
 let prenatalSubTab = 'hospital';
 export function setPrenatalSubTab(tab) {
   if (['hospital', 'subsidy', 'guide'].includes(tab)) prenatalSubTab = tab;
 }
-
-export const PRENATAL_CHECK_ITEMS = [
-  ['pchk-budget', '순천시 보건소(061-749-6916~9) 또는 e보건소에서 당해 연도 지원사업 접수 가능 여부 확인'],
-  ['pchk-apply', '검사 받기 전 e보건소 온라인(또는 보건소 방문)으로 신랑·신부 각자 「임신 사전건강관리 지원사업」 신청'],
-  ['pchk-referral', '보건소 승인 완료 및 검사의뢰서 발급 확인(출력 또는 모바일 저장) — 발급 전 검사 시 소급 불가'],
-  ['pchk-hospital', '순천 현대여성아동병원(061-720-1111)에 참여 의료기관 여부·산부인과/난임센터 예약·금식/금욕 조건 문의'],
-  ['pchk-suncheon', '순천시 신혼(예비)부부 건강검진(남녀 각 최대 4만 원)·예비부모 엽산제(총 6갑) 병행 가능 여부 및 지정 병원 확인'],
-  ['pchk-exam', '신분증·검사의뢰서 지참해 산전검사 수검 및 전문의 결과 상담 완료 (신청일로부터 3개월 이내)'],
-  ['pchk-receipt', '수납 시 진료비 영수증 + 진료비 세부내역서 발급 보관 (남성 정액검사 정자정밀형태검사 포함 여부 확인)'],
-  ['pchk-claim', '검사일로부터 1개월 이내 e보건소(또는 보건소)에 영수증·세부내역서·통장사본 제출해 지원금 청구 완료']
-];
 
 const HOSPITAL_INFO = {
   shortName: '순천 현대여성아동병원',

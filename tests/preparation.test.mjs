@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,buildThankYouMessage,addCalendarMonths,prenatalDeadlineSummary,marriageBenefitTimeline,homeItemsSummary,homeItemsToCsv,weddingDaySummary} from '../assets/js/planning.js';
-import {buildInvitationShareMessages} from '../assets/js/invitation-card.js';
+import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,buildThankYouMessage,addCalendarMonths,prenatalDeadlineSummary,marriageBenefitTimeline,homeItemsSummary,homeItemsToCsv,weddingDaySummary,collectMasterTimeline} from '../assets/js/planning.js';
+import {buildInvitationShareMessages,isKakaoInApp,isInAppBrowser} from '../assets/js/invitation-card.js';
 
 const keys=['venue','sdm','snap','rings','honeymoon','living'];
 test('unknown wedding costs stay unknown, partial amounts are subtotals and notes do not imply zero',()=>{
@@ -190,5 +190,44 @@ test('homeItemsSummary, homeItemsToCsv, and weddingDaySummary aggregate totals a
  assert.equal(dSum.totalEnvelopeAmount,450000);
  assert.equal(dSum.readyAmount,200000);
  assert.equal(dSum.pendingAmount,250000);
+});
+
+test('collectMasterTimeline aggregates and sorts events across all boards without duplicating default studio shoot',()=>{
+ const events=collectMasterTimeline({
+  content:{
+   invitation:{partner1:'김희엽',partner2:'유미혜',date:'2027-06-05',time:'15:00',venue:'순천아모르웨딩컨벤션 1층',address:'전남 순천시 서면 압곡길 94'},
+   honeymoon:[{id:'bali',title:'발리',country:'인도네시아',startDate:'2027-06-06',endDate:'2027-06-13'}]
+  },
+  prefs:{
+   tripSelected:'bali',
+   prenatalSchedule:{appliedDate:'2026-11-20',visitDate:'2026-11-28',examDate:'2026-11-28',claimed:false},
+   homeItems:[{id:'h1',category:'📺 가전',name:'TV',brand:'LG',status:'계약·결제 완료',deliveryDate:'2027-05-15'}],
+   marriageRegDate:'2027-06-10',
+   vendorSchedules:[
+    {id:'vsched-lachma-shoot',category:'📸 스튜디오',name:'라크마',date:'2027-02-03',done:false},
+    {id:'v-dress',category:'👗 드레스',name:'본식 드레스 셀렉',date:'2027-04-20',done:false}
+   ]
+  },
+  now:new Date('2026-12-23T03:00:00Z')
+ });
+ const ids=events.map(e=>e.id);
+ assert(ids.includes('master-studio-shoot'));
+ assert(!ids.includes('master-vendor-vsched-lachma-shoot'),'Default studio shoot must not duplicate');
+ assert(ids.includes('master-vendor-v-dress'));
+ assert(ids.includes('master-prenatal-claim-deadline'));
+ assert(ids.includes('master-home-h1'));
+ assert(ids.includes('master-wedding-day'));
+ assert(ids.includes('master-honeymoon-bali'));
+ assert(ids.includes('master-marriage-reg'));
+ assert(ids.includes('master-suncheon-grant-start'));
+ // Sorted chronologically
+ for(let i=1;i<events.length;i++)assert(events[i].date>=events[i-1].date,'Master timeline must be chronologically sorted');
+ // Claim deadline (2026-12-28) vs now (2026-12-23) is 5 days left -> urgent
+ const claimEvt=events.find(e=>e.id==='master-prenatal-claim-deadline');
+ assert.equal(claimEvt.urgent,true);
+ // In-app browser detection
+ assert.equal(isKakaoInApp('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) KAKAOTALK 10.6.0'),true);
+ assert.equal(isInAppBrowser('Mozilla/5.0 (Linux; Android 14) NAVER(inapp; search)'),true);
+ assert.equal(isInAppBrowser('Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/126.0.0.0 Safari/537.36'),false);
 });
 

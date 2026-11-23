@@ -1,6 +1,12 @@
-import { E, S, image } from './dom.js?v=wedding-features-53';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-53';
-import { renderQrSvgString } from './qrcode.js?v=wedding-features-53';
+import { E, S, image } from './dom.js?v=wedding-features-54';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-54';
+
+export function isKakaoInApp(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  return /KAKAOTALK/i.test(ua || '');
+}
+export function isInAppBrowser(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  return /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua || '');
+}
 
 const MONTH_NAMES_EN = ['', 'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 
@@ -395,6 +401,7 @@ async function loadImageSafe(src) {
 async function loadQrSvgImage(url) {
   if (!url) return null;
   try {
+    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-54');
     const svgMarkup = renderQrSvgString(url, { margin: 2 });
     const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);
@@ -662,23 +669,37 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
   return canvas;
 }
 
+export async function renderInvitationCardBlob(info, albums = [], options = {}) {
+  const filename = options.includeQr ? 'wedding-invitation-card-qr.png' : 'wedding-invitation-card.png';
+  const canvas = await renderInvitationCardCanvas(info, albums, options);
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(result => {
+      if (!result) reject(new Error('이미지 생성에 실패했습니다.'));
+      else resolve(result);
+    }, 'image/png');
+  });
+  const dataUrl = canvas.toDataURL('image/png');
+  return { blob, dataUrl, filename };
+}
+
+export function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = E('a', { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
 export async function downloadInvitationCardPng(info, albums = [], notify = () => {}, options = {}) {
   try {
-    const filename = options.includeQr ? 'wedding-invitation-card-qr.png' : 'wedding-invitation-card.png';
-    const canvas = await renderInvitationCardCanvas(info, albums, options);
-    await new Promise((resolve, reject) => {
-      canvas.toBlob(blob => {
-        if (!blob) { reject(new Error('이미지 생성에 실패했습니다.')); return; }
-        const url = URL.createObjectURL(blob);
-        const a = E('a', { href: url, download: filename });
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        resolve();
-      }, 'image/png');
-    });
-    notify(`청첩장 이미지(${filename})를 저장했습니다.`);
+    const payload = await renderInvitationCardBlob(info, albums, options);
+    if (typeof options.onPreview === 'function' && (options.preferModal || isInAppBrowser())) {
+      options.onPreview(payload);
+      return true;
+    }
+    triggerBlobDownload(payload.blob, payload.filename);
+    notify(`청첩장 이미지(${payload.filename})를 저장했습니다.`);
     return true;
   } catch (error) {
     notify(error?.message || '청첩장 이미지를 저장하지 못했습니다.', true);

@@ -571,5 +571,245 @@ export function weddingDaySummary(roles = [], envelopes = []) {
   };
 }
 
+export const CEREMONY_PREP_ITEMS = [
+  ['cchk-mc', '사회자 섭외 확정 및 아모르 12단계 진행 대본·박수 유도 큐 공유'],
+  ['cchk-vows', '신랑·신부 혼인서약서(4가지 약속) 문구 확정 및 낭독 파트 분담·연습'],
+  ['cchk-decl', '사회자용 성혼선언문 성함·예식일 확인 및 단상 비치용 인쇄 준비'],
+  ['cchk-cue', '양가 어머님 화촉점화 동선 및 혼주 인사 순서(신부측→신랑측→중앙) 사전 공유'],
+  ['cchk-song', '축가자·곡명 확정 및 진행 타이밍(혼주·내빈 인사 직후)·MR 음원 점검'],
+  ['cchk-floor', '순천아모르웨딩컨벤션 피로연 연회홀 층수 확인 및 폐회식 안내 멘트 반영']
+];
+
+export const PRENATAL_CHECK_ITEMS = [
+  ['pchk-budget', '순천시 보건소(061-749-6916~9) 또는 e보건소에서 당해 연도 지원사업 접수 가능 여부 확인'],
+  ['pchk-apply', '검사 받기 전 e보건소 온라인(또는 보건소 방문)으로 신랑·신부 각자 「임신 사전건강관리 지원사업」 신청'],
+  ['pchk-referral', '보건소 승인 완료 및 검사의뢰서 발급 확인(출력 또는 모바일 저장) — 발급 전 검사 시 소급 불가'],
+  ['pchk-hospital', '순천 현대여성아동병원(061-720-1111)에 참여 의료기관 여부·산부인과/난임센터 예약·금식/금욕 조건 문의'],
+  ['pchk-suncheon', '순천시 신혼(예비)부부 건강검진(남녀 각 최대 4만 원)·예비부모 엽산제(총 6갑) 병행 가능 여부 및 지정 병원 확인'],
+  ['pchk-exam', '신분증·검사의뢰서 지참해 산전검사 수검 및 전문의 결과 상담 완료 (신청일로부터 3개월 이내)'],
+  ['pchk-receipt', '수납 시 진료비 영수증 + 진료비 세부내역서 발급 보관 (남성 정액검사 정자정밀형태검사 포함 여부 확인)'],
+  ['pchk-claim', '검사일로부터 1개월 이내 e보건소(또는 보건소)에 영수증·세부내역서·통장사본 제출해 지원금 청구 완료']
+];
+
+export const WEDDING_BUDGET_CATEGORIES = [
+  ['venue', '🏛️ 웨딩홀·식대·대관료', 'seg-airfare', '대관료·식대·연출·꽃장식'],
+  ['sdm', '👗 스튜디오·드레스·메이크업', 'seg-lodging', '촬영·본식 드레스·메이크업·추가금'],
+  ['snap', '📸 본식스냅·DVD·부케·진행', 'seg-other', '본식스냅·영상·부케·사회/축가'],
+  ['rings', '💍 예물·예복·한복·예단', 'seg-reserve', '웨딩밴드·신랑 예복·혼주 한복'],
+  ['honeymoon', '✈️ 신혼여행 (항공·숙박·현지)', 'seg-honeymoon', '선택 여행지 2인 계획예산 연동 가능'],
+  ['living', '🛋️ 혼수·가전·가구·기타 예비비', 'seg-living', '가전·가구·청첩장·답례품·예비비']
+];
+
+export const DEFAULT_VENDOR_SCHEDULES = [
+  {
+    id: 'vsched-lachma-shoot',
+    category: '📸 스튜디오',
+    name: '라크마 스튜디오 웨딩촬영 (낮 12시)',
+    date: '2027-02-03',
+    done: false,
+    note: '2027년 2월 3일 수요일 12:00 확정 (062-714-1970~1 · 월·화 휴무) · STEP1 루나메이크업(광주 남구 천변좌로 432 1층) → STEP2 라크마 스튜디오(광주 남구 중앙로 117, 예약 5~10분 전 도착 필수) · 당일 현금 헬퍼비 25만 원·실리콘 누브라·검정 긴 양말·어두운 구두·한 입 간식 준비'
+  }
+];
+
+export function activeVendorSchedules(prefs) {
+  return prefs?.vendorSchedules !== undefined ? prefs.vendorSchedules : structuredClone(DEFAULT_VENDOR_SCHEDULES);
+}
+
+const VALID_YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+export function collectMasterTimeline({ content = {}, prefs = {}, studio = null, now = new Date() } = {}) {
+  const items = [];
+  const push = entry => {
+    if (!entry?.date || !VALID_YMD.test(entry.date)) return;
+    const daysLeft = kstDayDiff(entry.date, now);
+    items.push({
+      ...entry,
+      monthKey: entry.date.slice(0, 7),
+      daysLeft,
+      done: Boolean(entry.done),
+      urgent: Boolean(entry.urgent)
+    });
+  };
+
+  // 1. Studio shoot & free-change deadline
+  const shootDate = studio?.deepGuide?.schedule?.date || '2027-02-03';
+  const shootTime = studio?.deepGuide?.schedule?.time || '12:00';
+  const studioName = studio?.name || '라크마';
+  const shootDeadline = shootDeadlineSummary(shootDate, now);
+  if (shootDeadline?.freeChangeUntil) {
+    push({
+      id: 'master-studio-free-change',
+      date: shootDeadline.freeChangeUntil,
+      category: '📸 스튜디오',
+      title: `${studioName} 스튜디오 무료 일정 변경 마감`,
+      detail: '촬영 60일 전까지 무료 변경 가능 · 이후 위약금 구간 적용',
+      location: '광주광역시 남구 중앙로 117 (라크마 스튜디오)',
+      route: 'studios',
+      done: kstDayDiff(shootDeadline.freeChangeUntil, now) < 0
+    });
+  }
+  const vList = activeVendorSchedules(prefs);
+  const lachmaVendor = vList.find(v => v.id === 'vsched-lachma-shoot');
+  push({
+    id: 'master-studio-shoot',
+    date: shootDate,
+    time: shootTime,
+    category: '📸 스튜디오',
+    title: `${studioName} 웨딩촬영 (${shootTime})`,
+    detail: 'STEP1 루나메이크업(1층) → STEP2 라크마 스튜디오(중앙로 117) · 헬퍼비 현금 25만 원',
+    location: '광주광역시 남구 중앙로 117 (라크마 스튜디오)',
+    route: 'studios',
+    done: Boolean(lachmaVendor?.done)
+  });
+
+  // 2. Wedding ceremony
+  const inv = content?.invitation || {};
+  if (inv.date && VALID_YMD.test(inv.date)) {
+    const names = [inv.partner1, inv.partner2].map(v => (v || '').trim()).filter(Boolean).join(' & ');
+    push({
+      id: 'master-wedding-day',
+      date: inv.date,
+      time: /^([01]\d|2[0-3]):[0-5]\d$/.test(inv.time || '') ? inv.time : '',
+      category: '💍 본식',
+      title: names ? `${names} 결혼식` : '우리의 결혼식',
+      detail: [inv.venue, inv.time].filter(Boolean).join(' · ') || '본식 예식일',
+      location: [inv.venue, inv.address].filter(Boolean).join(' · '),
+      route: 'ceremony'
+    });
+  }
+
+  // 3. Honeymoon
+  const trips = content?.honeymoon || [];
+  const selectedTrip = trips.find(t => t.id === prefs?.tripSelected);
+  if (selectedTrip?.startDate && VALID_YMD.test(selectedTrip.startDate)) {
+    push({
+      id: `master-honeymoon-${selectedTrip.id}`,
+      date: selectedTrip.startDate,
+      endDate: VALID_YMD.test(selectedTrip.endDate || '') && selectedTrip.endDate >= selectedTrip.startDate ? selectedTrip.endDate : '',
+      category: '✈️ 신혼여행',
+      title: `신혼여행 · ${selectedTrip.title}`,
+      detail: selectedTrip.endDate ? `${selectedTrip.startDate} ~ ${selectedTrip.endDate} (최종 선택)` : '최종 선택 여행 출발',
+      location: selectedTrip.country || '',
+      route: 'honeymoon'
+    });
+  } else if (trips.length && VALID_YMD.test(trips[0]?.startDate || '')) {
+    const start = trips[0].startDate;
+    const end = VALID_YMD.test(trips[0]?.endDate || '') ? trips[0].endDate : '';
+    if (trips.every(t => t.startDate === start && (t.endDate || '') === end)) {
+      push({
+        id: 'master-honeymoon-window',
+        date: start,
+        endDate: end && end >= start ? end : '',
+        category: '✈️ 신혼여행',
+        title: '신혼여행 출국·귀국 예정 기간',
+        detail: end ? `${start} ~ ${end} · 후보 ${trips.length}곳 검토 중` : `후보 ${trips.length}곳 검토 중`,
+        route: 'honeymoon'
+      });
+    }
+  }
+
+  // 4. Prenatal schedule & deadlines
+  const pSched = prenatalDeadlineSummary(prefs?.prenatalSchedule || {}, now);
+  if (pSched.visitDate) {
+    push({
+      id: 'master-prenatal-visit',
+      date: pSched.visitDate,
+      category: '🩺 산전검사',
+      title: '순천 현대여성아동병원 산전검사 예약',
+      detail: '신분증·보건소 검사의뢰서 지참 (061-720-1111)',
+      location: '전라남도 순천시 장선배기1길 8 (현대여성아동병원)',
+      route: 'prenatal',
+      done: Boolean(pSched.examDate || pSched.claimed)
+    });
+  }
+  if (pSched.examDeadline && !pSched.examDate && !pSched.claimed) {
+    push({
+      id: 'master-prenatal-exam-deadline',
+      date: pSched.examDeadline,
+      category: '🩺 산전검사',
+      title: '산전검사 완료 마감 (신청 후 3개월)',
+      detail: `e보건소 신청일(${pSched.appliedDate}) 기준 3개월 내 참여 병원 검사 완료`,
+      location: '전라남도 순천시 장선배기1길 8 (현대여성아동병원)',
+      route: 'prenatal',
+      urgent: pSched.status === 'exam-urgent' || pSched.status === 'exam-overdue'
+    });
+  }
+  if (pSched.claimDeadline && !pSched.claimed) {
+    push({
+      id: 'master-prenatal-claim-deadline',
+      date: pSched.claimDeadline,
+      category: '🩺 산전검사',
+      title: '산전검사 지원금 청구 마감 (검사 후 1개월)',
+      detail: `검사일(${pSched.examDate}) 기준 1개월 내 e보건소 청구 (영수증·세부내역서·통장사본)`,
+      location: 'e보건소 온라인 / 순천시 보건소 모자보건실',
+      route: 'prenatal',
+      urgent: pSched.status === 'claim-urgent' || pSched.status === 'claim-overdue'
+    });
+  }
+
+  // 5. Vendor schedules (excluding duplicate default lachma shoot)
+  for (const v of vList) {
+    if (!v?.date || !VALID_YMD.test(v.date)) continue;
+    if (v.id === 'vsched-lachma-shoot' && v.date === shootDate) continue;
+    push({
+      id: `master-vendor-${v.id}`,
+      date: v.date,
+      category: v.category || '🗓️ 업체 일정',
+      title: v.name,
+      detail: v.note || '업체 일정 보드 등록 항목',
+      route: 'tips',
+      subTab: 'schedule',
+      done: Boolean(v.done)
+    });
+  }
+
+  // 6. Home / appliances delivery dates
+  for (const item of prefs?.homeItems || []) {
+    if (!item?.deliveryDate || !VALID_YMD.test(item.deliveryDate)) continue;
+    push({
+      id: `master-home-${item.id}`,
+      date: item.deliveryDate,
+      category: '🏠 혼수·배송',
+      title: `${item.name}${item.brand ? ` (${item.brand})` : ''} 배송·설치`,
+      detail: [item.status, item.note].filter(Boolean).join(' · ') || '신혼집 혼수 배송 예정',
+      route: 'tips',
+      subTab: 'home',
+      done: item.status === '배송·설치 완료'
+    });
+  }
+
+  // 7. Marriage registration & Suncheon marriage grant window
+  if (prefs?.marriageRegDate && VALID_YMD.test(prefs.marriageRegDate)) {
+    const timeline = marriageBenefitTimeline(prefs.marriageRegDate, now);
+    push({
+      id: 'master-marriage-reg',
+      date: prefs.marriageRegDate,
+      category: '🏛️ 혼인·혜택',
+      title: '혼인신고(예정)일',
+      detail: '순천시청 신청사(장명로 30) 종합민원실 · 증인 2명 기재 신고서·신분증 지참',
+      location: '전라남도 순천시 장명로 30 (순천시청 신청사)',
+      route: 'tips',
+      subTab: 'benefits',
+      done: (prefs.benefitChecks || []).includes('bchk-reg')
+    });
+    if (timeline?.congratsStart) {
+      push({
+        id: 'master-suncheon-grant-start',
+        date: timeline.congratsStart,
+        category: '🏛️ 혼인·혜택',
+        title: '순천 청년부부 결혼축하금(200만 원) 신청 시작',
+        detail: `신청 가능 구간 ${timeline.congratsStart} ~ ${timeline.congratsEnd} · 행정복지센터·전남 아이톡`,
+        location: '주소지 읍·면·동 행정복지센터 / 전남 아이톡',
+        route: 'tips',
+        subTab: 'benefits',
+        done: (prefs.benefitChecks || []).includes('bchk-congrats')
+      });
+    }
+  }
+
+  items.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '99:99').localeCompare(b.time || '99:99') || a.id.localeCompare(b.id));
+  return items;
+}
+
 
 

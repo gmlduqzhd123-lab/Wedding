@@ -1,7 +1,10 @@
-import { E, button } from './dom.js?v=wedding-features-53';
-import { formatDate } from './content.js?v=wedding-features-53';
-import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-53';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-53';
+import { E, button } from './dom.js?v=wedding-features-54';
+import { formatDate } from './content.js?v=wedding-features-54';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-54';
+import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-54';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-54';
+
+export { CEREMONY_PREP_ITEMS };
 
 let ceremonySubTab = 'rundown';
 export function setCeremonySubTab(tab) {
@@ -14,15 +17,6 @@ function shiftTime(hhmm, deltaMinutes) {
   const total = ((Number(m[1]) * 60 + Number(m[2]) + deltaMinutes) % 1440 + 1440) % 1440;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
-
-export const CEREMONY_PREP_ITEMS = [
-  ['cchk-mc', '사회자 섭외 확정 및 아모르 12단계 진행 대본·박수 유도 큐 공유'],
-  ['cchk-vows', '신랑·신부 혼인서약서(4가지 약속) 문구 확정 및 낭독 파트 분담·연습'],
-  ['cchk-decl', '사회자용 성혼선언문 성함·예식일 확인 및 단상 비치용 인쇄 준비'],
-  ['cchk-cue', '양가 어머님 화촉점화 동선 및 혼주 인사 순서(신부측→신랑측→중앙) 사전 공유'],
-  ['cchk-song', '축가자·곡명 확정 및 진행 타이밍(혼주·내빈 인사 직후)·MR 음원 점검'],
-  ['cchk-floor', '순천아모르웨딩컨벤션 피로연 연회홀 층수 확인 및 폐회식 안내 멘트 반영']
-];
 
 function ceremonyCleanName(raw, role, fallback = '○○○') {
   const cleaned = (raw || '').replace(new RegExp(`^${role}\\s*`), '').trim();

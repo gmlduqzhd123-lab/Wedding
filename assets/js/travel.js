@@ -138,3 +138,24 @@ export function upgradeLegacyTrip(trip){
       climate:blocks['5월의 기후 경향'],climateMonth:5,sourceTitle:(blocks['자료와 출처']||'').split('기후 경향: ')[1]?.split(' · 원문')[0]||'공식 기후 안내',
       checkedOn:'2026-11-04',budgetNotes:trip.id==='maldives'?'숙박 패키지에 식사와 리조트 왕복 이동을 포함시키려는 계획입니다. 실제 포함 범위는 미확인이며 같은 비용을 중복 합산하지 않습니다.':'세금·수하물·식사·이동의 포함 범위는 견적별로 확인해야 합니다.',legacyText:trip.body}};
 }
+
+export function tripFlightBadge(item){
+  const line=(item?.plan?.transport||'').split(/\r?\n/)[0]||'';
+  const cleaned=line
+    .replace(/^\d{4}-\d{2}-\d{2}\s*(조회|조사(?:\s*당시)?)\s*항공:\s*/,'')
+    .replace(/\s*직항\s*기준\s*패키지\s*구성\.?$/,'')
+    .replace(/\s*Economy\s*(Standard|Saver)/i,'')
+    .replace(/\s*\([^)]*\)/g,'')
+    .trim();
+  const text=`${line} ${item?.plan?.itinerary||''} ${item?.plan?.quote?.flightSource||''}`;
+  if(/직항/.test(text)&&!/경유/.test(line)){
+    const airline=cleaned.split('.')[0]?.replace(/\s*직항$/,'').trim();
+    return {direct:true,short:'✈️ 직항',detail:airline?`✈️ ${airline} · 직항`:'✈️ 인천 출발 직항'};
+  }
+  if(/경유/.test(text)){
+    const airline=cleaned.split('.')[0]?.trim()||'';
+    const hop=line.match(/(?:왕복\s*)?([A-Z·]+\s*)?\d회 경유/)?.[0]?.replace(/^왕복\s*/,'')||'경유';
+    return {direct:false,short:`✈️ ${hop}`,detail:airline?`✈️ ${airline} · ${hop}`:`✈️ ${hop}`};
+  }
+  return {direct:false,short:'✈️ 항공 미정',detail:'✈️ 항공편 별도 확인'};
+}
