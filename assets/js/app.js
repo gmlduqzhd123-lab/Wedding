@@ -1,22 +1,23 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationCountdownInfo, invitationLiveCountdown, extractPhoneNumber, extractAccountNumber, safeUrl, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-51';
-import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, mergePreferences, summarizePreferencesMerge, CHECKLIST_STAGES } from './preferences.js?v=wedding-features-51';
-import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-51';
-import { dateSpan } from './travel.js?v=wedding-features-51';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-51';
-import { weddingBudgetSummary, guestListSummary, giftLedgerSummary } from './planning.js?v=wedding-features-51';
-import { renderQrSvgString } from './qrcode.js?v=wedding-features-51';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner, downloadText, downloadJson } from './dom.js?v=wedding-features-51';
-import { stopInvitationBgm, renderInvitationBgmButton } from './bgm.js?v=wedding-features-51';
-import { formatKoreanTimeLabel, buildInvitationShareMessages, renderInvitationCornerMarks, renderInvitationDivider, renderBotanicalLeaf, renderInvitationHeroVisual, renderInvitationCalendar, downloadInvitationCardPng } from './invitation-card.js?v=wedding-features-51';
-import { renderStudios as renderStudiosModule } from './studio-ui.js?v=wedding-features-51';
-import { CEREMONY_PREP_ITEMS, setCeremonySubTab, renderCeremony as renderCeremonyModule } from './ceremony-ui.js?v=wedding-features-51';
-import { tripFlightBadge, sortedTrips, updateTripChoices, ensureTripVisible, renderHoneymoon as renderHoneymoonModule } from './travel-ui.js?v=wedding-features-51';
-import { WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, filteredTips, setTipsSubTab, renderTips as renderTipsModule } from './planning-ui.js?v=wedding-features-51';
-import { openEditor as openEditorModule } from './editor-ui.js?v=wedding-features-51';
+import { parseContent, validateContent, formatDate, weddingDday, invitationCountdownInfo, invitationLiveCountdown, extractPhoneNumber, extractAccountNumber, safeUrl, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-52';
+import { validatePreferences, parsePreferencesBackup, pruneContentPreferences, mergePreferences, summarizePreferencesMerge, CHECKLIST_STAGES } from './preferences.js?v=wedding-features-52';
+import { lockedMerge, StorageConflict, mergeChanges } from './storage.js?v=wedding-features-52';
+import { dateSpan } from './travel.js?v=wedding-features-52';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-52';
+import { weddingBudgetSummary, guestListSummary, giftLedgerSummary } from './planning.js?v=wedding-features-52';
+import { renderQrSvgString } from './qrcode.js?v=wedding-features-52';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner, downloadText, downloadJson } from './dom.js?v=wedding-features-52';
+import { stopInvitationBgm, renderInvitationBgmButton } from './bgm.js?v=wedding-features-52';
+import { formatKoreanTimeLabel, buildInvitationShareMessages, renderInvitationCornerMarks, renderInvitationDivider, renderBotanicalLeaf, renderInvitationHeroVisual, renderInvitationCalendar, downloadInvitationCardPng } from './invitation-card.js?v=wedding-features-52';
+import { renderStudios as renderStudiosModule } from './studio-ui.js?v=wedding-features-52';
+import { CEREMONY_PREP_ITEMS, setCeremonySubTab, renderCeremony as renderCeremonyModule } from './ceremony-ui.js?v=wedding-features-52';
+import { PRENATAL_CHECK_ITEMS, renderPrenatal as renderPrenatalModule } from './prenatal-ui.js?v=wedding-features-52';
+import { tripFlightBadge, sortedTrips, updateTripChoices, ensureTripVisible, renderHoneymoon as renderHoneymoonModule } from './travel-ui.js?v=wedding-features-52';
+import { WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, filteredTips, setTipsSubTab, renderTips as renderTipsModule } from './planning-ui.js?v=wedding-features-52';
+import { openEditor as openEditorModule } from './editor-ui.js?v=wedding-features-52';
 
 const main=$('#main'), dialog=$('#editor-dialog'), editor=$('#editor-body');
 const DRAFT_KEY='wedding:v1:draft', PREF_KEY='wedding:v1:preferences', LARGE_TEXT_KEY='wedding:v1:largeText';
-const routes=['home','invitation','story','albums','studios','honeymoon','ceremony','tips'];
+const routes=['home','invitation','story','albums','studios','honeymoon','ceremony','prenatal','tips'];
 const menus=[
   ['invitation','청첩장','소중한 분들을 초대하는 우리의 첫 인사.','INVITATION'],
   ['story','우리의 일대기','첫 만남부터 오늘까지, 함께 쌓아 온 시간.','OUR STORY'],
@@ -24,6 +25,7 @@ const menus=[
   ['studios','스튜디오','라크마 촬영 일정과 당일 동선·준비물 안내.','STUDIOS'],
   ['honeymoon','신혼여행','결혼 후 첫 여행, 가고 싶은 곳부터 차근차근.','HONEYMOON'],
   ['ceremony','본식 식순','순천아모르 식순·사회자 대본, 혼인서약서와 하객·축의금 관리.','CEREMONY & VOWS'],
+  ['prenatal','산전검사','순천 현대여성아동병원 안내와 산전검사 지원금 수령 절차.','PRENATAL CARE'],
   ['tips','결혼에 관한 모든 정보','상견례·웨딩홀·스드메·본식·혼수까지 결혼 준비 꿀팁 모음.','WEDDING GUIDE']
 ];
 let baseContent, content, studios=[], prefs={}, isDraft=false, toastTimer;
@@ -193,7 +195,7 @@ function conflictDetails(error){
     E('p',{},'서로 다른 항목의 변경은 함께 보존됩니다.'));
 }
 function conflictLabel(path){
-  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',groomParents:'신랑 측 혼주',brideParents:'신부 측 혼주',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',venueMapImage:'예식장 약도 이미지',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처 안내',groomAccounts:'신랑 측 계좌',brideAccounts:'신부 측 계좌',rsvpUrl:'RSVP 설문 링크',notes:'스튜디오 메모',tripNotes:'여행지 개인 메모',tipNotes:'꿀팁 영상 개인 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',shootChecklist:'촬영 준비 체크리스트',ceremonyChecks:'본식 식순 체크리스트',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',vendorSchedules:'주요 업체 일정',ceremonyPlan:'본식 식순 플래너',guestList:'하객 명단',giftLedger:'축의금 장부',venueSim:'웨딩홀 비용 시뮬레이터',sdmSim:'스드메 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'신혼여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
+  const labels={invitation:'예식 정보',partner1:'첫 번째 이름',partner2:'두 번째 이름',groomParents:'신랑 측 혼주',brideParents:'신부 측 혼주',venue:'예식장',date:'날짜',time:'시간',address:'주소',message:'초대 인사',mapUrl:'지도 링크',venueMapImage:'예식장 약도 이미지',transit:'교통·주차 안내',notice:'예식 안내 메모',contacts:'연락처 안내',groomAccounts:'신랑 측 계좌',brideAccounts:'신부 측 계좌',rsvpUrl:'RSVP 설문 링크',notes:'스튜디오 메모',tripNotes:'여행지 개인 메모',tipNotes:'꿀팁 영상 개인 메모',favorites:'관심 스튜디오',studioSelected:'최종 선택 스튜디오',tripFavorites:'관심 여행지',tipFavorites:'관심 꿀팁',checklist:'결혼 준비 체크리스트',shootChecklist:'촬영 준비 체크리스트',ceremonyChecks:'본식 식순 체크리스트',prenatalChecks:'산전검사 진행 체크리스트',prenatalNote:'산전검사 개인 메모',checklistNotes:'체크리스트 메모',customChecklist:'직접 추가한 할 일',customPackingList:'직접 추가한 준비물',vendorSchedules:'주요 업체 일정',ceremonyPlan:'본식 식순 플래너',guestList:'하객 명단',giftLedger:'축의금 장부',venueSim:'웨딩홀 비용 시뮬레이터',sdmSim:'스드메 비용 시뮬레이터',packingList:'신혼여행 준비물',budgetPlan:'통합 예산 계산기',tripCompare:'여행 비교',tripSelected:'최종 여행지',stories:'이야기',albums:'앨범',honeymoon:'신혼여행',tips:'결혼 정보',category:'분류',channel:'채널·출처',title:'제목',body:'내용',images:'사진',left:'비교 A',right:'비교 B',plan:'여행 상세',experiences:'경험 제안',climate:'기후 안내',climateMonth:'기후 기준 월',sourceTitle:'기후 출처',sourceUrl:'기후 출처 링크',checkedOn:'확인일',comparisonNote:'비교 요약',budgetNotes:'비용 참고 설명',researchNotes:'계획 자료 설명',references:'추가 조사 출처',lodgingNotes:'숙박 구성 메모',itinerary:'일정 흐름',transport:'계획상 이동',stays:'숙박 구성',costs:'비용 배분',quote:'실제 견적'};
   const planningLabels={planned:'목표 예산',actual:'실제 지출·계약 견적',mealPrice:'1인 식대',guestCount:'예상 하객 수',minGuarantee:'최소 보증인원',hallFee:'대관료·연출료',deposit:'기납부 계약금',packageFee:'스드메 패키지 기본가',helperFee:'당일 헬퍼비',extraFee:'기타 추가금',roadScene:'로드씬 옵션',nightShoot:'야간씬 옵션',name:'일정 이름',done:'완료 여부',note:'메모',style:'예식 진행 형태',mc:'사회자',song:'축가',speech:'축사·덕담·주례',banquetFloor:'연회홀 층수',vows:'혼인서약서 문안',declaration:'성혼선언문 문안',sdm:'스튜디오·드레스·메이크업',snap:'본식 촬영·진행',rings:'예물·예복·한복·예단',living:'혼수·가전·가구'};
   return path.split('.').filter(key=>key!=='records').map(key=>labels[key]||planningLabels[key]||studios.find(item=>item.id===key)?.name||content?.honeymoon?.find(item=>item.id===key)?.title||content?.tips?.find(item=>item.id===key)?.title||activeVendorSchedules().find(item=>item.id===key)?.name||'기록').join(' · ');
 }
@@ -658,8 +660,9 @@ function renderHome() {
       E('div',{},E('span',{class:'small muted'},'WEDDING VENUE'),E('strong',{},info.venue||'예식 장소 준비 중')))
     :null;
   const ceremonyDone=(prefs.ceremonyChecks||[]).filter(id=>CEREMONY_PREP_ITEMS.some(([cid])=>cid===id)).length;
+  const prenatalDone=(prefs.prenatalChecks||[]).filter(id=>PRENATAL_CHECK_ITEMS.some(([pid])=>pid===id)).length;
   const gCount=(prefs.guestList||[]).length;
-  const statuses={invitation:info.date?'예식 일시·장소 안내':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:'2/3(수) 12:00 촬영 안내',honeymoon:`${content.honeymoon.length}개의 여행 후보`,ceremony:gCount?`체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 하객 ${gCount}건`:`준비 체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 12단계 식순`,tips:`${content.tips.length}개의 꿀팁 영상`};
+  const statuses={invitation:info.date?'예식 일시·장소 안내':'첫 인사를 준비해요',story:`${content.stories.length}개의 이야기`,albums:`${content.albums.length}개의 앨범`,studios:'2/3(수) 12:00 촬영 안내',honeymoon:`${content.honeymoon.length}개의 여행 후보`,ceremony:gCount?`체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 하객 ${gCount}건`:`준비 체크 ${ceremonyDone}/${CEREMONY_PREP_ITEMS.length} · 12단계 식순`,prenatal:`순천현대병원 · 준비 체크 ${prenatalDone}/${PRENATAL_CHECK_ITEMS.length}`,tips:`${content.tips.length}개의 꿀팁 영상`};
   const visibleMenus=guestMode?menus.filter(([route])=>isGuestVisibleRoute(route)):menus;
   return [hero,renderJourneyRibbon(info,dday),overview,renderHomeDashboard(),E('section',{},E('div',{class:'section-heading'},E('div',{},E('h2',{},guestMode?'예식 안내 바로가기':'함께 채워 갈 이야기'),E('p',{},guestMode?'모바일 청첩장과 오시는 길 안내를 확인하실 수 있습니다.':'필요한 순간에 하나씩, 우리의 속도로.'))),
     E('div',{class:'menu-grid'},visibleMenus.map(([route,title,description],index)=>E('a',{class:'menu-card',href:`#/${route}`},E('span',{class:'number'},String(index+1).padStart(2,'0')),E('h3',{},title),E('p',{},description),E('div',{class:'card-tail'},E('span',{},statuses[route]),E('span',{'aria-hidden':'true'},'↗')))))),renderHomeChecklist()];
@@ -1268,6 +1271,9 @@ function renderStudios() {
 function renderCeremony(){
   return renderCeremonyModule(moduleCtx());
 }
+function renderPrenatal(){
+  return renderPrenatalModule(moduleCtx());
+}
 function renderTips() {
   return renderTipsModule(moduleCtx());
 }
@@ -1318,7 +1324,7 @@ function render() {
   const route=currentRoute();
   document.body.dataset.route=route;
   if(route!=='invitation'){stopInvitationBgm();stopInvitationCountdown();activeCountdownSlot=null;revealObserver?.disconnect();revealObserver=null;}
-  const renderers={home:renderHome,invitation:renderInvitation,story:renderStories,albums:renderAlbums,studios:renderStudios,honeymoon:renderHoneymoon,ceremony:renderCeremony,tips:renderTips};
+  const renderers={home:renderHome,invitation:renderInvitation,story:renderStories,albums:renderAlbums,studios:renderStudios,honeymoon:renderHoneymoon,ceremony:renderCeremony,prenatal:renderPrenatal,tips:renderTips};
   const keepView=route==='honeymoon'&&main.dataset.renderedRoute===route;
   const opened=keepView?[...main.querySelectorAll('details[open][data-view-key]')].map(node=>node.dataset.viewKey):[];
   const active=keepView&&main.contains(document.activeElement)?document.activeElement:null;
@@ -1428,8 +1434,8 @@ function openManager() {
           toast(parts.length?`개인 백업을 기존 기록과 합쳤습니다. (${parts.join(', ')})`:'개인 백업을 기존 기록과 확인·병합했습니다.');
         }
       }else{
-        if(!confirm('이 기기의 라크마 촬영 메모·준비물 체크, 여행·꿀팁 선택과 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정 보드, 본식 식순·낭독문 체크, 하객 명단·축의금 장부, 출국 준비물을 백업 내용으로 전체 덮어쓸까요?'))return;
-        if(await savePrefs(incoming,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·일정·식순·하객·축의금 장부 설정을 복원했습니다.');}
+        if(!confirm('이 기기의 라크마 촬영 메모·준비물 체크, 여행·꿀팁 선택과 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정 보드, 본식 식순·낭독문 체크, 산전검사 체크·메모, 하객 명단·축의금 장부, 출국 준비물을 백업 내용으로 전체 덮어쓸까요?'))return;
+        if(await savePrefs(incoming,validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('개인 메모와 선택, 체크리스트·예산·일정·식순·산전검사·하객·축의금 장부 설정을 복원했습니다.');}
       }
     }catch(error){toast(error.message,true);}finally{personal.value='';}
   });
@@ -1498,7 +1504,7 @@ function openManager() {
         E('span',{class:'checklist-progress-fill',style:`width:${pct}%`}))),
     E('section',{class:'manager-section'},
       E('h3',{},'개인 메모·선택 백업'),
-      E('p',{},'라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·주요 업체 일정 보드·본식 식순·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
+      E('p',{},'라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·주요 업체 일정 보드·본식 식순·산전검사 체크·메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
       button('개인 백업 저장',downloadPrivate,'button quiet'),
       E('div',{class:'pref-restore-modes',role:'radiogroup','aria-label':'개인 백업 불러오기 방식'},
         E('label',{class:'check-label',for:'pref-import-merge'},mergeRadio,'기존 기록에 합치기 (병합 · 권장 — 신랑·신부·양가 백업 통합)'),
@@ -1508,9 +1514,9 @@ function openManager() {
     isDraft&&draftRevision!==baseRevision?E('section',{class:'manager-section'},E('h3',{},'새 공개본 확인'),E('p',{},'현재 초안을 파일로 백업한 후 새 공개본을 확인하세요. 공개본으로 돌아가면 초안을 지우며 자동으로 합치지 않습니다.'),button('현재 초안 백업',downloadContent,'button quiet'),linkButton('새 공개본 미리보기','?view=guest#/home',true)):null,
     E('section',{class:'manager-section'},E('h3',{},'기본 정보'),E('p',{},'이름, 예식 일정과 장소, 청첩장 인사를 채워요.'),editButton('예식 정보 편집',()=>openEditor('invitation'),'button quiet')),
     renderDraftDiffSection(),
-    E('section',{class:'manager-section'},E('h3',{},'공개할 내용 파일로 저장'),E('p',{},'저장한 site.json 파일은 자동 배포되지 않으며, 저장소의 data/site.json에 반영한 뒤 main 브랜치에 push하면 GitHub Pages에 공개됩니다. 파일에는 청첩장·일대기·앨범·신혼여행·결혼 정보가 담기며, 개인 메모·예산·체크리스트·하객 명단·축의금 장부는 포함되지 않습니다.'),button('공개용 파일 저장',downloadContent)),
+    E('section',{class:'manager-section'},E('h3',{},'공개할 내용 파일로 저장'),E('p',{},'저장한 site.json 파일은 자동 배포되지 않으며, 저장소의 data/site.json에 반영한 뒤 main 브랜치에 push하면 GitHub Pages에 공개됩니다. 파일에는 청첩장·일대기·앨범·신혼여행·결혼 정보가 담기며, 개인 메모·예산·체크리스트·산전검사 메모·하객 명단·축의금 장부는 포함되지 않습니다.'),button('공개용 파일 저장',downloadContent)),
     E('section',{class:'manager-section'},E('h3',{},'이전에 저장한 내용 불러오기'),E('p',{},'이 앱에서 저장한 JSON 콘텐츠 파일을 선택해 주세요.'),file),
-    E('section',{class:'manager-section'},E('h3',{},'초안을 지우고 공개본 보기'),E('p',{},'이 기기의 콘텐츠 초안만 지웁니다. 라크마 촬영 메모와 여행·예산·체크리스트·하객 명단·축의금 장부 등 개인 설정은 유지됩니다.'),button('공개본으로 돌아가기',async()=>{
+    E('section',{class:'manager-section'},E('h3',{},'초안을 지우고 공개본 보기'),E('p',{},'이 기기의 콘텐츠 초안만 지웁니다. 라크마 촬영 메모와 여행·예산·체크리스트·산전검사 메모·하객 명단·축의금 장부 등 개인 설정은 유지됩니다.'),button('공개본으로 돌아가기',async()=>{
       if(!confirm('이 기기의 콘텐츠 초안을 지울까요? 필요한 내용은 먼저 파일로 저장해 주세요.'))return;
       try{
         await navigator.locks.request(`wedding-storage:${DRAFT_KEY}`,()=>{
@@ -1520,8 +1526,8 @@ function openManager() {
         content=structuredClone(baseContent);syncMemoryPrefs();isDraft=false;draftRevision=baseRevision;closeDialog();render();toast('공개본으로 돌아왔습니다.');
       }catch(error){toast(error.message||'초안을 지우지 못했습니다.',true);}
     },'button danger')),
-    E('section',{class:'manager-section'},E('h3',{},'개인 설정·메모 초기화'),E('p',{},'이 기기에 저장된 라크마 촬영 메모·준비물 체크, 여행·꿀팁 관심 및 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정, 본식 식순, 하객 명단, 축의금 장부를 초기 상태로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),button('개인 설정·메모 초기화',async()=>{
-      if(!confirm('이 기기의 모든 개인 메모·관심 선택·예산·체크리스트·식순·하객 명단·축의금 장부 설정을 초기화할까요?'))return;
+    E('section',{class:'manager-section'},E('h3',{},'개인 설정·메모 초기화'),E('p',{},'이 기기에 저장된 라크마 촬영 메모·준비물 체크, 여행·꿀팁 관심 및 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 업체 일정, 본식 식순, 산전검사 체크·메모, 하객 명단, 축의금 장부를 초기 상태로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),button('개인 설정·메모 초기화',async()=>{
+      if(!confirm('이 기기의 모든 개인 메모·관심 선택·예산·체크리스트·식순·산전검사·하객 명단·축의금 장부 설정을 초기화할까요?'))return;
       if(await savePrefs(validatePreferences({}),validatePreferences({}),readStorage(PREF_KEY))){closeDialog();render();toast('이 기기의 개인 설정과 메모를 초기화했습니다.');}
     },'button danger'))));
 }

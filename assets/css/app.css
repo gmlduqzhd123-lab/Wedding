@@ -4278,6 +4278,331 @@ a.spec-chip:hover {
   .readiness-mini-bar { width: 72px; }
 }
 
+/* Prenatal Care & Subsidy Guide */
+.prenatal-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.prenatal-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 15px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--card-shadow);
+  min-width: 0;
+}
+.prenatal-kpi-card.is-primary {
+  background: linear-gradient(155deg, #ffffff 0%, #f1f6f2 100%);
+  border-color: var(--olive-line);
+}
+.prenatal-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.prenatal-kpi-val {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.prenatal-panel {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+.prenatal-card {
+  padding: 24px 26px;
+  border-radius: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--card-shadow);
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.prenatal-hospital-hero {
+  border-color: var(--olive-line);
+  background: linear-gradient(180deg, #ffffff 0%, #fafcf9 100%);
+}
+.prenatal-health-center {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9f7 100%);
+}
+.prenatal-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.prenatal-card-head > div { min-width: 0; }
+.prenatal-card-head h2,
+.prenatal-card-head h3 {
+  margin: 2px 0 4px;
+  font-family: var(--display);
+}
+.prenatal-card-head h2 { font-size: 21px; }
+.prenatal-card-head h3 { font-size: 18px; }
+.prenatal-quick-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+.prenatal-card .button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+.prenatal-badges { margin: 0; }
+.prenatal-badges .spec-chip,
+.prenatal-hc-meta .spec-chip {
+  white-space: normal;
+  max-width: 100%;
+  line-height: 1.45;
+  text-align: left;
+}
+.prenatal-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.prenatal-info-item {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.prenatal-info-item.is-wide { grid-column: 1 / -1; }
+.prenatal-info-item dt {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.prenatal-info-item dd {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.prenatal-hours-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.prenatal-hour-pill {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 3px;
+}
+.prenatal-hour-pill strong {
+  font-size: 13.5px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.prenatal-hour-note { margin: 6px 0 0; }
+.prenatal-link-row { margin-top: 2px; }
+.prenatal-hc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.prenatal-callout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.prenatal-callout-box {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.prenatal-callout-box h4 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+.prenatal-callout-box p { margin: 0; line-height: 1.65; }
+.prenatal-alert-banner {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--rose-soft);
+  border: 1px solid var(--rose-line);
+  color: var(--rose-accent-dark);
+  display: grid;
+  gap: 6px;
+}
+.prenatal-alert-banner strong { font-size: 14.5px; }
+.prenatal-alert-banner p { margin: 0; line-height: 1.65; }
+.prenatal-timing-banner {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--olive-soft);
+  border: 1px solid var(--olive-line);
+  color: var(--green-dark);
+  display: grid;
+  gap: 6px;
+}
+.prenatal-timing-banner strong { font-size: 15px; }
+.prenatal-timing-banner p { margin: 0; line-height: 1.65; color: var(--ink-soft); }
+.prenatal-summary-3col {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.prenatal-mini-card {
+  padding: 15px 16px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.prenatal-mini-card.is-accent {
+  background: linear-gradient(155deg, #f3f7f4 0%, #fbf5f3 100%);
+  border-color: var(--olive-line);
+}
+.prenatal-mini-kicker {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.02em;
+}
+.prenatal-mini-card strong { font-size: 15.5px; color: var(--ink); }
+.prenatal-mini-card p { margin: 0; line-height: 1.6; }
+.prenatal-subhead {
+  margin: 4px 0 0;
+  font-family: var(--display);
+  font-size: 17px;
+  color: var(--green-dark);
+}
+.prenatal-stepper {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.prenatal-step-card {
+  padding: 15px 18px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  display: grid;
+  gap: 8px;
+}
+.prenatal-step-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.prenatal-step-title { font-size: 15.5px; color: var(--ink); }
+.prenatal-step-timing { margin-left: auto; }
+.prenatal-step-desc { margin: 0; line-height: 1.7; color: var(--ink-soft); }
+.prenatal-docs-grid,
+.prenatal-local-grid,
+.prenatal-exam-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.prenatal-doc-box,
+.prenatal-local-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.prenatal-doc-box.is-warn {
+  background: var(--rose-soft);
+  border-color: var(--rose-line);
+}
+.prenatal-doc-box h4,
+.prenatal-local-card h3 {
+  margin: 0;
+  font-size: 15.5px;
+  color: var(--ink);
+}
+.prenatal-local-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.prenatal-bullet-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 7px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+.prenatal-check-list { margin-top: 6px; }
+.prenatal-note-card textarea { min-height: 96px; }
+.prenatal-note-actions { margin-top: 2px; }
+.prenatal-privacy-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px dashed var(--line-strong);
+}
+.prenatal-sources-box {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+}
+@media (max-width: 960px) {
+  .prenatal-kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prenatal-hours-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prenatal-summary-3col { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .prenatal-card { padding: 18px 16px; border-radius: 20px; }
+  .prenatal-info-grid,
+  .prenatal-callout-grid,
+  .prenatal-docs-grid,
+  .prenatal-local-grid,
+  .prenatal-exam-grid { grid-template-columns: 1fr; }
+  .prenatal-step-timing { margin-left: 0; }
+  .prenatal-subtabs { flex-wrap: wrap; overflow-x: visible; }
+  .prenatal-subtabs .subtab-btn { flex: 1 1 auto; padding: 8px 11px; font-size: 12.5px; }
+}
+@media (max-width: 440px) {
+  .prenatal-kpi-card { padding: 12px 13px; }
+  .prenatal-kpi-val { font-size: 15.5px; }
+  .prenatal-hours-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 350px) {
+  .prenatal-kpi-strip { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
   .reveal-section.will-reveal { opacity: 1 !important; transform: none !important; }
@@ -4290,7 +4615,7 @@ a.spec-chip:hover {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .trip-controls, .directory-controls, .trip-quick-filters, .travel-tools, .trip-video-links, .yt-inline-play, .yt-thumb-banner, .lachma-official-links, .lachma-loc-actions, .map-preview-open, .ceremony-doc-toolbar, .invitation-actions, .invitation-readiness-card, .invitation-topbar-tools, .invitation-text-btn, .invitation-bgm-btn, .invitation-share-foot, .invitation-rsvp-card, .invitation-gallery-foot, .calendar-update-note, .contact-row-actions, .checklist-item-actions, .vendor-schedule-actions, .checklist-note-btn, .scroll-top-btn, .guest-board-toolbar, .gift-ledger-toolbar, .ledger-row-controls, .guest-quick-dock, .subtab-bar, .list-pager-bar, .studio-photo-zoom, .nav-scroll-cue, .filter-reset-chip, .toast, dialog {
+  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .trip-controls, .directory-controls, .trip-quick-filters, .travel-tools, .trip-video-links, .yt-inline-play, .yt-thumb-banner, .lachma-official-links, .lachma-loc-actions, .map-preview-open, .ceremony-doc-toolbar, .invitation-actions, .invitation-readiness-card, .invitation-topbar-tools, .invitation-text-btn, .invitation-bgm-btn, .invitation-share-foot, .invitation-rsvp-card, .invitation-gallery-foot, .calendar-update-note, .contact-row-actions, .checklist-item-actions, .vendor-schedule-actions, .checklist-note-btn, .scroll-top-btn, .guest-board-toolbar, .gift-ledger-toolbar, .ledger-row-controls, .guest-quick-dock, .subtab-bar, .list-pager-bar, .studio-photo-zoom, .nav-scroll-cue, .filter-reset-chip, .prenatal-quick-actions, .prenatal-link-row, .prenatal-note-actions, .toast, dialog {
     display: none !important;
   }
   .reveal-section, .reveal-section.will-reveal {
@@ -4299,14 +4624,14 @@ a.spec-chip:hover {
   }
   .main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
   .invitation-topbar { padding: 0 !important; }
-  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .private-ledger-section, .invitation, .travel-card, .selected-trip, .travel-comparison, .honeymoon-packing, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon {
+  .home-dashboard, .home-checklist, .wedding-budget-calc, .ceremony-planner, .private-ledger-section, .invitation, .travel-card, .selected-trip, .travel-comparison, .honeymoon-packing, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon, .prenatal-card, .prenatal-kpi-card {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border-color: #cccccc !important;
   }
   .table-scroll { overflow: visible !important; }
-  .ceremony-paper-card, .ceremony-box, .lachma-location-card, .lachma-prep-card, .lachma-scene-card, .timetable-row, .checklist-stage-card, .dashboard-card, .venue-sim-box, .sdm-sim-box, .amor-cue-card, .mc-step-card, .vendor-schedule-item, .ledger-row, .ledger-kpi-card {
+  .ceremony-paper-card, .ceremony-box, .lachma-location-card, .lachma-prep-card, .lachma-scene-card, .timetable-row, .checklist-stage-card, .dashboard-card, .venue-sim-box, .sdm-sim-box, .amor-cue-card, .mc-step-card, .vendor-schedule-item, .ledger-row, .ledger-kpi-card, .prenatal-step-card, .prenatal-callout-box, .prenatal-local-card {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;

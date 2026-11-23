@@ -1,6 +1,6 @@
-import { E, button } from './dom.js?v=wedding-features-51';
-import { formatDate } from './content.js?v=wedding-features-51';
-import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-51';
+import { E, button } from './dom.js?v=wedding-features-52';
+import { formatDate } from './content.js?v=wedding-features-52';
+import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-52';
 
 let ceremonySubTab = 'rundown';
 export function setCeremonySubTab(tab) {

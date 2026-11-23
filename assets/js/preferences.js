@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-51';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-52';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -29,6 +29,11 @@ export function validatePreferences(input) {
   if (input.packingList !== undefined) result.packingList = ids(input.packingList);
   if (input.shootChecklist !== undefined) result.shootChecklist = ids(input.shootChecklist);
   if (input.ceremonyChecks !== undefined) result.ceremonyChecks = ids(input.ceremonyChecks);
+  if (input.prenatalChecks !== undefined) result.prenatalChecks = ids(input.prenatalChecks);
+  if (input.prenatalNote !== undefined) {
+    if (typeof input.prenatalNote !== 'string' || input.prenatalNote.length > 1000) throw new Error('산전검사 개인 메모는 1,000자 이하로 입력해 주세요.');
+    if (input.prenatalNote.trim()) result.prenatalNote = input.prenatalNote.trim();
+  }
   if (input.checklistNotes !== undefined) {
     if (!input.checklistNotes || typeof input.checklistNotes !== 'object' || Array.isArray(input.checklistNotes) || Object.keys(input.checklistNotes).length > 200) throw new Error('체크리스트 메모 형식을 확인해 주세요.');
     const cNotes = {};
@@ -307,9 +312,19 @@ export function mergePreferences(currentInput, incomingInput) {
     tripCompare: mergeIdList(cur.tripCompare, inc.tripCompare, 2) || []
   };
 
-  for (const key of ['tipFavorites', 'checklist', 'packingList', 'shootChecklist', 'ceremonyChecks']) {
+  for (const key of ['tipFavorites', 'checklist', 'packingList', 'shootChecklist', 'ceremonyChecks', 'prenatalChecks']) {
     const list = mergeIdList(cur[key], inc[key], 1000);
     if (list !== undefined) merged[key] = list;
+  }
+  if (cur.prenatalNote !== undefined || inc.prenatalNote !== undefined) {
+    const prev = String(cur.prenatalNote || '').trim();
+    const next = String(inc.prenatalNote || '').trim();
+    if (!prev && next) merged.prenatalNote = next.slice(0, 1000);
+    else if (prev && (!next || prev === next || prev.includes(next))) merged.prenatalNote = prev;
+    else if (prev && next) {
+      const combined = `${prev}\n---\n${next}`;
+      merged.prenatalNote = combined.length <= 1000 ? combined : prev;
+    }
   }
   const checklistNotes = mergeNoteMap(cur.checklistNotes, inc.checklistNotes, 300, 200);
   if (checklistNotes !== undefined) merged.checklistNotes = checklistNotes;
@@ -402,10 +417,10 @@ export function summarizePreferencesMerge(currentInput, mergedInput) {
     guestsAdded: diffLen(cur.guestList, mer.guestList),
     giftsAdded: diffLen(cur.giftLedger, mer.giftLedger),
     schedulesAdded: diffLen(cur.vendorSchedules, mer.vendorSchedules),
-    checksAdded: diffLen(cur.checklist, mer.checklist) + diffLen(cur.shootChecklist, mer.shootChecklist) + diffLen(cur.ceremonyChecks, mer.ceremonyChecks) + diffLen(cur.packingList, mer.packingList),
+    checksAdded: diffLen(cur.checklist, mer.checklist) + diffLen(cur.shootChecklist, mer.shootChecklist) + diffLen(cur.ceremonyChecks, mer.ceremonyChecks) + diffLen(cur.prenatalChecks, mer.prenatalChecks) + diffLen(cur.packingList, mer.packingList),
     customItemsAdded: diffLen(cur.customChecklist, mer.customChecklist) + diffLen(cur.customPackingList, mer.customPackingList),
     favoritesAdded: diffLen(cur.favorites, mer.favorites) + diffLen(cur.tripFavorites, mer.tripFavorites) + diffLen(cur.tipFavorites, mer.tipFavorites),
-    notesUpdated: diffKeys(cur.notes, mer.notes) + diffKeys(cur.tripNotes, mer.tripNotes) + diffKeys(cur.tipNotes, mer.tipNotes) + diffKeys(cur.checklistNotes, mer.checklistNotes)
+    notesUpdated: diffKeys(cur.notes, mer.notes) + diffKeys(cur.tripNotes, mer.tripNotes) + diffKeys(cur.tipNotes, mer.tipNotes) + diffKeys(cur.checklistNotes, mer.checklistNotes) + ((cur.prenatalNote || '') !== (mer.prenatalNote || '') ? 1 : 0)
   };
 }
 

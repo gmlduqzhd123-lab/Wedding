@@ -1,10 +1,10 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-51';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-51';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-51';
-import { quoteReview } from './travel.js?v=wedding-features-51';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-51';
-import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-51';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-51';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-52';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-52';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-52';
+import { quoteReview } from './travel.js?v=wedding-features-52';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-52';
+import { venueEstimate, weddingBudgetSummary, sdmEstimate, guestListSummary } from './planning.js?v=wedding-features-52';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-52';
 
 export const DEFAULT_VENDOR_SCHEDULES = [
   {

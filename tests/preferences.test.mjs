@@ -180,3 +180,30 @@ test('mergePreferences combines partner A and partner B records safely without l
   assert.equal(capped.guestList.length,500);
   assert.throws(()=>mergePreferences(partnerA,{guestList:'invalid'}));
 });
+
+test('prenatalChecks and prenatalNote validate strictly, survive private backup, and merge safely',()=>{
+  const prefs=validatePreferences({
+    prenatalChecks:['pchk-budget','pchk-apply'],
+    prenatalNote:'순천 현대여성아동병원 토요일 오전 산부인과 예약 문의 완료'
+  });
+  const raw=JSON.stringify({kind:'wedding-private-preferences',schemaVersion:1,preferences:prefs});
+  assert.deepEqual(parsePreferencesBackup(raw),prefs);
+  for(const bad of [
+    {prenatalChecks:['bad id!']},
+    {prenatalChecks:'pchk-apply'},
+    {prenatalNote:123},
+    {prenatalNote:'x'.repeat(1001)}
+  ]){
+    assert.throws(()=>validatePreferences(bad));
+  }
+  const merged=mergePreferences(prefs,{
+    prenatalChecks:['pchk-apply','pchk-referral'],
+    prenatalNote:'보건소 모자보건실 061-749-6916 접수 확인'
+  });
+  assert.deepEqual(merged.prenatalChecks,['pchk-budget','pchk-apply','pchk-referral']);
+  assert(merged.prenatalNote.includes('순천 현대여성아동병원')&&merged.prenatalNote.includes('061-749-6916'));
+  const summary=summarizePreferencesMerge(prefs,merged);
+  assert.equal(summary.checksAdded,1);
+  assert.equal(summary.notesUpdated,1);
+});
+
