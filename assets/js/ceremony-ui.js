@@ -1,10 +1,10 @@
-import { E, button } from './dom.js?v=wedding-features-54';
-import { formatDate } from './content.js?v=wedding-features-54';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-54';
-import { renderGuestListBoard, renderGiftLedgerBoard } from './guest-ledger-ui.js?v=wedding-features-54';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-54';
+import { E, button } from './dom.js?v=wedding-features-55';
+import { formatDate } from './content.js?v=wedding-features-55';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-55';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-55';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-55';
 
-export { CEREMONY_PREP_ITEMS };
+export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 
 let ceremonySubTab = 'rundown';
 export function setCeremonySubTab(tab) {
@@ -383,6 +383,8 @@ export function renderCeremony(ctx) {
       return saved;
     });
   };
+  const urlSubTab = ctx.currentSubTab?.();
+  if (['rundown', 'guests', 'gifts', 'dayops'].includes(urlSubTab)) ceremonySubTab = urlSubTab;
   const guestCount = (prefs.guestList || []).length;
   const giftCount = (prefs.giftLedger || []).length;
   const dayOpsCount = (prefs.weddingDayRoles || []).length + (prefs.weddingDayEnvelopes || []).length;
@@ -403,7 +405,8 @@ export function renderCeremony(ctx) {
         'data-ceremony-tab': key,
         onclick: () => {
           ceremonySubTab = key;
-          ctx.render();
+          if (ctx.setSubTabHash) ctx.setSubTabHash('ceremony', key);
+          else ctx.render();
           document.querySelector(`[data-ceremony-tab="${key}"]`)?.focus({ preventScroll: true });
         }
       }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));

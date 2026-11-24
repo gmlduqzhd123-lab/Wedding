@@ -130,7 +130,7 @@ try {
   const after=await storage(draftKey);assert.deepEqual(after,before);
   const original=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
   original.invitation.partner1='새 공개본';
-  await page.route('**/data/site.json',route=>route.fulfill({json:original}));
+  await page.route('**/data/{site,guest-site}.json',route=>route.fulfill({json:original}));
   await page.reload();await ready();
   assert.match(await page.locator('#draft-banner').innerText(),/공개본이 변경/);
   await page.getByRole('button',{name:'내용 관리',exact:true}).click();
@@ -168,7 +168,7 @@ try {
   await page.evaluate(draft=>{localStorage.setItem('wedding:v1:draft',JSON.stringify(draft));},JSON.parse(fullPublic));
   await page.reload();await ready();
   assert.match(await page.locator('#draft-banner').innerText(),/基準|기준 버전/);
-  await page.route('**/data/site.json',route=>route.fulfill({status:503,body:'unavailable'}));
+  await page.route('**/data/{site,guest-site}.json',route=>route.fulfill({status:503,body:'unavailable'}));
   await page.goto(base+'?view=guest#/home');await ready();
   await page.getByRole('button',{name:'다시 불러오기',exact:true}).waitFor();
   // A deliberately simulated 503 emits a browser console resource error.

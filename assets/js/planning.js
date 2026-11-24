@@ -283,33 +283,73 @@ function normalizeRsvpStatus(raw) {
   const s = unescapeExcelCell(raw).replace(/\s+/g, '');
   const lower = s.toLowerCase();
   if (!s || s.includes('미확인')) return '미확인';
-  if (s.includes('불참') || lower === 'x' || lower === 'n' || lower === 'no' || s === '아니오' || s === '아니요') return '불참';
-  if (s.includes('미정') || s.includes('보류')) return '미정';
-  if (s.includes('참석') || lower === 'o' || lower === 'y' || lower === 'yes' || s === '예' || s === '네') return '참석';
+  if (s.includes('불참') || s.includes('어렵') || s.includes('불가') || s.includes('못가') || s.includes('못갑') || lower === 'x' || lower === 'n' || lower === 'no' || s === '아니오' || s === '아니요') return '불참';
+  if (s.includes('미정') || s.includes('보류') || s.includes('고민') || s.includes('추후')) return '미정';
+  if (s.includes('참석') || s.includes('가능') || s.includes('갑니다') || s.includes('갈게') || lower === 'o' || lower === 'y' || lower === 'yes' || s === '예' || s === '네') return '참석';
   return '미확인';
 }
 
 function normalizeMealTicket(raw) {
   const s = unescapeExcelCell(raw).replace(/\s+/g, '').toLowerCase();
   if (!s) return true;
-  if (s.includes('미식사') || s.includes('답례품') || s === 'x' || s === 'n' || s === 'no' || s === 'false' || s === '아니오' || s === '안함') return false;
+  if (s.includes('미식사') || s.includes('답례품') || s.includes('안함') || s.includes('안먹') || s.includes('불가') || s.includes('못함') || s.includes('아니') || s === 'x' || s === 'n' || s === 'no' || s === 'false') return false;
   return true;
 }
+
+function parseHeadcountCell(raw, isCompanionOnly = false) {
+  const cleaned = unescapeExcelCell(raw).replace(/\s+/g, '');
+  if (!cleaned) return 1;
+  if (/^(없음|혼자|본인만|0명?|none|no)$/i.test(cleaned)) return 1;
+  const numMatch = cleaned.match(/\d+/);
+  if (!numMatch) return 1;
+  const n = Number.parseInt(numMatch[0], 10);
+  if (!Number.isInteger(n) || n < 0) return 1;
+  if (isCompanionOnly && !cleaned.includes('포함') && !cleaned.includes('총')) return Math.max(1, n + 1);
+  return Math.max(1, n);
+}
+
+export const RSVP_FORM_GUIDE_TEXT = [
+  '💌 [Google Forms / 네이버 폼 RSVP 추천 질문 구성]',
+  '(이 항목명으로 만들면 응답 CSV를 앱 하객 명단으로 자동 매핑해 가져올 수 있어요)',
+  '',
+  '1. 성함 (단답형 · 필수)',
+  '2. 어느 측 하객이신가요? (객관식 · 필수): 신랑 측 / 신부 측 / 공통',
+  '3. 관계 (객관식 · 선택): 가족·친척 / 친구 / 직장·동료 / 지인·기타',
+  '4. 참석 여부 (객관식 · 필수): 참석합니다 / 아쉽지만 불참합니다 / 미정입니다',
+  '5. 본인 포함 참석 인원수 (객관식 또는 단답형): 1명 / 2명 / 3명 / 4명',
+  '6. 식사 여부 (객관식 · 필수): 식사합니다 / 식사 안 함 (답례품 수령)',
+  '7. 축하 메시지 (장문형 · 선택)'
+].join('\n');
 
 export function parseGuestsCsv(csvText) {
   const rows = parseCsvRows(csvText);
   if (rows.length < 2) throw new Error('헤더 행과 최소 1건 이상의 하객 행이 포함된 CSV 파일을 선택해 주세요.');
   const headers = rows[0].map(h => unescapeExcelCell(h).replace(/\s+/g, '').toLowerCase());
   const findCol = patterns => headers.findIndex(h => patterns.some(p => h === p || h.includes(p)));
-  const colName = findCol(['성함', '이름', '하객', 'name']);
+  const colTimestamp = findCol(['타임스탬프', '응답시간', 'timestamp']);
+  const colName = findCol(['성함', '이름', '성명', '하객성함', '참석자', '대표자', '하객', 'name']);
   if (colName === -1) throw new Error('CSV 첫 행에 ‘성함’ 또는 ‘이름’ 열이 필요합니다.');
-  const colSide = findCol(['구분', '양가', 'side']);
+  const colSide = findCol(['구분', '양가', '어느측', '어느분', '신랑신부', 'side']);
   const colGroup = findCol(['관계', '분류', '그룹', '소속', 'group']);
-  const colSize = findCol(['인원수', '인원', '동반', 'partysize']);
+  const colSize = findCol(['인원수', '본인포함', '총인원', '참석인원', '인원', '동반', '동행', 'partysize']);
   const colInvite = findCol(['청첩장발송', '발송', '청첩장', 'invite']);
-  const colRsvp = findCol(['참석여부', '참석', 'rsvp']);
-  const colMeal = findCol(['식사여부', '식사', '식권', 'meal']);
-  const colNote = findCol(['메모', '비고', 'note']);
+  const colRsvp = findCol(['참석여부', '참석가능', '참석', 'rsvp']);
+  const colMeal = findCol(['식사여부', '연회식사', '식사', '식권', 'meal']);
+  const colMessage = findCol(['축하메시지', '축하인사', '남기실말씀', '전하실말씀', '응원메시지', 'message']);
+  const colNote = findCol(['메모', '비고', '특이사항', '요청사항', 'note']);
+
+  const sizeHeader = colSize >= 0 ? headers[colSize] : '';
+  const isCompanionOnly = Boolean(
+    sizeHeader &&
+    (sizeHeader.includes('동반') || sizeHeader.includes('동행')) &&
+    !sizeHeader.includes('포함') &&
+    !sizeHeader.includes('총')
+  );
+  const isRsvpForm = Boolean(
+    colTimestamp >= 0 ||
+    colMessage >= 0 ||
+    (colInvite === -1 && colRsvp >= 0)
+  );
 
   const records = [];
   const warnings = [];
@@ -322,27 +362,122 @@ export function parseGuestsCsv(csvText) {
       warnings.push(`${i + 1}행: 성함이 비어 있어 건너뛰었습니다.`);
       continue;
     }
-    const sizeRaw = colSize >= 0 ? unescapeExcelCell(r[colSize]).replace(/[^\d]/g, '') : '';
-    let partySize = sizeRaw ? Number.parseInt(sizeRaw, 10) : 1;
-    if (!Number.isInteger(partySize) || partySize < 1) partySize = 1;
+    let partySize = colSize >= 0 ? parseHeadcountCell(r[colSize], isCompanionOnly) : 1;
     if (partySize > 20) {
       partySize = 20;
       warnings.push(`${i + 1}행(${name}): 인원수가 20명을 넘어 20명으로 조정했습니다.`);
     }
-    const note = colNote >= 0 ? unescapeExcelCell(r[colNote]).slice(0, 300) : '';
+    const rawNote = colNote >= 0 && colNote !== colMessage ? unescapeExcelCell(r[colNote]) : '';
+    const rawMessage = colMessage >= 0 ? unescapeExcelCell(r[colMessage]) : '';
+    const noteParts = [
+      rawNote,
+      rawMessage ? `[축하] ${rawMessage}` : ''
+    ].filter(Boolean);
+    const note = noteParts.join(' · ').slice(0, 300);
+    const rsvp = colRsvp >= 0 ? normalizeRsvpStatus(r[colRsvp]) : '미확인';
+    const inviteStatus = colInvite >= 0
+      ? normalizeInviteStatus(r[colInvite])
+      : (isRsvpForm ? '모바일 발송' : '미발송');
     records.push({
       name,
       side: colSide >= 0 ? normalizeGuestSide(r[colSide]) : '공통',
       group: colGroup >= 0 ? normalizeGuestGroup(r[colGroup]) : '지인·기타',
       partySize,
-      inviteStatus: colInvite >= 0 ? normalizeInviteStatus(r[colInvite]) : '미발송',
-      rsvp: colRsvp >= 0 ? normalizeRsvpStatus(r[colRsvp]) : '미확인',
-      mealTicket: colMeal >= 0 ? normalizeMealTicket(r[colMeal]) : true,
+      inviteStatus,
+      rsvp,
+      mealTicket: colMeal >= 0 ? normalizeMealTicket(r[colMeal]) : (rsvp !== '불참'),
       ...(note ? { note } : {})
     });
   }
   if (!records.length) throw new Error('가져올 수 있는 유효한 하객 행이 없습니다.');
-  return { records, skipped, warnings };
+  return { records, skipped, warnings, isRsvpForm };
+}
+
+export function syncGuestsFromCsv(existingList = [], incomingRecords = [], mode = 'skip', createId = () => 'guest-' + crypto.randomUUID().slice(0, 8)) {
+  const list = existingList.map(item => ({ ...item }));
+  const keyOf = (side, name) => `${side}|${String(name || '').trim().toLocaleLowerCase()}`;
+  const nameOf = name => String(name || '').trim().toLocaleLowerCase();
+
+  if (mode === 'all') {
+    const additions = incomingRecords.map(rec => ({ id: createId(), ...rec }));
+    const nextList = [...list, ...additions];
+    return { nextList, addedCount: additions.length, updatedCount: 0, skippedCount: 0, overCap: nextList.length > 500 };
+  }
+
+  if (mode === 'update') {
+    const bySideName = new Map();
+    const byNameIndices = new Map();
+    list.forEach((g, idx) => {
+      bySideName.set(keyOf(g.side, g.name), idx);
+      const nk = nameOf(g.name);
+      if (!byNameIndices.has(nk)) byNameIndices.set(nk, []);
+      byNameIndices.get(nk).push(idx);
+    });
+    let updatedCount = 0;
+    let addedCount = 0;
+    const touched = new Set();
+    for (const rec of incomingRecords) {
+      const exactKey = keyOf(rec.side, rec.name);
+      let idx = bySideName.has(exactKey) ? bySideName.get(exactKey) : -1;
+      if (idx === -1) {
+        const sameNames = byNameIndices.get(nameOf(rec.name)) || [];
+        if (sameNames.length === 1 && (rec.side === '공통' || list[sameNames[0]].side === '공통')) {
+          idx = sameNames[0];
+        }
+      }
+      if (idx >= 0) {
+        const cur = list[idx];
+        const mergedNote = !rec.note
+          ? (cur.note || '')
+          : (!cur.note || cur.note.includes(rec.note))
+            ? (cur.note || rec.note)
+            : `${cur.note} / ${rec.note}`.slice(0, 300);
+        const nextSide = (cur.side === '공통' && rec.side !== '공통') ? rec.side : cur.side;
+        const nextGroup = (cur.group === '지인·기타' && rec.group !== '지인·기타') ? rec.group : cur.group;
+        const nextInvite = cur.inviteStatus === '미발송' && rec.inviteStatus !== '미발송' ? rec.inviteStatus : cur.inviteStatus;
+        list[idx] = {
+          ...cur,
+          side: nextSide,
+          group: nextGroup,
+          partySize: rec.partySize,
+          inviteStatus: nextInvite,
+          rsvp: rec.rsvp !== '미확인' ? rec.rsvp : cur.rsvp,
+          mealTicket: rec.mealTicket,
+          ...(mergedNote ? { note: mergedNote } : {})
+        };
+        if (!touched.has(idx)) {
+          touched.add(idx);
+          updatedCount++;
+        }
+      } else {
+        const nextItem = { id: createId(), ...rec };
+        const newIdx = list.length;
+        list.push(nextItem);
+        bySideName.set(keyOf(nextItem.side, nextItem.name), newIdx);
+        const nk = nameOf(nextItem.name);
+        if (!byNameIndices.has(nk)) byNameIndices.set(nk, []);
+        byNameIndices.get(nk).push(newIdx);
+        addedCount++;
+      }
+    }
+    return { nextList: list, addedCount, updatedCount, skippedCount: 0, overCap: list.length > 500 };
+  }
+
+  // Default: 'skip'
+  const seen = new Set(list.map(g => keyOf(g.side, g.name)));
+  let addedCount = 0;
+  let skippedCount = 0;
+  for (const rec of incomingRecords) {
+    const k = keyOf(rec.side, rec.name);
+    if (seen.has(k)) {
+      skippedCount++;
+      continue;
+    }
+    seen.add(k);
+    list.push({ id: createId(), ...rec });
+    addedCount++;
+  }
+  return { nextList: list, addedCount, updatedCount: 0, skippedCount, overCap: list.length > 500 };
 }
 
 export function buildThankYouMessage(gift = {}, invitation = {}, variant = 'attended') {
@@ -731,6 +866,7 @@ export function collectMasterTimeline({ content = {}, prefs = {}, studio = null,
       detail: `e보건소 신청일(${pSched.appliedDate}) 기준 3개월 내 참여 병원 검사 완료`,
       location: '전라남도 순천시 장선배기1길 8 (현대여성아동병원)',
       route: 'prenatal',
+      subTab: 'subsidy',
       urgent: pSched.status === 'exam-urgent' || pSched.status === 'exam-overdue'
     });
   }
@@ -743,6 +879,7 @@ export function collectMasterTimeline({ content = {}, prefs = {}, studio = null,
       detail: `검사일(${pSched.examDate}) 기준 1개월 내 e보건소 청구 (영수증·세부내역서·통장사본)`,
       location: 'e보건소 온라인 / 순천시 보건소 모자보건실',
       route: 'prenatal',
+      subTab: 'subsidy',
       urgent: pSched.status === 'claim-urgent' || pSched.status === 'claim-overdue'
     });
   }
@@ -809,6 +946,156 @@ export function collectMasterTimeline({ content = {}, prefs = {}, studio = null,
 
   items.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '99:99').localeCompare(b.time || '99:99') || a.id.localeCompare(b.id));
   return items;
+}
+
+export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now = new Date() } = {}) {
+  const inv = content?.invitation || {};
+  const shootDate = studio?.deepGuide?.schedule?.date || '2027-02-03';
+  const weddingDate = VALID_YMD.test(inv.date || '') ? inv.date : '';
+  const shootDiff = VALID_YMD.test(shootDate) ? kstDayDiff(shootDate, now) : null;
+  const weddingDiff = weddingDate ? kstDayDiff(weddingDate, now) : null;
+
+  const trips = content?.honeymoon || [];
+  const selectedTrip = trips.find(t => t.id === prefs?.tripSelected) || null;
+  const tripStart = selectedTrip?.startDate || (trips.length && trips.every(t => t.startDate === trips[0].startDate) ? trips[0].startDate : '');
+  const tripDiff = VALID_YMD.test(tripStart || '') ? kstDayDiff(tripStart, now) : null;
+
+  const gSum = guestListSummary(prefs?.guestList || []);
+  const giftSum = giftLedgerSummary(prefs?.giftLedger || []);
+  const daySum = weddingDaySummary(prefs?.weddingDayRoles || [], prefs?.weddingDayEnvelopes || []);
+  const shootTotal = (studio?.deepGuide?.prepChecklist || []).reduce((acc, grp) => acc + (grp.items?.length || 0), 0);
+  const shootDone = (prefs?.shootChecklist || []).length;
+  const albumCount = (content?.albums || []).length;
+  const invReadyCount = [
+    Boolean(inv.partner1?.trim() && inv.partner2?.trim()),
+    Boolean(inv.date && inv.time && inv.venue?.trim()),
+    Boolean(inv.message?.trim()),
+    Boolean(inv.groomParents?.trim() || inv.brideParents?.trim()),
+    Boolean(inv.transit?.trim() || inv.notice?.trim()),
+    Boolean(inv.contacts?.trim() || inv.groomAccounts?.trim() || inv.brideAccounts?.trim()),
+    Boolean(inv.rsvpUrl?.trim()),
+    albumCount > 0
+  ].filter(Boolean).length;
+
+  if (weddingDiff === 0) {
+    return {
+      phase: 'wedding-day',
+      badge: '💍 WEDDING DAY · 본식 당일 실행 모드',
+      title: '오늘은 두 사람의 결혼식 날입니다',
+      subtitle: '현장 식순 큐시트, 축의대 빠른 입력, 당일 역할·현금 봉투를 한 번의 터치로 바로 여세요.',
+      metrics: [
+        `당일 역할 배정 ${daySum.assignedRoles}/${daySum.roleCount || 6}`,
+        `현금 봉투 준비 ${daySum.readyCount}/${daySum.envelopeCount}`,
+        `축의금 기록 ${giftSum.totalRecords}건 · 식권 ${giftSum.totalMealTickets}매`
+      ],
+      actions: [
+        { label: '⚡ 축의대 빠른 입력', route: 'ceremony', subTab: 'gifts', action: 'quick-gift', primary: true },
+        { label: '📋 당일 역할·봉투표', route: 'ceremony', subTab: 'dayops' },
+        { label: '🎤 본식 식순 큐시트', route: 'ceremony', subTab: 'rundown' },
+        { label: '💌 모바일 청첩장', route: 'invitation' }
+      ]
+    };
+  }
+
+  if (weddingDiff !== null && weddingDiff < 0) {
+    const daysAfter = Math.abs(weddingDiff);
+    const inHoneymoonWindow = tripDiff !== null && tripDiff >= -7 && tripDiff <= 14;
+    return {
+      phase: 'post-wedding',
+      badge: `✨ 예식 완료 D+${daysAfter} · 사후 정산·신혼 단계`,
+      title: inHoneymoonWindow
+        ? '신혼여행 일정과 축의금 감사·혼인신고를 함께 정리해요'
+        : '축의금 감사 인사와 혼인신고·순천 신혼부부 혜택을 챙겨요',
+      subtitle: giftSum.thankYouPending > 0
+        ? `아직 감사 인사를 보내지 않은 분이 ${giftSum.thankYouPending}건 남아 있습니다.`
+        : '축의금 정산과 혼인신고·지원금 신청 기한을 놓치지 않게 확인하세요.',
+      metrics: [
+        `축의금 정산 ${giftSum.totalRecords}건 (${giftSum.totalAmount.toLocaleString('ko-KR')}원)`,
+        `감사 미완료 ${giftSum.thankYouPending}건 · 답례품 미전달 ${giftSum.returnGiftPending}건`,
+        prefs?.marriageRegDate ? `혼인신고 ${prefs.marriageRegDate}` : '혼인신고일 미입력'
+      ],
+      actions: [
+        { label: '💬 감사 인사 · 축의금 정산', route: 'ceremony', subTab: 'gifts', primary: true },
+        { label: '✈️ 신혼여행 일정·짐 점검', route: 'honeymoon' },
+        { label: '🏛️ 혼인신고·순천 혜택', route: 'tips', subTab: 'benefits' }
+      ]
+    };
+  }
+
+  if (weddingDiff !== null && weddingDiff >= 1 && weddingDiff <= 14) {
+    return {
+      phase: 'ceremony-countdown',
+      badge: `💍 본식 D-${weddingDiff} · 최종 리허설 주간`,
+      title: '당일 역할·현금 봉투·하객 식권과 출국 짐을 최종 확정하세요',
+      subtitle: '예식장 지하·현장에서 오프라인으로 바로 열 수 있도록 당일 운영표와 하객 명부를 인쇄·백업해 두세요.',
+      metrics: [
+        `참석 확정 ${gSum.attendingHeadcount}명 (예상 ${gSum.possibleHeadcount}명)`,
+        `당일 역할 ${daySum.assignedRoles}/${daySum.roleCount} · 봉투 ${daySum.readyCount}/${daySum.envelopeCount}`,
+        selectedTrip ? `신혼여행: ${selectedTrip.title}` : '신혼여행 최종 선택 확인'
+      ],
+      actions: [
+        { label: '📋 당일 역할·봉투표', route: 'ceremony', subTab: 'dayops', primary: true },
+        { label: '👥 하객·식권 최종 확인', route: 'ceremony', subTab: 'guests' },
+        { label: '✈️ 출국 짐 체크리스트', route: 'honeymoon' }
+      ]
+    };
+  }
+
+  if (shootDiff !== null && shootDiff >= 0 && shootDiff <= 14) {
+    return {
+      phase: 'shoot-week',
+      badge: `📸 라크마 촬영 ${shootDiff === 0 ? 'D-Day' : `D-${shootDiff}`} · 최종 점검`,
+      title: '루나메이크업 → 라크마 스튜디오 당일 동선과 준비물을 확인하세요',
+      subtitle: '당일 현금 헬퍼비 25만 원, 예약 5~10분 전 도착, 월·화 정기휴무 전 최종 문의를 꼭 점검하세요.',
+      metrics: [
+        `촬영 준비물 ${shootDone}/${shootTotal || 12} 완료`,
+        '헬퍼비 25만 원 (당일 현금 필수)',
+        `본식까지 ${weddingDiff !== null ? `D-${weddingDiff}` : '일정 확인'}`
+      ],
+      actions: [
+        { label: '📸 라크마 당일 가이드 열기', route: 'studios', primary: true },
+        { label: '🩺 산전검사 일정 확인', route: 'prenatal', subTab: 'subsidy' },
+        { label: '🗓️ 업체 일정 보드', route: 'tips', subTab: 'schedule' }
+      ]
+    };
+  }
+
+  if (shootDiff !== null && shootDiff < 0 && weddingDiff !== null && weddingDiff > 14) {
+    return {
+      phase: 'invitation-prep',
+      badge: `💌 청첩장 발행 & 본식 D-${weddingDiff}`,
+      title: '웨딩 촬영 사진을 앨범에 담고 모바일 청첩장을 발행할 시기예요',
+      subtitle: '사진 최적화 스크립트(npm run photos)로 가볍게 등록하고, 하객 RSVP 설문과 본식 식순을 마무리하세요.',
+      metrics: [
+        `청첩장 발행 준비도 ${invReadyCount}/8`,
+        `등록 앨범 ${albumCount}개`,
+        `하객 ${gSum.totalRecords}건 · 발송 ${gSum.sentCount}건`
+      ],
+      actions: [
+        { label: '💌 청첩장 점검 · 발행', route: 'invitation', primary: true },
+        { label: '📷 포토 앨범 등록', route: 'albums' },
+        { label: '👥 하객 · RSVP 동기화', route: 'ceremony', subTab: 'guests' }
+      ]
+    };
+  }
+
+  return {
+    phase: 'pre-shoot',
+    badge: `🌿 웨딩 준비 집중 보드 · 촬영 ${shootDiff !== null ? `D-${shootDiff}` : '예정'}${weddingDiff !== null ? ` · 본식 D-${weddingDiff}` : ''}`,
+    title: '라크마 촬영 준비 · 산전검사 · 신혼여행 큰 틀을 차근차근 다져요',
+    subtitle: '촬영 무료 변경 기한과 산전검사 지원금 신청, 신혼여행 후보 비교와 6대 예산을 먼저 정리해 두면 이후가 훨씬 편해집니다.',
+    metrics: [
+      `라크마 촬영 ${shootDate} (${shootTotal ? `준비물 ${shootDone}/${shootTotal}` : '공식 가이드'})`,
+      selectedTrip ? `신혼여행 확정: ${selectedTrip.title}` : `신혼여행 후보 ${trips.length}곳 비교 중`,
+      `청첩장 발행 준비도 ${invReadyCount}/8`
+    ],
+    actions: [
+      { label: '📸 라크마 촬영 가이드', route: 'studios', primary: true },
+      { label: '🩺 산전검사 · 지원금', route: 'prenatal', subTab: 'subsidy' },
+      { label: '✈️ 신혼여행 비교', route: 'honeymoon' },
+      { label: '💰 통합 예산 관리', route: 'tips', subTab: 'budget' }
+    ]
+  };
 }
 
 

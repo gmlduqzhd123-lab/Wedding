@@ -2,6 +2,7 @@ import http from 'node:http';
 import { readFile,stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseContent, extractGuestContent } from '../assets/js/content.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2'};
 const port=Number(process.env.PORT||4173);
@@ -10,6 +11,13 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');let requested=decodeURIComponent(url.pathname);
     if(requested==='/Wedding'||requested==='/Wedding/'){res.writeHead(302,{location:'/Wedding/index.html'+url.search}).end();return;}
     if(requested.startsWith('/Wedding/'))requested=requested.slice('/Wedding'.length);
+    if(requested==='/data/guest-site.json'){
+      const siteRaw=await readFile(path.join(root,'data','site.json'),'utf8');
+      const payload=JSON.stringify(extractGuestContent(parseContent(siteRaw)))+'\n';
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+      res.end(payload);
+      return;
+    }
     let file=path.resolve(root,'.'+requested);
     const relative=path.relative(root,file);
     if(relative.startsWith('..')||path.isAbsolute(relative)||relative.split(path.sep).some(p=>p.startsWith('.'))){res.writeHead(403).end();return;}

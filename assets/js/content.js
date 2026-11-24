@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-54';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-55';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -150,6 +150,17 @@ export function parseContent(raw) {
   let parsed;
   try { parsed=JSON.parse(raw); } catch { throw new Error('올바른 JSON 콘텐츠 파일이 아닙니다.'); }
   return validateContent(parsed);
+}
+export function extractGuestContent(input) {
+  const valid = validateContent(input);
+  return {
+    schemaVersion: 1,
+    invitation: valid.invitation,
+    stories: valid.stories,
+    albums: valid.albums,
+    honeymoon: [],
+    tips: []
+  };
 }
 export function formatDate(value) {
   if (!validDate(value)) return '';

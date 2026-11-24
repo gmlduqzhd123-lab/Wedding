@@ -1,6 +1,6 @@
-import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-54';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-54';
-import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-54';
+import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-55';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-55';
+import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-55';
 
 export { PRENATAL_CHECK_ITEMS };
 
@@ -120,9 +120,13 @@ export function renderPrenatal(ctx) {
   const savedNote = prefs.prenatalNote || '';
   const sched = prenatalDeadlineSummary(prefs.prenatalSchedule || {});
 
+  const urlSubTab = ctx.currentSubTab?.();
+  if (['hospital', 'subsidy', 'guide'].includes(urlSubTab)) prenatalSubTab = urlSubTab;
+
   const switchSubTab = nextTab => {
     setPrenatalSubTab(nextTab);
-    ctx.render();
+    if (ctx.setSubTabHash) ctx.setSubTabHash('prenatal', nextTab);
+    else ctx.render();
     ctx.getMain().querySelector(`.subtab-btn[data-subtab="${nextTab}"]`)?.focus({ preventScroll: true });
   };
 

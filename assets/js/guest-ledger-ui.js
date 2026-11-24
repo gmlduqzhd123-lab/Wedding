@@ -1,7 +1,7 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-54';
-import { formatDate } from './content.js?v=wedding-features-54';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-54';
-import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, buildThankYouMessage } from './planning.js?v=wedding-features-54';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-55';
+import { formatDate } from './content.js?v=wedding-features-55';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-55';
+import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, buildThankYouMessage } from './planning.js?v=wedding-features-55';
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
@@ -11,7 +11,10 @@ let guestQuery = '';
 let giftSideFilter = 'all';
 let giftChannelFilter = 'all';
 let giftPendingOnly = false;
+let giftUnthankedOnly = false;
 let giftQuery = '';
+let quickEntrySide = '신랑 측';
+let quickEntryChannel = '축의대(현금)';
 
 const won = value => `${Number(value || 0).toLocaleString('ko-KR')}원`;
 
@@ -135,30 +138,24 @@ export function openGuestCsvImportModal(ctx) {
   const form = E('form', { class: 'editor-form' });
   const fileInput = E('input', { type: 'file', accept: '.csv,text/csv', class: 'file-input', id: 'guest-csv-file', 'aria-label': '하객 명단 CSV 파일 선택' });
   const previewWrap = E('div', { class: 'csv-import-preview', 'aria-live': 'polite' });
+  const modeUpdateRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'update', id: 'csv-mode-update' });
   const modeSkipRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'skip', id: 'csv-mode-skip', checked: true });
   const modeAllRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'all', id: 'csv-mode-all' });
   const modeWrap = E('div', { class: 'pref-restore-modes', hidden: true },
-    E('label', { class: 'check-label', for: modeSkipRadio.id }, modeSkipRadio, '같은 양가·성함 중복 건너뛰고 추가 (권장)'),
+    E('label', { class: 'check-label', for: modeUpdateRadio.id }, modeUpdateRadio, '기존 하객 참석·인원·식사 업데이트 + 신규 추가 (RSVP 동기화 권장)'),
+    E('label', { class: 'check-label', for: modeSkipRadio.id }, modeSkipRadio, '같은 양가·성함 중복 건너뛰고 신규만 추가'),
     E('label', { class: 'check-label', for: modeAllRadio.id }, modeAllRadio, '중복 포함 전체 추가 (동명이인 포함)'));
 
   const submit = E('button', { class: 'button', type: 'submit', disabled: true }, '하객 명단에 가져오기');
   let parsed = null;
   let saving = false;
 
-  const existingKeySet = () => new Set((ctx.getPrefs().guestList || []).map(g => `${g.side}|${String(g.name || '').trim().toLocaleLowerCase()}`));
+  const selectedMode = () => (modeUpdateRadio.checked ? 'update' : modeAllRadio.checked ? 'all' : 'skip');
 
-  const computeToAdd = () => {
-    if (!parsed) return [];
-    if (modeAllRadio.checked) return parsed.records;
-    const seen = existingKeySet();
-    const out = [];
-    for (const rec of parsed.records) {
-      const k = `${rec.side}|${rec.name.trim().toLocaleLowerCase()}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(rec);
-    }
-    return out;
+  const computeSync = () => {
+    if (!parsed) return null;
+    const curList = ctx.getPrefs().guestList || [];
+    return syncGuestsFromCsv(curList, parsed.records, selectedMode());
   };
 
   const renderPreview = () => {
@@ -168,26 +165,28 @@ export function openGuestCsvImportModal(ctx) {
       submit.disabled = true;
       return;
     }
-    const curCount = (ctx.getPrefs().guestList || []).length;
-    const seen = existingKeySet();
-    let dupCount = 0;
-    const seenBatch = new Set(seen);
-    for (const rec of parsed.records) {
-      const k = `${rec.side}|${rec.name.trim().toLocaleLowerCase()}`;
-      if (seenBatch.has(k)) dupCount++;
-      else seenBatch.add(k);
-    }
-    const toAdd = computeToAdd();
-    const overCap = curCount + toAdd.length > 500;
+    const plan = computeSync();
+    const totalChanges = plan.addedCount + plan.updatedCount;
     modeWrap.hidden = false;
-    submit.disabled = saving || toAdd.length === 0 || overCap;
-    submit.textContent = toAdd.length > 0 ? `${toAdd.length}건 하객 명단에 추가` : '추가할 새 하객 없음';
+    submit.disabled = saving || totalChanges === 0 || plan.overCap;
+    if (plan.updatedCount > 0 && plan.addedCount > 0) {
+      submit.textContent = `${plan.updatedCount}건 업데이트 · ${plan.addedCount}건 추가`;
+    } else if (plan.updatedCount > 0) {
+      submit.textContent = `기존 하객 ${plan.updatedCount}건 RSVP 반영`;
+    } else if (plan.addedCount > 0) {
+      submit.textContent = `${plan.addedCount}건 하객 명단에 추가`;
+    } else {
+      submit.textContent = '반영할 변경 없음';
+    }
 
     const headRows = parsed.records.slice(0, 8);
     previewWrap.replaceChildren(...[
-      E('p', { class: 'form-note' + (overCap ? ' warning' : '') },
-        `총 ${parsed.records.length}건 인식 (기존 명단과 중복 ${dupCount}건${parsed.skipped ? ` · 빈 행 제외 ${parsed.skipped}건` : ''}) → 현재 선택 기준 ${toAdd.length}건 추가 예정 (합계 ${curCount + toAdd.length}/500건)` +
-        (overCap ? '\n하객 명단은 최대 500건까지 보관할 수 있습니다. 중복 제외를 선택하거나 행 수를 줄여 주세요.' : '')),
+      parsed.isRsvpForm ? E('p', { class: 'spec-chip direct' }, '💌 Google Forms / RSVP 응답 형식 자동 인식') : null,
+      E('p', { class: 'form-note' + (plan.overCap ? ' warning' : '') },
+        `총 ${parsed.records.length}건 인식${parsed.skipped ? ` (빈 행 제외 ${parsed.skipped}건)` : ''} → ` +
+        `신규 추가 ${plan.addedCount}건 · 기존 업데이트 ${plan.updatedCount}건` +
+        `${plan.skippedCount ? ` · 중복 건너뜀 ${plan.skippedCount}건` : ''} (반영 후 총 ${plan.nextList.length}/500건)` +
+        (plan.overCap ? '\n하객 명단은 최대 500건까지 보관할 수 있습니다. 중복 제외를 선택하거나 행 수를 줄여 주세요.' : '')),
       parsed.warnings.length ? E('p', { class: 'small muted' }, `참고 안내: ${parsed.warnings.slice(0, 3).join(' / ')}${parsed.warnings.length > 3 ? ` 외 ${parsed.warnings.length - 3}건` : ''}`) : null,
       E('div', { class: 'table-scroll' },
         E('table', { class: 'csv-preview-table' },
@@ -204,6 +203,7 @@ export function openGuestCsvImportModal(ctx) {
     ].filter(Boolean));
   };
 
+  modeUpdateRadio.addEventListener('change', renderPreview);
   modeSkipRadio.addEventListener('change', renderPreview);
   modeAllRadio.addEventListener('change', renderPreview);
 
@@ -214,6 +214,7 @@ export function openGuestCsvImportModal(ctx) {
       if (file.size > 2 * 1024 * 1024) throw new Error('CSV 파일은 2MB 이하로 선택해 주세요.');
       const text = await file.text();
       parsed = parseGuestsCsv(text);
+      if (parsed.isRsvpForm) modeUpdateRadio.checked = true;
       renderPreview();
     } catch (error) {
       parsed = null;
@@ -233,8 +234,10 @@ export function openGuestCsvImportModal(ctx) {
   };
 
   form.append(
-    E('p', { class: 'form-note' }, '엑셀이나 구글 시트에서 정리한 CSV 파일(UTF-8)을 한 번에 가져올 수 있습니다. 첫 행에 ‘성함’(또는 ‘이름’) 열이 있어야 하며, 구분·관계·인원수·청첩장 발송·참석 여부·식사 여부·메모 열은 자동으로 인식합니다. 가져온 명단은 이 기기에만 저장됩니다.'),
-    E('div', { class: 'page-actions' }, button('📄 예시 CSV 양식 받기', downloadSample, 'button quiet')),
+    E('p', { class: 'form-note' }, '엑셀·구글 시트 명단 또는 Google Forms RSVP 설문 응답 CSV(UTF-8)를 한 번에 가져올 수 있습니다. ‘성함/이름’, ‘어느 측’, ‘참석 여부’, ‘본인 포함 인원수’, ‘식사 여부’, ‘축하 메시지’ 열을 자동 인식하며, 기존 명단과 RSVP를 바로 동기화할 수 있습니다.'),
+    E('div', { class: 'page-actions' },
+      button('📄 예시 CSV 양식 받기', downloadSample, 'button quiet'),
+      button('📋 RSVP 설문 질문 양식 복사', () => ctx.copyTextToClipboard(RSVP_FORM_GUIDE_TEXT, 'Google Forms / 네이버 폼용 RSVP 질문 구성을 복사했습니다.', 'RSVP 설문 질문 양식'), 'button quiet')),
     E('label', { class: 'field', for: fileInput.id }, '하객 명단 CSV 파일 선택', fileInput),
     modeWrap,
     previewWrap,
@@ -244,23 +247,22 @@ export function openGuestCsvImportModal(ctx) {
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (saving || !parsed) return;
-    const toAdd = computeToAdd();
-    const curList = [...(ctx.getPrefs().guestList || [])];
-    if (!toAdd.length) { ctx.toast('새로 추가할 하객이 없습니다.', true); return; }
-    if (curList.length + toAdd.length > 500) { ctx.toast('하객 명단은 500건까지 보관할 수 있습니다.', true); return; }
-    const additions = toAdd.map(rec => ({
-      id: 'guest-' + crypto.randomUUID().slice(0, 8),
-      ...rec
-    }));
-    const nextList = [...curList, ...additions];
+    const plan = computeSync();
+    if (!plan || (plan.addedCount === 0 && plan.updatedCount === 0)) { ctx.toast('새로 반영할 하객 변경이 없습니다.', true); return; }
+    if (plan.overCap) { ctx.toast('하객 명단은 500건까지 보관할 수 있습니다.', true); return; }
     saving = true;
     submit.disabled = true;
     try {
-      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), guestList: nextList }));
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), guestList: plan.nextList }));
       if (saved) {
         ctx.closeDialog();
         ctx.render();
-        ctx.toast(`CSV에서 하객 ${additions.length}건을 명단에 추가했습니다.`);
+        const msg = plan.updatedCount > 0 && plan.addedCount > 0
+          ? `CSV에서 기존 하객 ${plan.updatedCount}건 업데이트·신규 ${plan.addedCount}건 추가했습니다.`
+          : plan.updatedCount > 0
+            ? `RSVP CSV로 기존 하객 ${plan.updatedCount}건의 참석·식사 정보를 업데이트했습니다.`
+            : `CSV에서 하객 ${plan.addedCount}건을 명단에 추가했습니다.`;
+        ctx.toast(msg);
       }
     } catch (error) {
       ctx.toast(ctx.storageMessage(error), true);
@@ -270,7 +272,7 @@ export function openGuestCsvImportModal(ctx) {
     }
   });
 
-  if (ctx.showDialog('📤 하객 명단 CSV 일괄 가져오기', form)) {
+  if (ctx.showDialog('📤 하객 명단 · RSVP CSV 가져오기', form)) {
     ctx.setEditorState({ isDirty: () => saving || Boolean(parsed), isSaving: () => saving });
   }
 }
@@ -708,6 +710,181 @@ export function renderGuestListBoard(ctx) {
     listWrap);
 }
 
+export function openQuickGiftEntryModal(ctx) {
+  if (ctx.isGuestMode()) return;
+  const form = E('form', { class: 'editor-form quick-gift-form' });
+  const guestList = ctx.getPrefs().guestList || [];
+  const datalistId = 'quick-gift-guest-suggestions';
+  const datalist = E('datalist', { id: datalistId }, guestList.map(g => E('option', { value: g.name }, `${g.side} · ${g.group} (${g.partySize}명)`)));
+
+  const statusBar = E('div', { class: 'quick-gift-status', role: 'status', 'aria-live': 'polite' });
+  const recentWrap = E('div', { class: 'quick-gift-recent' });
+  const sessionEntries = [];
+
+  const sideBar = E('div', { class: 'quick-gift-chip-row', role: 'group', 'aria-label': '양가 구분 고정 선택' });
+  const channelBar = E('div', { class: 'quick-gift-chip-row', role: 'group', 'aria-label': '전달 방식 고정 선택' });
+
+  const nameInput = E('input', {
+    type: 'text',
+    id: 'quick-gift-name',
+    list: datalistId,
+    maxlength: '80',
+    required: true,
+    autocomplete: 'off',
+    placeholder: '성함 입력 (기존 하객 명단 자동완성)'
+  });
+  const groupSelect = E('select', { id: 'quick-gift-group', 'aria-label': '관계 분류' }, GUEST_GROUPS.map(v => E('option', { value: v }, v)));
+  const amountInput = E('input', { type: 'number', id: 'quick-gift-amount', min: '0', max: '100000000', step: '1000', required: true, placeholder: '금액 (원)' });
+  amountInput.value = '100000';
+  const ticketsInput = E('input', { type: 'number', id: 'quick-gift-tickets', min: '0', max: '50', step: '1', required: true });
+  ticketsInput.value = '1';
+  const returnCheck = E('input', { type: 'checkbox', id: 'quick-gift-return' });
+  const noteInput = E('input', { type: 'text', id: 'quick-gift-note', maxlength: '300', placeholder: '메모 (선택 · 예: 봉투 번호 #12)' });
+
+  const syncChipBars = () => {
+    sideBar.replaceChildren(...GUEST_SIDES.map(side => {
+      const btn = button(side, () => { quickEntrySide = side; syncChipBars(); }, 'button quiet trip-filter-chip');
+      btn.setAttribute('aria-pressed', String(quickEntrySide === side));
+      return btn;
+    }));
+    channelBar.replaceChildren(...GIFT_CHANNELS.map(ch => {
+      const btn = button(ch, () => { quickEntryChannel = ch; syncChipBars(); }, 'button quiet trip-filter-chip');
+      btn.setAttribute('aria-pressed', String(quickEntryChannel === ch));
+      return btn;
+    }));
+  };
+  syncChipBars();
+
+  nameInput.addEventListener('change', () => {
+    const typed = nameInput.value.trim().toLocaleLowerCase();
+    if (!typed) return;
+    const matched = guestList.find(g => g.name.trim().toLocaleLowerCase() === typed && g.side === quickEntrySide)
+      || guestList.find(g => g.name.trim().toLocaleLowerCase() === typed);
+    if (!matched) return;
+    quickEntrySide = matched.side;
+    groupSelect.value = matched.group;
+    ticketsInput.value = String(matched.mealTicket === false ? 0 : (matched.partySize || 1));
+    syncChipBars();
+  });
+
+  const amountChips = E('div', { class: 'ledger-quick-amounts quick-gift-amounts', role: 'group', 'aria-label': '금액 빠른 선택' },
+    [30000, 50000, 100000, 150000, 200000, 300000, 500000, 1000000].map(val => button(`${val / 10000}만`, () => {
+      amountInput.value = String(val);
+    }, 'button quiet small-copy-btn')));
+
+  const ticketChips = E('div', { class: 'ledger-quick-amounts', role: 'group', 'aria-label': '식권 매수 빠른 선택' },
+    [0, 1, 2, 3, 4].map(n => button(`식권 ${n}매`, () => {
+      ticketsInput.value = String(n);
+    }, 'button quiet small-copy-btn')));
+
+  const renderSessionSummary = () => {
+    const sessionAmount = sessionEntries.reduce((s, e) => s + e.amount, 0);
+    const sessionTickets = sessionEntries.reduce((s, e) => s + e.mealTickets, 0);
+    statusBar.textContent = sessionEntries.length
+      ? `⚡ 이번 접수 ${sessionEntries.length}건 · 합계 ${won(sessionAmount)} · 식권 ${sessionTickets}매`
+      : '양가·방식을 고정해 두고 성함과 금액만 빠르게 연속 입력할 수 있어요.';
+    if (!sessionEntries.length) {
+      recentWrap.replaceChildren();
+      return;
+    }
+    recentWrap.replaceChildren(
+      E('p', { class: 'small muted' }, '방금 입력한 내역 (최신순)'),
+      E('ul', { class: 'quick-gift-recent-list' }, sessionEntries.slice(0, 4).map(entry => E('li', { class: 'quick-gift-recent-item' },
+        E('span', { class: 'small' }, `${entry.name} · ${entry.side} · ${won(entry.amount)} · 식권 ${entry.mealTickets}매`),
+        button('되돌리기', async () => {
+          const saved = await ctx.queuePreference(async () => {
+            const next = (ctx.getPrefs().giftLedger || []).filter(g => g.id !== entry.id);
+            return ctx.savePrefs({ ...ctx.getPrefs(), giftLedger: next });
+          });
+          if (saved) {
+            const idx = sessionEntries.findIndex(e => e.id === entry.id);
+            if (idx >= 0) sessionEntries.splice(idx, 1);
+            renderSessionSummary();
+            ctx.render();
+          }
+        }, 'text-button small')))));
+  };
+  renderSessionSummary();
+
+  const submit = E('button', { class: 'button', type: 'submit' }, '⚡ 저장 + 다음 입력');
+  const doneBtn = button('완료 닫기', () => { ctx.closeDialog(); ctx.render(); }, 'button quiet');
+
+  form.append(
+    datalist,
+    statusBar,
+    E('div', { class: 'quick-gift-sticky-group' },
+      E('span', { class: 'small muted' }, '양가 구분 (고정)'),
+      sideBar,
+      E('span', { class: 'small muted' }, '전달 방식 (고정)'),
+      channelBar),
+    E('div', { class: 'field-row' },
+      E('label', { class: 'field', for: nameInput.id }, '하객 성함', nameInput),
+      E('label', { class: 'field', for: groupSelect.id }, '관계 분류', groupSelect)),
+    E('div', { class: 'field-row' },
+      E('label', { class: 'field', for: amountInput.id }, '축의금 (원)', amountInput),
+      E('label', { class: 'field', for: ticketsInput.id }, '식권 수량 (매)', ticketsInput)),
+    amountChips,
+    ticketChips,
+    E('label', { class: 'check-label', for: returnCheck.id }, returnCheck, '답례품 바로 전달함'),
+    E('label', { class: 'field', for: noteInput.id }, '메모 (선택)', noteInput),
+    recentWrap,
+    E('div', { class: 'form-actions' }, doneBtn, submit)
+  );
+
+  let saving = false;
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (saving) return;
+    const name = nameInput.value.trim();
+    const amount = amountInput.value.trim() === '' ? -1 : Math.round(Number(amountInput.value));
+    const mealTickets = ticketsInput.value.trim() === '' ? -1 : Math.round(Number(ticketsInput.value));
+    if (!name) { ctx.toast('하객 성함을 입력해 주세요.', true); nameInput.focus(); return; }
+    if (!Number.isInteger(amount) || amount < 0 || amount > 100000000) { ctx.toast('축의금은 0원~1억 원 사이로 입력해 주세요.', true); return; }
+    if (!Number.isInteger(mealTickets) || mealTickets < 0 || mealTickets > 50) { ctx.toast('식권 수량은 0~50매 사이로 입력해 주세요.', true); return; }
+    const curList = [...(ctx.getPrefs().giftLedger || [])];
+    if (curList.length >= 500) { ctx.toast('축의금 장부는 500건까지 보관할 수 있습니다.', true); return; }
+    const note = noteInput.value.trim();
+    const entry = {
+      id: 'gift-' + crypto.randomUUID().slice(0, 8),
+      name,
+      side: quickEntrySide,
+      group: groupSelect.value,
+      channel: quickEntryChannel,
+      amount,
+      mealTickets,
+      returnGiftDone: returnCheck.checked,
+      thankYouDone: false,
+      ...(note ? { note } : {})
+    };
+    saving = true;
+    submit.disabled = true;
+    try {
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), giftLedger: [...(ctx.getPrefs().giftLedger || []), entry] }));
+      if (saved) {
+        sessionEntries.unshift(entry);
+        nameInput.value = '';
+        noteInput.value = '';
+        returnCheck.checked = false;
+        ticketsInput.value = '1';
+        renderSessionSummary();
+        ctx.render();
+        ctx.toast(`✅ ${entry.name}님 (${won(entry.amount)}) 접수 완료`);
+        nameInput.focus({ preventScroll: true });
+      }
+    } catch (error) {
+      ctx.toast(ctx.storageMessage(error), true);
+    } finally {
+      saving = false;
+      submit.disabled = false;
+    }
+  });
+
+  if (ctx.showDialog('⚡ 축의대 현장 빠른 연속 입력', form)) {
+    ctx.setEditorState({ isDirty: () => saving || Boolean(nameInput.value.trim()), isSaving: () => saving });
+    nameInput.focus({ preventScroll: true });
+  }
+}
+
 export function renderGiftLedgerBoard(ctx) {
   if (ctx.isGuestMode()) return null;
   const prefs = ctx.getPrefs();
@@ -719,6 +896,8 @@ export function renderGiftLedgerBoard(ctx) {
   channelSelect.value = giftChannelFilter;
   const pendingCheck = E('input', { type: 'checkbox', id: 'gift-pending-only' });
   pendingCheck.checked = giftPendingOnly;
+  const unthankedCheck = E('input', { type: 'checkbox', id: 'gift-unthanked-only' });
+  unthankedCheck.checked = giftUnthankedOnly;
 
   const sideBar = E('div', { class: 'ledger-side-pills', role: 'group', 'aria-label': '축의금 양가 필터' });
   const listWrap = E('div', { class: 'ledger-items-wrap' });
@@ -747,11 +926,13 @@ export function renderGiftLedgerBoard(ctx) {
     giftSideFilter = 'all';
     giftChannelFilter = 'all';
     giftPendingOnly = false;
+    giftUnthankedOnly = false;
     giftQuery = '';
     search.input.value = '';
     search.syncClear();
     channelSelect.value = 'all';
     pendingCheck.checked = false;
+    unthankedCheck.checked = false;
     draw();
   };
 
@@ -766,6 +947,7 @@ export function renderGiftLedgerBoard(ctx) {
       giftSideFilter !== 'all',
       giftChannelFilter !== 'all',
       giftPendingOnly,
+      giftUnthankedOnly,
       Boolean(giftQuery.trim())
     ].filter(Boolean).length;
     resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetGiftFilters, 'filter-reset-chip')] : []));
@@ -775,6 +957,7 @@ export function renderGiftLedgerBoard(ctx) {
       (giftSideFilter === 'all' || item.side === giftSideFilter) &&
       (giftChannelFilter === 'all' || item.channel === giftChannelFilter) &&
       (!giftPendingOnly || !item.returnGiftDone || !item.thankYouDone) &&
+      (!giftUnthankedOnly || !item.thankYouDone) &&
       (!q || `${item.name} ${item.side} ${item.group} ${item.note || ''}`.toLocaleLowerCase().includes(q))
     );
     const filteredTotal = filtered.reduce((acc, item) => acc + (item.amount || 0), 0);
@@ -827,7 +1010,11 @@ export function renderGiftLedgerBoard(ctx) {
 
   channelSelect.addEventListener('change', () => { giftChannelFilter = channelSelect.value; draw(); });
   pendingCheck.addEventListener('change', () => { giftPendingOnly = pendingCheck.checked; draw(); });
+  unthankedCheck.addEventListener('change', () => { giftUnthankedOnly = unthankedCheck.checked; draw(); });
   draw();
+
+  const thankYouDoneCount = summary.totalRecords - summary.thankYouPending;
+  const thankYouPct = summary.totalRecords ? Math.round((thankYouDoneCount / summary.totalRecords) * 100) : 0;
 
   return E('section', { class: 'gift-ledger private-ledger-section', 'aria-labelledby': 'gift-ledger-title' },
     E('div', { class: 'section-heading' },
@@ -836,7 +1023,8 @@ export function renderGiftLedgerBoard(ctx) {
         E('h2', { id: 'gift-ledger-title' }, '💌 축의금 · 식권 · 답례품 정산 장부'),
         E('p', {}, '본식 축의금, 식권 지급 매수, 답례품 전달과 감사 인사 완료 여부를 기록하고 엑셀(CSV)로 내려받을 수 있습니다. (이 기기 전용 · 계좌번호 등 민감 정보 입력 금지)')),
       E('div', { class: 'page-actions gift-ledger-toolbar' },
-        button('+ 축의금 기록', () => openGiftEditor(ctx)),
+        button('⚡ 축의대 빠른 입력', () => openQuickGiftEntryModal(ctx)),
+        button('+ 상세 기록', () => openGiftEditor(ctx), 'button quiet'),
         list.length ? button('🖨️ 정산표 인쇄', () => printDedicatedSheet('print-gift-sheet', buildGiftPrintSheet(ctx, list)), 'button quiet') : null,
         list.length ? button('📥 CSV 내보내기', () => {
           downloadText(giftsToCsv(list), 'wedding-gift-ledger.csv', 'text/csv;charset=utf-8');
@@ -859,11 +1047,20 @@ export function renderGiftLedgerBoard(ctx) {
         E('span', { class: 'small muted' }, '후속 인사 체크'),
         E('strong', {}, `감사 미완료 ${summary.thankYouPending}건`),
         E('span', { class: 'small muted' }, `답례품 미전달 ${summary.returnGiftPending}건`))),
+    summary.totalRecords ? E('div', { class: 'thankyou-progress-bar', 'aria-label': '감사 인사 진행률' },
+      E('div', { class: 'thankyou-progress-head' },
+        E('span', { class: 'small' }, `💬 감사 인사 진행률 ${thankYouDoneCount} / ${summary.totalRecords}건 (${thankYouPct}%)`),
+        summary.thankYouPending > 0 && !giftUnthankedOnly
+          ? button(`미감사 ${summary.thankYouPending}건만 보기`, () => { giftUnthankedOnly = true; unthankedCheck.checked = true; draw(); }, 'text-button small')
+          : null),
+      E('div', { class: 'checklist-progress-track', 'aria-hidden': 'true' },
+        E('span', { class: 'checklist-progress-fill', style: `width:${thankYouPct}%` }))) : null,
     E('div', { class: 'ledger-filter-bar gift-ledger-toolbar' },
       sideBar,
       E('div', { class: 'ledger-filter-controls' },
         search.wrap,
         channelSelect,
+        E('label', { class: 'check-label', for: unthankedCheck.id }, unthankedCheck, '미감사만'),
         E('label', { class: 'check-label', for: pendingCheck.id }, pendingCheck, '미완료만 보기'),
         resetWrap,
         countNode)),

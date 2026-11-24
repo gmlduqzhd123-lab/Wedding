@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,buildThankYouMessage,addCalendarMonths,prenatalDeadlineSummary,marriageBenefitTimeline,homeItemsSummary,homeItemsToCsv,weddingDaySummary,collectMasterTimeline} from '../assets/js/planning.js';
+import {weddingBudgetSummary,guestListSummary,giftLedgerSummary,csvEscape,guestsToCsv,giftsToCsv,parseCsvRows,parseGuestsCsv,syncGuestsFromCsv,buildThankYouMessage,addCalendarMonths,prenatalDeadlineSummary,marriageBenefitTimeline,homeItemsSummary,homeItemsToCsv,weddingDaySummary,collectMasterTimeline,weddingPhaseInfo} from '../assets/js/planning.js';
 import {buildInvitationShareMessages,isKakaoInApp,isInAppBrowser} from '../assets/js/invitation-card.js';
 
 const keys=['venue','sdm','snap','rings','honeymoon','living'];
@@ -229,5 +229,67 @@ test('collectMasterTimeline aggregates and sorts events across all boards withou
  assert.equal(isKakaoInApp('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) KAKAOTALK 10.6.0'),true);
  assert.equal(isInAppBrowser('Mozilla/5.0 (Linux; Android 14) NAVER(inapp; search)'),true);
  assert.equal(isInAppBrowser('Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/126.0.0.0 Safari/537.36'),false);
+});
+
+test('parseGuestsCsv recognizes Google Forms RSVP responses and syncGuestsFromCsv updates existing guests cleanly',()=>{
+ const rsvpCsv=[
+  '타임스탬프,성함,어느 측 하객이신가요?,관계,참석 여부,동반 인원,식사 여부,축하 메시지',
+  '2027-04-10 12:00:00,홍길동,신랑 김희엽 측,친구,참석합니다,1명,식사합니다,결혼 진심으로 축하해!',
+  '2027-04-10 12:05:00,김영희,신부 유미혜 측,직장·동료,아쉽지만 참석이 어렵습니다,없음,식사 안 함 (답례품 수령),행복하게 잘 살아!',
+  '2027-04-10 12:10:00,박신규,공통,지인·기타,참석 예정,본인 포함 3명,식사합니다,축하드립니다'
+ ].join('\n');
+ const parsed=parseGuestsCsv(rsvpCsv);
+ assert.equal(parsed.isRsvpForm,true);
+ assert.equal(parsed.records.length,3);
+ assert.equal(parsed.records[0].side,'신랑 측');
+ assert.equal(parsed.records[0].partySize,2,'Companion-only "1명" implies 2 total people');
+ assert.equal(parsed.records[0].rsvp,'참석');
+ assert.equal(parsed.records[0].mealTicket,true);
+ assert.equal(parsed.records[0].inviteStatus,'모바일 발송');
+ assert(parsed.records[0].note.includes('[축하] 결혼 진심으로 축하해!'));
+
+ assert.equal(parsed.records[1].side,'신부 측');
+ assert.equal(parsed.records[1].rsvp,'불참','"참석이 어렵습니다" must map to 불참, not 참석');
+ assert.equal(parsed.records[1].partySize,1);
+ assert.equal(parsed.records[1].mealTicket,false);
+
+ assert.equal(parsed.records[2].partySize,3,'"본인 포함 3명" must stay 3');
+
+ const existing=[
+  {id:'g1',name:'홍길동',side:'신랑 측',group:'친구',partySize:1,inviteStatus:'미발송',rsvp:'미확인',mealTicket:true,note:'대학 동기'},
+  {id:'g2',name:'김영희',side:'공통',group:'지인·기타',partySize:2,inviteStatus:'모바일 발송',rsvp:'미확인',mealTicket:true}
+ ];
+ let seq=0;
+ const synced=syncGuestsFromCsv(existing,parsed.records,'update',()=>`guest-new-${++seq}`);
+ assert.equal(synced.updatedCount,2);
+ assert.equal(synced.addedCount,1);
+ assert.equal(synced.nextList.length,3);
+ assert.equal(synced.nextList[0].rsvp,'참석');
+ assert.equal(synced.nextList[0].partySize,2);
+ assert.equal(synced.nextList[0].inviteStatus,'모바일 발송');
+ assert(synced.nextList[0].note.includes('대학 동기')&&synced.nextList[0].note.includes('축하해'));
+ assert.equal(synced.nextList[1].side,'신부 측');
+ assert.equal(synced.nextList[1].rsvp,'불참');
+ assert.equal(synced.nextList[1].mealTicket,false);
+ assert.equal(synced.nextList[2].name,'박신규');
+});
+
+test('weddingPhaseInfo adapts home focus across all six wedding lifecycle stages',()=>{
+ const base={
+  content:{
+   invitation:{partner1:'김희엽',partner2:'유미혜',date:'2027-06-05',time:'15:00',venue:'순천아모르웨딩컨벤션 1층'},
+   albums:[],
+   honeymoon:[{id:'bali',title:'발리',startDate:'2027-06-06',endDate:'2027-06-13'}]
+  },
+  prefs:{tripSelected:'bali'}
+ };
+ assert.equal(weddingPhaseInfo({...base,now:new Date('2026-11-24T03:00:00Z')}).phase,'pre-shoot');
+ assert.equal(weddingPhaseInfo({...base,now:new Date('2027-01-25T03:00:00Z')}).phase,'shoot-week');
+ assert.equal(weddingPhaseInfo({...base,now:new Date('2027-03-10T03:00:00Z')}).phase,'invitation-prep');
+ assert.equal(weddingPhaseInfo({...base,now:new Date('2027-05-25T03:00:00Z')}).phase,'ceremony-countdown');
+ const day=weddingPhaseInfo({...base,now:new Date('2027-06-05T03:00:00Z')});
+ assert.equal(day.phase,'wedding-day');
+ assert(day.actions.some(a=>a.action==='quick-gift'));
+ assert.equal(weddingPhaseInfo({...base,now:new Date('2027-06-07T03:00:00Z')}).phase,'post-wedding');
 });
 

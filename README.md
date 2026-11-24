@@ -130,20 +130,26 @@ http://127.0.0.1:4173/Wedding/ 에서 확인합니다. `file://`로 HTML을 직�
 npm run check
 npm run build
 npm run share-card
+npm run photos -- --src <원본폴더> --album lachma-2027 --title "라크마 웨딩촬영" --date 2027-02-03 --apply
+npm run bump
 ```
 
-`check`는 콘텐츠 스키마, 30개 스튜디오·60개 이미지·연락처 매핑, JavaScript 구문과 콘텐츠 가져오기 테스트를 검사합니다. `build`는 공개할 파일만 `dist/`로 복사합니다. `share-card`는 현재 `data/site.json`(예식 일정·이름·대표 앨범 사진)을 바탕으로 카카오톡·SNS 공유용 `assets/share-card.png`(1200×630)를 로컬 Chromium으로 재생성합니다. 로컬 서버는 개발 도구이며 실제 서비스는 GitHub Pages만 사용합니다.
+`check`는 콘텐츠 스키마, 게스트 경량 프로젝션, 30개 스튜디오·60개 이미지·연락처 매핑, 분할 CSS 토큰, 서비스 워커 프리캐시 목록, JavaScript 구문과 단위 테스트를 검사합니다. `build`는 공개할 파일과 하객 전용 경량 데이터(`dist/data/guest-site.json`)를 `dist/`에 생성합니다. `share-card`는 현재 `data/site.json`(예식 일정·이름·대표 앨범 사진)을 바탕으로 카카오톡·SNS 공유용 `assets/share-card.png`(1200×630)를 로컬 Chromium으로 재생성합니다. `photos`는 원본 사진을 수정하지 않고 `assets/photos/<album>/`에 웹용 WebP/JPEG 사본을 생성하며 `--apply`로 `data/site.json`에 안전하게 반영합니다. `bump`는 `?v=` 캐시 버전과 `sw.js` `CACHE_VERSION`을 전 파일에 일괄 갱신합니다. 로컬 서버는 개발 도구이며 실제 서비스는 GitHub Pages만 사용합니다.
 
 ## 파일 구조
 
 ```text
-index.html                      앱 진입점과 공통 메뉴 · 모바일 전체 메뉴 시트 · 플로팅 맨 위로 버튼
-sw.js                           오프라인 PWA 서비스 워커 (HTML/JSON 네트워크 우선 · 정적 자산 캐시 우선)
+index.html                      앱 진입점과 공통 메뉴 · 조건부 planner.css 로더 · 업데이트/오프라인 배너 · 모바일 전체 메뉴 시트
+sw.js                           오프라인 PWA 서비스 워커 (게스트 핵심 프리캐시 + 운영자 탭 백그라운드 프리캐시 + SKIP_WAITING 업데이트)
 404.html                        GitHub Pages 하위 경로 오타·직접 주소 리다이렉트 폴백
 manifest.webmanifest            모바일 홈 화면 추가용 웹 앱 매니페스트
-assets/css/app.css              반응형 화면 스타일 (Soft Botanical Fine-Stationery · 큰 글씨·인쇄 지원)
+assets/css/app.css              하객 공통·모바일 청첩장·일대기·앨범·확대 뷰어·반응형/인쇄 스타일 (Soft Botanical Fine-Stationery)
+assets/css/planner.css          신랑·신부 전용 준비 탭 스타일 (방문자용 ?view=guest에서는 미로드)
 assets/fonts/                   로컬 Paperlogy·SUITE 웹폰트
-assets/js/app.js                앱 라우팅(동적 import 지연 로딩)·모바일 메뉴 시트·통합 마스터 캘린더·백업 알림/공유·홈·청첩장·일대기·앨범·내용 관리
+assets/js/app.js                경량 앱 셸·서브탭 URL 해시 라우팅(#/route/subtab)·하객 청첩장·일대기·앨범·PWA 업데이트/오프라인 제어
+assets/js/home-dashboard-ui.js  단계별 홈 포커스(Phase-Aware Home)·3단계 여정·대시보드·마스터 캘린더·체크리스트 UI (비게스트 전용)
+assets/js/manager-ui.js         내용 관리·저장공간 미터·개인 백업 공유/병합·초안 변경 비교·멀티탭 충돌 검토 UI (지연 로딩)
+assets/js/photo-viewer.js       핀치 줌·더블탭 확대·드래그 팬·스와이프·슬라이드쇼 사진 라이트박스 뷰어
 assets/js/dom.js                공통 DOM 생성·링크·다운로드 유틸리티
 assets/js/bgm.js                청첩장 Web Audio 잔잔한 배경음악 컨트롤
 assets/js/invitation-card.js    청첩장 보타니컬 아치·달력·상황별 초대 문구·동적 높이 Canvas PNG 카드(카톡 인앱 미리보기·QR 지연 로딩) 생성기
@@ -151,14 +157,14 @@ assets/js/studio-ui.js          라크마 스튜디오 단독 촬영 안내·동
 assets/js/travel-ui.js          신혼여행 30곳 비교·다중 필터·유튜브 모달·출국 준비물 UI (지연 로딩)
 assets/js/planning-ui.js        결혼 정보 50건·통합 예산·웨딩홀/스드메 시뮬레이터·업체 일정 UI (지연 로딩)
 assets/js/life-planning-ui.js   신혼집·혼수 품목 견적/배송 보드 및 혼인신고·순천시/전남/정부 신혼부부 혜택 가이드 UI
-assets/js/editor-ui.js          청첩장·일대기·앨범(다중 업로드·진행률)·여행·꿀팁 편집기 및 드래그 앤 드롭 업로더 (지연 로딩)
+assets/js/editor-ui.js          청첩장·일대기·앨범(다중 업로드·진행률·CLI 사진 안내)·여행·꿀팁 편집기 (지연 로딩)
 assets/js/ceremony-ui.js        순천아모르 본식 타임테이블·식순·사회자 대본·서약서/선언문 UI (지연 로딩)
 assets/js/wedding-day-ui.js     본식 당일 역할 분담·현금 봉투 리스트·원판 촬영 순서표·현장용 A4 인쇄 시트 UI
 assets/js/prenatal-ui.js        순천 현대여성아동병원·국가/순천시 산전검사 지원금 절차·마감일 계산기·체크리스트 UI (지연 로딩)
-assets/js/guest-ledger-ui.js    기기 전용 하객 명단(CSV 가져오기·축의대 인쇄)·축의금 정산(감사문자·정산표 인쇄) UI
-assets/js/content.js            콘텐츠 검증·공개본/초안 변경 비교·날짜/카운트다운·전화/계좌 추출
+assets/js/guest-ledger-ui.js    기기 전용 하객 명단(RSVP CSV 스마트 동기화·축의대 인쇄)·축의금 정산(현장 빠른 연속 입력·감사 진행률) UI
+assets/js/content.js            콘텐츠 검증·게스트 경량 추출·공개본/초안 변경 비교·날짜/카운트다운·전화/계좌 추출
 assets/js/preferences.js        기기 전용 개인 설정·하객/축의금/혼수/당일 운영/산전일정 검증·개인 백업 병합 로직
-assets/js/planning.js           통합 예산·시뮬레이터·마스터 타임라인 집계·산전/혜택 기한 계산·혼수/당일운영 집계·CSV·감사 문구
+assets/js/planning.js           통합 예산·시뮬레이터·단계별 홈 포커스·마스터 타임라인 집계·RSVP CSV 파싱/동기화·감사 문구
 assets/js/calendar.js           Google 캘린더·단일/다중 .ics 일정 생성기 (RFC 5545)
 assets/js/qrcode.js             오프라인 청첩장 QR 코드(SVG) 생성기 (지연 로딩)
 assets/js/storage.js            Web Locks 기반 멀티탭 충돌 감지·병합 저장
@@ -168,11 +174,11 @@ assets/share-card.png           카카오톡·SNS 공유용 대표 카드 (1200�
 assets/apple-touch-icon.png     모바일 홈 화면 추가용 아이콘 (180×180)
 assets/icon-512.png             웹 앱 매니페스트용 아이콘 (512×512)
 assets/studios/                 제공된 스튜디오 대표 썸네일 (60장)
-assets/photos/                  향후 추가할 개인 사진 (필요할 때 생성)
+assets/photos/                  향후 추가할 개인 사진 웹용 사본 (npm run photos)
 data/site.json                  공개할 청첩장·일대기·앨범·신혼여행·꿀팁
 data/studios.json               스튜디오 30곳 정보·연락처·샘플 출처
-scripts/                        개발 서버·검사·정적 빌드·공유 카드 생성기(generate-share-card.mjs)
-tests/                          콘텐츠·개인설정·예산·마스터캘린더·하객/장부·혼수/혜택/당일운영·병합/비교 단위 검증
+scripts/                        개발 서버·검사·정적 빌드·공유 카드 생성기·사진 최적화(optimize-photos.mjs)·버전 갱신(bump-version.mjs)
+tests/                          콘텐츠·게스트 프로젝션·개인설정·예산·단계 포커스·RSVP 동기화·사진 파이프라인 단위 검증
 .github/workflows/pages.yml     GitHub Pages 자동 배포 (Node 24 공식 액션)
 AGENTS.md                       프로젝트 개발·검증 지침
 ```

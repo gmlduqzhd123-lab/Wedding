@@ -1,5 +1,5 @@
 import { cp,mkdir,rm,writeFile,readFile } from 'node:fs/promises';
-import { parseContent } from '../assets/js/content.js';
+import { parseContent, extractGuestContent } from '../assets/js/content.js';
 import { applyShareMetadata } from '../assets/js/sharing.js';
 const root=new URL('../',import.meta.url),dist=new URL('../dist/',import.meta.url);
 await rm(dist,{recursive:true,force:true});
@@ -11,5 +11,6 @@ for(const rootFile of ['manifest.webmanifest','404.html','sw.js'])await cp(new U
 await cp(new URL('assets/',root),new URL('assets/',dist),{recursive:true});
 await mkdir(new URL('data/',dist),{recursive:true});
 for(const name of ['site.json','studios.json'])await cp(new URL('data/'+name,root),new URL('data/'+name,dist));
+await writeFile(new URL('data/guest-site.json',dist),JSON.stringify(extractGuestContent(content))+'\n');
 await writeFile(new URL('.nojekyll',dist),'');
 console.log('Built static site: dist/');

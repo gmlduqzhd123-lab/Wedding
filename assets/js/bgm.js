@@ -1,4 +1,4 @@
-import { E } from './dom.js?v=wedding-features-54';
+import { E } from './dom.js?v=wedding-features-55';
 
 let bgmCtx = null, bgmMaster = null, bgmTimer = null, bgmStep = 0, bgmPlaying = false;
 const BGM_CHORDS = [

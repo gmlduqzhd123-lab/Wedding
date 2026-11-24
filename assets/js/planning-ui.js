@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-54';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-54';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-54';
-import { quoteReview } from './travel.js?v=wedding-features-54';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-54';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-55';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-55';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-55';
+import { quoteReview } from './travel.js?v=wedding-features-55';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-55';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -11,9 +11,9 @@ import {
   weddingBudgetSummary,
   sdmEstimate,
   guestListSummary
-} from './planning.js?v=wedding-features-54';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-54';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-54';
+} from './planning.js?v=wedding-features-55';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-55';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-55';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
@@ -674,6 +674,8 @@ export function renderTips(ctx) {
   const hDone = hList.filter(i => i.status === '배송·설치 완료').length;
   const bDone = (prefs.benefitChecks || []).filter(id => BENEFIT_CHECK_ITEMS.some(([bid]) => bid === id)).length;
 
+  const urlSubTab = ctx.currentSubTab?.();
+  if (['tips', 'budget', 'schedule', 'home', 'benefits'].includes(urlSubTab)) tipsSubTab = urlSubTab;
   const subTabs = [
     ['tips', '🎬 결혼 꿀팁', `${content.tips.length}건`],
     ['budget', '💰 통합 예산', budgetBadge],
@@ -692,7 +694,8 @@ export function renderTips(ctx) {
         'data-tips-tab': key,
         onclick: () => {
           tipsSubTab = key;
-          ctx.render();
+          if (ctx.setSubTabHash) ctx.setSubTabHash('tips', key);
+          else ctx.render();
           document.querySelector(`[data-tips-tab="${key}"]`)?.focus({ preventScroll: true });
         }
       }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));

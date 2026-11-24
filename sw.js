@@ -1,24 +1,52 @@
-const CACHE_VERSION = 'wedding-features-54';
+const CACHE_VERSION = 'wedding-features-55';
 const CACHE_NAME = `wedding-pwa-${CACHE_VERSION}`;
 
-const PRECACHE_URLS = [
+const CORE_PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
   `./assets/css/app.css?v=${CACHE_VERSION}`,
   `./assets/js/app.js?v=${CACHE_VERSION}`,
+  `./assets/js/content.js?v=${CACHE_VERSION}`,
+  `./assets/js/travel.js?v=${CACHE_VERSION}`,
+  `./assets/js/calendar.js?v=${CACHE_VERSION}`,
+  `./assets/js/dom.js?v=${CACHE_VERSION}`,
+  `./assets/js/bgm.js?v=${CACHE_VERSION}`,
+  `./assets/js/invitation-card.js?v=${CACHE_VERSION}`,
+  `./assets/js/photo-viewer.js?v=${CACHE_VERSION}`,
   './assets/favicon.svg',
   './assets/apple-touch-icon.png',
   './assets/fonts/Paperlogy-7Bold.woff2',
   './assets/fonts/SUITE-Regular.woff2',
-  './data/site.json'
+  './data/guest-site.json'
+];
+
+const PLANNER_PRECACHE_URLS = [
+  `./assets/css/planner.css?v=${CACHE_VERSION}`,
+  `./assets/js/preferences.js?v=${CACHE_VERSION}`,
+  `./assets/js/storage.js?v=${CACHE_VERSION}`,
+  `./assets/js/planning.js?v=${CACHE_VERSION}`,
+  `./assets/js/home-dashboard-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/manager-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/studio-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/travel-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/ceremony-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/guest-ledger-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/wedding-day-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/prenatal-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/planning-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/life-planning-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/editor-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/qrcode.js?v=${CACHE_VERSION}`,
+  './data/site.json',
+  './data/studios.json',
+  './assets/luna-makeup-map.jpg'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.allSettled(PRECACHE_URLS.map(url => cache.add(url))))
-      .then(() => self.skipWaiting())
+      .then(cache => Promise.allSettled(CORE_PRECACHE_URLS.map(url => cache.add(url))))
   );
 });
 
@@ -32,6 +60,24 @@ self.addEventListener('activate', event => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', event => {
+  const type = event.data?.type;
+  if (type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  if (type === 'WARM_PLANNER_CACHE') {
+    event.waitUntil(
+      caches.open(CACHE_NAME).then(async cache => {
+        for (const url of PLANNER_PRECACHE_URLS) {
+          const hit = await cache.match(url);
+          if (!hit) await cache.add(url).catch(() => {});
+        }
+      })
+    );
+  }
 });
 
 function isNetworkFirstRequest(request, url) {

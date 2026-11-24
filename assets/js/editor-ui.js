@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-54';
-import { safeUrl } from './content.js?v=wedding-features-54';
-import { StorageConflict } from './storage.js?v=wedding-features-54';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-54';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-54';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-55';
+import { safeUrl } from './content.js?v=wedding-features-55';
+import { StorageConflict } from './storage.js?v=wedding-features-55';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-55';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-55';
 
 const fieldSpecs = {
   invitation: [
@@ -587,7 +587,13 @@ export function openEditor(ctx, type, item = null) {
         }
       }
     });
-    form.append(albumDropzone, batchProgress, countBar, previews);
+    const pipelineHint = E('p', { class: 'small muted album-pipeline-hint' },
+      '💡 라크마 촬영본처럼 15장 이상 대량 등록할 때는 터미널에서 ',
+      E('code', {}, 'npm run photos -- --src <폴더> --album lachma-2027 --title "라크마 웨딩촬영" --date 2027-02-03 --apply'),
+      ' 를 실행하면 원본을 보존한 채 가벼운 웹용 파일(assets/photos/)로 등록되고 브라우저 5MB 한도를 아낄 수 있어요. 대표 사진 변경 후 ',
+      E('code', {}, 'npm run share-card'),
+      ' 로 카카오톡 공유 카드도 갱신됩니다.');
+    form.append(albumDropzone, pipelineHint, batchProgress, countBar, previews);
     draw();
   }
 
