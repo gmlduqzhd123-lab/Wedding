@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadText } from './dom.js?v=wedding-features-55';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-55';
-import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-55';
-import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-55';
-import { multiScheduleCalendar } from './calendar.js?v=wedding-features-55';
+import { $, E, button, linkButton, downloadText } from './dom.js?v=wedding-features-56';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-56';
+import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-56';
+import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-56';
+import { multiScheduleCalendar } from './calendar.js?v=wedding-features-56';
 import {
   weddingBudgetSummary,
   guestListSummary,
@@ -15,11 +15,27 @@ import {
   activeVendorSchedules,
   collectMasterTimeline,
   weddingPhaseInfo
-} from './planning.js?v=wedding-features-55';
+} from './planning.js?v=wedding-features-56';
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 let checklistIncompleteOnly = false;
+let checklistExpandAll = false;
 let timelineShowAll = false;
+let timelineExpanded = false;
+
+export function renderHomeSectionNav(ctx) {
+  if (ctx.isGuestMode()) return null;
+  const jump = id => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return E('nav', { class: 'home-section-nav', 'aria-label': '홈 섹션 빠른 이동' },
+    button('📍 지금 할 일', () => jump('home-phase-focus'), 'button quiet home-jump-chip'),
+    button('📊 현황 요약', () => jump('home-dashboard-title'), 'button quiet home-jump-chip'),
+    button('🗓️ 일정', () => jump('home-timeline-title'), 'button quiet home-jump-chip'),
+    button('🗂️ 전체 메뉴', () => jump('home-menu-title'), 'button quiet home-jump-chip'),
+    button('✅ 체크리스트', () => jump('home-checklist-title'), 'button quiet home-jump-chip'));
+}
 
 const WEDDING_CHECKLIST = [
   ['D-180 이전', '웨딩홀 · 스드메 · 신혼여행 큰 틀 잡기', [
@@ -181,7 +197,7 @@ export function renderPhaseFocusCard(ctx) {
     prefs: ctx.getPrefs(),
     studio: ctx.getStudiosState().activeLachma
   });
-  return E('section', { class: `phase-focus-card is-phase-${phase.phase}`, 'aria-label': '현재 시기 집중 웨딩 가이드' },
+  return E('section', { class: `phase-focus-card is-phase-${phase.phase}`, id: 'home-phase-focus', 'aria-label': '현재 시기 집중 웨딩 가이드' },
     E('div', { class: 'phase-focus-head' },
       E('div', {},
         E('span', { class: 'phase-focus-badge' }, phase.badge),
@@ -375,8 +391,9 @@ export function renderHomeMasterTimeline(ctx) {
   showAllCheck.checked = timelineShowAll;
   showAllCheck.addEventListener('change', () => { timelineShowAll = showAllCheck.checked; ctx.render(); $('#timeline-show-all')?.focus({ preventScroll: true }); });
 
+  const displayList = timelineExpanded ? visible : visible.slice(0, 4);
   const groups = [];
-  for (const item of visible) {
+  for (const item of displayList) {
     let g = groups[groups.length - 1];
     if (!g || g.monthKey !== item.monthKey) { g = { monthKey: item.monthKey, items: [] }; groups.push(g); }
     g.items.push(item);
@@ -392,7 +409,7 @@ export function renderHomeMasterTimeline(ctx) {
         button(`📥 전체 일정 .ics 일괄 저장 (${exportTargets.length}건)`, downloadMasterIcs, 'button'),
         button('📋 마스터 일정 복사', copyMasterTimeline, 'button quiet'))),
     E('div', { class: 'checklist-controls' },
-      E('span', { class: 'small muted' }, `표시 중 ${visible.length}건 / 전체 ${allEvents.length}건 (다가오는 일정 ${upcoming.length}건)`),
+      E('span', { class: 'small muted' }, `표시 중 ${displayList.length}건 / 전체 ${allEvents.length}건 (다가오는 일정 ${upcoming.length}건)`),
       allEvents.length !== upcoming.length ? E('label', { class: 'check-label', for: showAllCheck.id }, showAllCheck, '완료·지난 일정도 함께 보기') : null),
     E('div', { class: 'master-timeline-groups' }, groups.map(group => E('div', { class: 'master-timeline-month' },
       E('h3', { class: 'master-month-label' }, monthLabel(group.monthKey)),
@@ -406,7 +423,12 @@ export function renderHomeMasterTimeline(ctx) {
             E('span', { class: 'badge' }, item.category),
             E('strong', {}, item.title)),
           item.detail ? E('p', { class: 'small muted' }, item.detail) : null),
-        button('이동 →', () => ctx.navigateToRoute(item.route, item.subTab || ''), 'button quiet small-copy-btn'))))))));
+        button('이동 →', () => ctx.navigateToRoute(item.route, item.subTab || ''), 'button quiet small-copy-btn'))))))),
+    visible.length > 4 ? E('div', { class: 'timeline-expand-bar' },
+      button(timelineExpanded ? '요약(4건)으로 접기 ▲' : `전체 일정 ${visible.length}건 모두 펼치기 ▼`, () => {
+        timelineExpanded = !timelineExpanded;
+        ctx.render();
+      }, 'button quiet')) : null);
 }
 
 function activeFocusStageName(content, stages, checkedSet) {
@@ -447,12 +469,35 @@ export function renderHomeChecklist(ctx) {
     if (!confirm(`‘${label}’ 할 일을 삭제할까요?`)) return;
     ctx.queuePreference(async () => {
       const latest = ctx.getPrefs();
-      const nextCustom = (latest.customChecklist || []).filter(c => c.id !== id);
+      const curCustom = latest.customChecklist || [];
+      const removedIndex = curCustom.findIndex(c => c.id === id);
+      if (removedIndex < 0) return true;
+      const snapshot = structuredClone(curCustom[removedIndex]);
+      const wasChecked = (latest.checklist || []).includes(id);
+      const prevNote = latest.checklistNotes?.[id] || '';
+      const nextCustom = curCustom.filter(c => c.id !== id);
       const nextSet = (latest.checklist || []).filter(cid => cid !== id);
       const nextNotes = { ...(latest.checklistNotes || {}) };
       delete nextNotes[id];
       const saved = await ctx.savePrefs({ ...latest, customChecklist: nextCustom, checklist: nextSet, checklistNotes: nextNotes });
-      if (saved && ctx.currentRoute() === 'home') { ctx.render(); ctx.toast('직접 추가한 할 일을 삭제했습니다.'); }
+      if (saved && ctx.currentRoute() === 'home') {
+        ctx.render();
+        ctx.toast(`‘${label}’ 할 일을 삭제했습니다.`, {
+          undoLabel: '되돌리기',
+          onUndo: () => ctx.queuePreference(async () => {
+            const cur = ctx.getPrefs();
+            const restoredCustom = [...(cur.customChecklist || [])];
+            if (restoredCustom.some(c => c.id === snapshot.id)) return true;
+            restoredCustom.splice(Math.min(removedIndex, restoredCustom.length), 0, snapshot);
+            const restoredChecks = wasChecked ? [...new Set([...(cur.checklist || []), snapshot.id])] : (cur.checklist || []);
+            const restoredNotes = { ...(cur.checklistNotes || {}) };
+            if (prevNote) restoredNotes[snapshot.id] = prevNote;
+            const restored = await ctx.savePrefs({ ...cur, customChecklist: restoredCustom, checklist: restoredChecks, checklistNotes: restoredNotes });
+            if (restored) { ctx.render(); ctx.toast(`‘${snapshot.title}’ 할 일을 복구했습니다.`); }
+            return restored;
+          })
+        });
+      }
       return saved;
     });
   };
@@ -473,14 +518,21 @@ export function renderHomeChecklist(ctx) {
     E('div', { class: 'checklist-progress-track', 'aria-hidden': 'true' },
       E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` })),
     E('div', { class: 'checklist-controls' },
-      E('label', { class: 'check-label', for: filterCheck.id }, filterCheck, '남은 할 일만 보기')),
+      E('label', { class: 'check-label', for: filterCheck.id }, filterCheck, '남은 할 일만 보기'),
+      button(checklistExpandAll ? '현재 시기만 펼치기' : '전체 4단계 펼치기', () => {
+        checklistExpandAll = !checklistExpandAll;
+        ctx.render();
+      }, 'button quiet small-copy-btn')),
     E('div', { class: 'checklist-grid' }, stages.map(([stage, subtitle, items]) => {
       const visible = checklistIncompleteOnly ? items.filter(it => !checkedSet.has(it.id)) : items;
+      const stageDone = items.filter(it => checkedSet.has(it.id)).length;
       const isFocus = stage === focusStage;
-      return E('article', { class: 'checklist-stage-card' + (isFocus ? ' is-focus-stage' : '') },
-        E('div', { class: 'stage-head' },
-          E('span', { class: 'badge' }, stage),
-          isFocus ? E('span', { class: 'spec-chip highlight focus-stage-badge' }, '📍 지금 집중할 시기') : null,
+      const details = E('details', { class: 'checklist-stage-card checklist-stage-details' + (isFocus ? ' is-focus-stage' : '') },
+        E('summary', { class: 'stage-head' },
+          E('div', { class: 'stage-head-main' },
+            E('span', { class: 'badge' }, stage),
+            isFocus ? E('span', { class: 'spec-chip highlight focus-stage-badge' }, '📍 지금 집중할 시기') : null,
+            E('span', { class: 'small muted stage-progress-count' }, `${stageDone}/${items.length}`)),
           E('h3', {}, subtitle)),
         visible.length ? E('ul', { class: 'checklist-items' }, visible.map(({ id, label, custom }) => {
           const input = E('input', { type: 'checkbox', id: `chk-${id}` });
@@ -496,5 +548,7 @@ export function renderHomeChecklist(ctx) {
                 custom ? button('삭제', () => deleteCustom(id, label), 'text-button small') : null)),
             note ? E('p', { class: 'checklist-item-note small' }, `📝 ${note}`) : null);
         })) : E('p', { class: 'small muted' }, '이 단계의 남은 할 일이 없습니다. 🎉'));
+      if (isFocus || checklistExpandAll || checklistIncompleteOnly) details.open = true;
+      return details;
     })));
 }

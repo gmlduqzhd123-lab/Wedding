@@ -1,8 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-55';
-import { formatDate } from './content.js?v=wedding-features-55';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-55';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-55';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-55';
+import { E, button } from './dom.js?v=wedding-features-56';
+import { formatDate } from './content.js?v=wedding-features-56';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-56';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-56';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-56';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 
@@ -412,6 +412,82 @@ export function renderCeremony(ctx) {
       }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));
     }));
 
+  const openLiveCueSheetModal = () => {
+    let stepIdx = 0;
+    const completed = new Set();
+    let elapsedSec = 0;
+    let timerId = null;
+    const body = E('div', { class: 'live-cue-modal' });
+
+    const fmtClock = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    const stopTimer = () => { if (timerId) { clearInterval(timerId); timerId = null; } };
+
+    const draw = () => {
+      const [no, title, cue, scripts] = mcSteps[stepIdx];
+      const nextStep = mcSteps[stepIdx + 1] || null;
+      const clockVal = E('strong', { class: 'live-cue-clock' }, fmtClock(elapsedSec));
+      const toggleTimerBtn = button(timerId ? '⏸ 일시정지' : '▶ 타이머 시작', () => {
+        if (timerId) stopTimer();
+        else {
+          timerId = setInterval(() => {
+            if (!body.isConnected) { stopTimer(); return; }
+            elapsedSec++;
+            const el = body.querySelector('.live-cue-clock');
+            if (el) el.textContent = fmtClock(elapsedSec);
+          }, 1000);
+        }
+        draw();
+      }, 'button quiet small-copy-btn');
+      const resetTimerBtn = button('↺ 초기화', () => { stopTimer(); elapsedSec = 0; draw(); }, 'button quiet small-copy-btn');
+      const dots = E('div', { class: 'live-cue-dots', role: 'tablist', 'aria-label': '식순 단계 선택' },
+        mcSteps.map(([sNo, sTitle], idx) => E('button', {
+          type: 'button',
+          role: 'tab',
+          class: 'live-cue-dot' + (idx === stepIdx ? ' is-current' : '') + (completed.has(idx) ? ' is-done' : ''),
+          'aria-selected': String(idx === stepIdx),
+          title: `${sNo}. ${sTitle}`,
+          onclick: () => { stepIdx = idx; draw(); }
+        }, sNo)));
+
+      const prevBtn = button('← 이전 단계', () => { if (stepIdx > 0) { stepIdx--; draw(); } }, 'button quiet');
+      prevBtn.disabled = stepIdx === 0;
+      const nextBtn = button(stepIdx < mcSteps.length - 1 ? '✓ 완료 & 다음 단계 →' : '🎉 예식 진행 완료', () => {
+        completed.add(stepIdx);
+        if (stepIdx < mcSteps.length - 1) { stepIdx++; draw(); }
+        else { stopTimer(); ctx.toast('12단계 예식 큐시트를 모두 완료했습니다! 🎉'); draw(); }
+      }, 'button');
+
+      body.replaceChildren(
+        E('div', { class: 'live-cue-topbar' },
+          E('span', { class: 'spec-chip direct' }, `진행 ${stepIdx + 1} / ${mcSteps.length} (완료 ${completed.size})`),
+          E('div', { class: 'live-cue-timer-box' }, E('span', { class: 'small muted' }, '경과'), clockVal, toggleTimerBtn, resetTimerBtn)),
+        dots,
+        E('article', { class: 'live-cue-stage' },
+          E('span', { class: 'badge' }, `STEP ${no}`),
+          E('h3', { class: 'live-cue-title' }, title),
+          E('p', { class: 'live-cue-check' }, `📌 현장 체크: ${cue}`),
+          E('div', { class: 'live-cue-scripts' }, scripts.map(line => E('p', { class: 'live-cue-line' }, line)))),
+        nextStep
+          ? E('div', { class: 'live-cue-next' },
+            E('span', { class: 'small muted' }, '다음 순서 미리보기'),
+            E('strong', { class: 'small' }, `${nextStep[0]}. ${nextStep[1]} — ${nextStep[2]}`))
+          : E('div', { class: 'live-cue-next' }, E('strong', { class: 'small' }, '🎊 마지막 순서입니다. 행진 후 원판 사진 촬영으로 안내해 주세요.')),
+        E('div', { class: 'page-actions live-cue-nav' }, prevBtn, nextBtn));
+    };
+
+    const onKey = event => {
+      if (!body.isConnected) { document.removeEventListener('keydown', onKey); stopTimer(); return; }
+      if (event.key === 'ArrowRight' && stepIdx < mcSteps.length - 1) { event.preventDefault(); stepIdx++; draw(); }
+      else if (event.key === 'ArrowLeft' && stepIdx > 0) { event.preventDefault(); stepIdx--; draw(); }
+    };
+    draw();
+    if (ctx.showDialog('🎙️ 본식 사회자 라이브 큐시트', body)) {
+      document.addEventListener('keydown', onKey);
+    } else {
+      stopTimer();
+    }
+  };
+
   const rundownPanel = E('section', { class: 'ceremony-planner', 'aria-label': '순천아모르 본식 타임테이블 및 낭독 보드' },
     E('div', { class: 'ceremony-top-bar' },
       E('div', { class: 'ceremony-summary-chips' },
@@ -421,6 +497,7 @@ export function renderCeremony(ctx) {
         E('span', { class: 'spec-chip' + (cPlan.banquetFloor ? ' direct' : ' highlight') }, `🍽️ 연회홀: ${cPlan.banquetFloor || '층수 확인 필요'}`),
         E('span', { class: 'spec-chip direct' }, `✅ 식순 준비 체크: ${prepDone}/${CEREMONY_PREP_ITEMS.length}`)),
       E('div', { class: 'page-actions ceremony-action-bar' },
+        button('🎙️ 라이브 큐시트 모드', openLiveCueSheetModal, 'button'),
         button('📋 타임테이블·식순 복사', () => copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant), 'button quiet'),
         button('🎤 사회자 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet'),
         button('🖨️ 서약서·선언문 인쇄', printCeremonyPapersOnly, 'button quiet'),

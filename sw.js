@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'wedding-features-55';
+const CACHE_VERSION = 'wedding-features-56';
 const CACHE_NAME = `wedding-pwa-${CACHE_VERSION}`;
 
 const CORE_PRECACHE_URLS = [
@@ -37,6 +37,8 @@ const PLANNER_PRECACHE_URLS = [
   `./assets/js/planning-ui.js?v=${CACHE_VERSION}`,
   `./assets/js/life-planning-ui.js?v=${CACHE_VERSION}`,
   `./assets/js/editor-ui.js?v=${CACHE_VERSION}`,
+  `./assets/js/charts.js?v=${CACHE_VERSION}`,
+  `./assets/js/search-ui.js?v=${CACHE_VERSION}`,
   `./assets/js/qrcode.js?v=${CACHE_VERSION}`,
   './data/site.json',
   './data/studios.json',

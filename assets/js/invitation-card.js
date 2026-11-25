@@ -1,5 +1,5 @@
-import { E, S, image } from './dom.js?v=wedding-features-55';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-55';
+import { E, S, image } from './dom.js?v=wedding-features-56';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-56';
 
 export function isKakaoInApp(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
   return /KAKAOTALK/i.test(ua || '');
@@ -130,11 +130,21 @@ export function renderBotanicalBud(x, y, rot, scale = 1) {
     S('path', { d: 'M -3.8 -2 C -1.5 -5, 1.5 -5, 3.8 -2 L 0 1.5 Z', fill: '#5c7d65' }));
 }
 
-export function renderInvitationHeroVisual(info, albums = []) {
-  const coverSrc = albums?.find(a => Array.isArray(a.images) && a.images.length)?.images?.[0] || '';
+export function renderInvitationHeroVisual(info, albums = [], onOpenPhoto = null) {
+  const allPhotos = (albums || []).flatMap(a => (Array.isArray(a.images) ? a.images : []));
+  const coverSrc = allPhotos[0] || '';
   const coupleLabel = [info.partner1, info.partner2].filter(Boolean).join(' · ') || '신랑 · 신부';
   const coverNode = coverSrc ? image(coverSrc, `${coupleLabel} 웨딩 사진`, { class: 'invitation-arch-photo' }) : null;
   if (coverNode) {
+    if (typeof onOpenPhoto === 'function') {
+      return E('div', { class: 'invitation-arch-stage has-cover-photo' },
+        E('button', {
+          type: 'button',
+          class: 'invitation-arch-photo-frame invitation-arch-photo-btn',
+          'aria-label': `${coupleLabel} 웨딩 대표 사진 크게 보기`,
+          onclick: () => onOpenPhoto('우리의 웨딩 갤러리', allPhotos, 0)
+        }, coverNode, E('span', { class: 'arch-photo-zoom-hint', 'aria-hidden': 'true' }, '🔍 크게 보기')));
+    }
     return E('div', { class: 'invitation-arch-stage has-cover-photo' },
       E('div', { class: 'invitation-arch-photo-frame' }, coverNode));
   }
@@ -401,7 +411,7 @@ async function loadImageSafe(src) {
 async function loadQrSvgImage(url) {
   if (!url) return null;
   try {
-    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-55');
+    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-56');
     const svgMarkup = renderQrSvgString(url, { margin: 2 });
     const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);

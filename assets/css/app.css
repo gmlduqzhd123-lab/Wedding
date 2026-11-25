@@ -3224,3 +3224,137 @@ body.is-mobile-menu-open { overflow: hidden; }
 .photo-zoom-btn:disabled {
   opacity: 0.42;
 }
+
+/* Round 2: Undo Toast, Inline Copy Confirmation, Guest Dock Scroll-Spy, Arch Photo Lightbox & Botanical Petals */
+.toast.has-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px 9px 18px;
+}
+.toast-msg {
+  line-height: 1.45;
+}
+.toast-undo-btn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.toast-undo-btn:hover,
+.toast-undo-btn:focus-visible {
+  background: #ffffff;
+  color: var(--green-dark);
+}
+.button.is-copied,
+.text-button.is-copied,
+.small-copy-btn.is-copied {
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+  color: #ffffff !important;
+}
+.guest-dock-btn.is-current:not(.is-primary) {
+  background: var(--olive-soft);
+  color: var(--green-dark);
+  box-shadow: inset 0 0 0 1px var(--olive-line);
+}
+.invitation-arch-photo-btn {
+  position: relative;
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: zoom-in;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.invitation-arch-photo-btn:hover,
+.invitation-arch-photo-btn:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(45, 68, 52, 0.16);
+}
+.arch-photo-zoom-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(28, 40, 32, 0.72);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.invitation-petals-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0 !important;
+}
+.invitation-petals-layer[hidden] {
+  display: none;
+}
+.inv-petal {
+  --p-left: 50%;
+  --p-size: 12px;
+  --p-dur: 10s;
+  --p-delay: 0s;
+  position: absolute;
+  top: -24px;
+  left: var(--p-left);
+  width: var(--p-size);
+  height: calc(var(--p-size) * 0.72);
+  border-radius: 75% 15% 75% 15%;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: invPetalFall var(--p-dur) linear var(--p-delay) infinite;
+}
+.inv-petal.is-blush {
+  background: linear-gradient(135deg, rgba(242, 206, 200, 0.85), rgba(215, 146, 138, 0.55));
+}
+.inv-petal.is-leaf {
+  background: linear-gradient(135deg, rgba(188, 211, 194, 0.78), rgba(126, 160, 135, 0.45));
+  border-radius: 85% 5% 85% 5%;
+}
+.inv-petal.is-cream {
+  background: linear-gradient(135deg, rgba(252, 241, 224, 0.88), rgba(226, 194, 152, 0.5));
+}
+@keyframes invPetalFall {
+  0% {
+    transform: translate3d(0, -10px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.52;
+  }
+  50% {
+    transform: translate3d(26px, 340px, 0) rotate(175deg);
+    opacity: 0.44;
+  }
+  85% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate3d(-18px, 680px, 0) rotate(350deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .invitation-petals-layer { display: none !important; }
+  .inv-petal { animation: none !important; }
+}
+@media print {
+  .invitation-petals-layer,
+  .invitation-petals-btn,
+  .arch-photo-zoom-hint { display: none !important; }
+}
+

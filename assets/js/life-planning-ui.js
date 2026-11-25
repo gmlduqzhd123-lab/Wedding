@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-55';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-55';
-import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-55';
-import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-55';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-55';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-56';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-56';
+import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-56';
+import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-56';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-56';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 
@@ -179,9 +179,25 @@ export function renderHomeItemsBoard(ctx) {
     if (!confirm(`‘${item.name}’ 항목을 삭제할까요?`)) return;
     ctx.queuePreference(async () => {
       const latest = ctx.getPrefs().homeItems || [];
+      const removedIndex = latest.findIndex(row => row.id === item.id);
+      if (removedIndex < 0) return true;
+      const removedSnapshot = structuredClone(latest[removedIndex]);
       const next = latest.filter(row => row.id !== item.id);
       const ok = await ctx.savePrefs({ ...ctx.getPrefs(), homeItems: next });
-      if (ok) { ctx.render(); ctx.toast('혼수 품목을 삭제했습니다.'); }
+      if (ok) {
+        ctx.render();
+        ctx.toast(`‘${item.name}’ 혼수 품목을 삭제했습니다.`, {
+          undoLabel: '되돌리기',
+          onUndo: () => ctx.queuePreference(async () => {
+            const cur = [...(ctx.getPrefs().homeItems || [])];
+            if (cur.some(row => row.id === removedSnapshot.id)) return true;
+            cur.splice(Math.min(removedIndex, cur.length), 0, removedSnapshot);
+            const restored = await ctx.savePrefs({ ...ctx.getPrefs(), homeItems: cur });
+            if (restored) { ctx.render(); ctx.toast(`‘${removedSnapshot.name}’ 항목을 복구했습니다.`); }
+            return restored;
+          })
+        });
+      }
       return ok;
     });
   };

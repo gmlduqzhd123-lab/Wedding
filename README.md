@@ -146,22 +146,24 @@ manifest.webmanifest            모바일 홈 화면 추가용 웹 앱 매니페
 assets/css/app.css              하객 공통·모바일 청첩장·일대기·앨범·확대 뷰어·반응형/인쇄 스타일 (Soft Botanical Fine-Stationery)
 assets/css/planner.css          신랑·신부 전용 준비 탭 스타일 (방문자용 ?view=guest에서는 미로드)
 assets/fonts/                   로컬 Paperlogy·SUITE 웹폰트
-assets/js/app.js                경량 앱 셸·서브탭 URL 해시 라우팅(#/route/subtab)·하객 청첩장·일대기·앨범·PWA 업데이트/오프라인 제어
-assets/js/home-dashboard-ui.js  단계별 홈 포커스(Phase-Aware Home)·3단계 여정·대시보드·마스터 캘린더·체크리스트 UI (비게스트 전용)
+assets/js/app.js                경량 앱 셸·서브탭 URL 해시 라우팅(#/route/subtab)·하객 청첩장(꽃잎 토글·Scroll-Spy)·야간 다크 보태니컬 테마·Undo 토스트·PWA 업데이트/오프라인 제어
+assets/js/home-dashboard-ui.js  단계별 홈 포커스(Phase-Aware Home)·섹션 빠른 이동·접기/펼치기 마스터 캘린더·시기별 아코디언 체크리스트 UI (비게스트 전용)
 assets/js/manager-ui.js         내용 관리·저장공간 미터·개인 백업 공유/병합·초안 변경 비교·멀티탭 충돌 검토 UI (지연 로딩)
 assets/js/photo-viewer.js       핀치 줌·더블탭 확대·드래그 팬·스와이프·슬라이드쇼 사진 라이트박스 뷰어
 assets/js/dom.js                공통 DOM 생성·링크·다운로드 유틸리티
 assets/js/bgm.js                청첩장 Web Audio 잔잔한 배경음악 컨트롤
-assets/js/invitation-card.js    청첩장 보타니컬 아치·달력·상황별 초대 문구·동적 높이 Canvas PNG 카드(카톡 인앱 미리보기·QR 지연 로딩) 생성기
+assets/js/invitation-card.js    청첩장 보타니컬 아치(대표 사진 확대)·달력·상황별 초대 문구·동적 높이 Canvas PNG 카드(카톡 인앱 미리보기·QR 지연 로딩) 생성기
 assets/js/studio-ui.js          라크마 스튜디오 단독 촬영 안내·동선·준비물 UI (지연 로딩)
-assets/js/travel-ui.js          신혼여행 30곳 비교·다중 필터·유튜브 모달·출국 준비물 UI (지연 로딩)
-assets/js/planning-ui.js        결혼 정보 50건·통합 예산·웨딩홀/스드메 시뮬레이터·업체 일정 UI (지연 로딩)
-assets/js/life-planning-ui.js   신혼집·혼수 품목 견적/배송 보드 및 혼인신고·순천시/전남/정부 신혼부부 혜택 가이드 UI
-assets/js/editor-ui.js          청첩장·일대기·앨범(다중 업로드·진행률·CLI 사진 안내)·여행·꿀팁 편집기 (지연 로딩)
-assets/js/ceremony-ui.js        순천아모르 본식 타임테이블·식순·사회자 대본·서약서/선언문 UI (지연 로딩)
+assets/js/travel-ui.js          신혼여행 30곳 비교·하단 비교 플로팅 트레이·다중 필터·유튜브 모달·출국 준비물 UI (지연 로딩)
+assets/js/planning-ui.js        결혼 정보 50건·통합 예산(SVG 도넛 차트)·웨딩홀/스드메 시뮬레이터·업체 일정 UI (지연 로딩)
+assets/js/life-planning-ui.js   신혼집·혼수 품목 견적/배송 보드(삭제 되돌리기) 및 혼인신고·순천시/전남/정부 신혼부부 혜택 가이드 UI
+assets/js/editor-ui.js          청첩장(실시간 카톡 OG 미리보기)·일대기·앨범(다중 업로드·진행률·CLI 사진 안내)·여행·꿀팁 편집기 (지연 로딩)
+assets/js/ceremony-ui.js        순천아모르 본식 타임테이블·식순·라이브 MC 큐시트 텔레프롬프터·사회자 대본·서약서/선언문 UI (지연 로딩)
 assets/js/wedding-day-ui.js     본식 당일 역할 분담·현금 봉투 리스트·원판 촬영 순서표·현장용 A4 인쇄 시트 UI
 assets/js/prenatal-ui.js        순천 현대여성아동병원·국가/순천시 산전검사 지원금 절차·마감일 계산기·체크리스트 UI (지연 로딩)
-assets/js/guest-ledger-ui.js    기기 전용 하객 명단(RSVP CSV 스마트 동기화·축의대 인쇄)·축의금 정산(현장 빠른 연속 입력·감사 진행률) UI
+assets/js/guest-ledger-ui.js    기기 전용 하객 명단(RSVP CSV 동기화·양가 비중 바·축의대 인쇄)·축의금 정산(현장 빠른 연속 입력·양가 비중 바·감사 진행률) UI
+assets/js/charts.js             의존성 없는 인라인 SVG 도넛 차트·목표 대비 지출 듀얼 바·양가 비중 바 컴포넌트
+assets/js/search-ui.js          전체 메뉴·신혼여행 30곳·꿀팁 50선·라크마 준비물·개인 기록 통합 빠른 검색(Ctrl+K) 팔레트 (지연 로딩)
 assets/js/content.js            콘텐츠 검증·게스트 경량 추출·공개본/초안 변경 비교·날짜/카운트다운·전화/계좌 추출
 assets/js/preferences.js        기기 전용 개인 설정·하객/축의금/혼수/당일 운영/산전일정 검증·개인 백업 병합 로직
 assets/js/planning.js           통합 예산·시뮬레이터·단계별 홈 포커스·마스터 타임라인 집계·RSVP CSV 파싱/동기화·감사 문구
@@ -178,7 +180,7 @@ assets/photos/                  향후 추가할 개인 사진 웹용 사본 (np
 data/site.json                  공개할 청첩장·일대기·앨범·신혼여행·꿀팁
 data/studios.json               스튜디오 30곳 정보·연락처·샘플 출처
 scripts/                        개발 서버·검사·정적 빌드·공유 카드 생성기·사진 최적화(optimize-photos.mjs)·버전 갱신(bump-version.mjs)
-tests/                          콘텐츠·게스트 프로젝션·개인설정·예산·단계 포커스·RSVP 동기화·사진 파이프라인 단위 검증
+tests/                          콘텐츠·게스트 프로젝션·개인설정·예산·차트·통합 검색·단계 포커스·RSVP 동기화·사진 파이프라인 단위 검증
 .github/workflows/pages.yml     GitHub Pages 자동 배포 (Node 24 공식 액션)
 AGENTS.md                       프로젝트 개발·검증 지침
 ```

@@ -1,6 +1,6 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-55';
-import { safeUrl } from './content.js?v=wedding-features-55';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-55';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-56';
+import { safeUrl } from './content.js?v=wedding-features-56';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-56';
 import {
   COST_LABELS,
   budgetSummary,
@@ -14,7 +14,7 @@ import {
   climateReview,
   climateBadgeInfo,
   tripFlightBadge
-} from './travel.js?v=wedding-features-55';
+} from './travel.js?v=wedding-features-56';
 
 export { tripFlightBadge };
 
@@ -349,6 +349,30 @@ function tripComparison(ctx) {
         E('tbody', {}, fields.map(([label, value]) => E('tr', {}, E('th', { scope: 'row' }, label), items.map(item => E('td', {}, value(item)))))))));
 }
 
+function renderCompareFloatingTray(ctx) {
+  if (ctx.isGuestMode()) return null;
+  const content = ctx.getContent();
+  const prefs = ctx.getPrefs();
+  const items = (prefs.tripCompare || []).map(id => content.honeymoon.find(item => item.id === id)).filter(Boolean);
+  if (!items.length) return null;
+  return E('aside', { class: 'compare-floating-tray', role: 'region', 'aria-label': '신혼여행 비교함 빠른 이동' },
+    E('div', { class: 'compare-tray-info' },
+      E('strong', { class: 'small' }, `✈️ 비교함 (${items.length}/2)`),
+      E('span', { class: 'small muted compare-tray-names' }, items.map(it => it.title).join(' vs '))),
+    E('div', { class: 'compare-tray-actions' },
+      button('비교표 보기 ↑', () => {
+        const el = $('#trip-comparison-region');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 'button small-copy-btn'),
+      button('비우기', () => {
+        ctx.queuePreference(async () => {
+          const ok = await ctx.savePrefs({ ...ctx.getPrefs(), tripCompare: [] });
+          if (ok) { updateTripChoices(ctx); ctx.toast('여행 비교함을 비웠습니다.'); }
+          return ok;
+        });
+      }, 'button quiet small-copy-btn')));
+}
+
 export function updateTripChoices(ctx) {
   if (ctx.currentRoute() !== 'honeymoon') return;
   if (tripFavoritesOnly || withTripNoteOnly) { ctx.render(); return; }
@@ -363,6 +387,8 @@ export function updateTripChoices(ctx) {
   }
   const region = $('#trip-comparison-region'), comparison = tripComparison(ctx);
   if (region) region.replaceChildren(...(comparison ? [comparison] : []));
+  const trayRegion = $('#trip-compare-tray-region'), tray = renderCompareFloatingTray(ctx);
+  if (trayRegion) trayRegion.replaceChildren(...(tray ? [tray] : []));
   const selRegion = $('#selected-trip-region');
   if (selRegion) {
     selRegion.classList.toggle('is-unselected', !prefs.tripSelected);
@@ -1010,6 +1036,7 @@ export function renderHoneymoon(ctx) {
           hasActiveTripFilters(guestMode) ? button('모든 필터·검색 초기화', () => { resetTripFilters(); ctx.render(); $('#trip-search')?.focus({ preventScroll: true }); }, 'button quiet') : null))
       : ctx.empty('어디로 떠나고 싶나요?', '아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.', '여행 후보 남기기', () => ctx.openEditor('honeymoon')),
     pagerBar,
-    renderHoneymoonPackingList(ctx)
+    renderHoneymoonPackingList(ctx),
+    E('div', { id: 'trip-compare-tray-region' }, renderCompareFloatingTray(ctx))
   ];
 }

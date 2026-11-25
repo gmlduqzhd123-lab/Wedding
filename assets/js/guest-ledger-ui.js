@@ -1,7 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-55';
-import { formatDate } from './content.js?v=wedding-features-55';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-55';
-import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, buildThankYouMessage } from './planning.js?v=wedding-features-55';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-56';
+import { formatDate } from './content.js?v=wedding-features-56';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-56';
+import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, buildThankYouMessage } from './planning.js?v=wedding-features-56';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-56';
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
@@ -645,9 +646,26 @@ export function renderGuestListBoard(ctx) {
           button('삭제', () => {
             if (!confirm(`'${item.name}' 하객을 명단에서 삭제할까요?`)) return;
             ctx.queuePreference(async () => {
-              const next = (ctx.getPrefs().guestList || []).filter(g => g.id !== item.id);
+              const latest = ctx.getPrefs().guestList || [];
+              const removedIndex = latest.findIndex(g => g.id === item.id);
+              if (removedIndex < 0) return true;
+              const snapshot = structuredClone(latest[removedIndex]);
+              const next = latest.filter(g => g.id !== item.id);
               const saved = await ctx.savePrefs({ ...ctx.getPrefs(), guestList: next });
-              if (saved) { ctx.render(); ctx.toast('하객을 명단에서 삭제했습니다.'); }
+              if (saved) {
+                ctx.render();
+                ctx.toast(`‘${item.name}’ 하객을 명단에서 삭제했습니다.`, {
+                  undoLabel: '되돌리기',
+                  onUndo: () => ctx.queuePreference(async () => {
+                    const cur = [...(ctx.getPrefs().guestList || [])];
+                    if (cur.some(g => g.id === snapshot.id)) return true;
+                    cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
+                    const restored = await ctx.savePrefs({ ...ctx.getPrefs(), guestList: cur });
+                    if (restored) { ctx.render(); ctx.toast(`‘${snapshot.name}’ 하객을 명단에 복구했습니다.`); }
+                    return restored;
+                  })
+                });
+              }
               return saved;
             });
           }, 'checklist-note-btn danger-text')));
@@ -704,6 +722,15 @@ export function renderGuestListBoard(ctx) {
         E('span', { class: 'small muted' }, '양가별 예상 (불참 제외)'),
         E('strong', {}, `신랑 ${summary.bySide['신랑 측'].possible} · 신부 ${summary.bySide['신부 측'].possible}`),
         E('span', { class: 'small muted' }, `공통 ${summary.bySide['공통'].possible}명 · 전체 ${summary.totalInvitedHeadcount}명`))),
+    renderSideRatioBar({
+      title: '📊 양가별 예상 인원 비중 (불참 제외)',
+      unit: '명',
+      entries: [
+        { label: '신랑 측', value: summary.bySide['신랑 측']?.possible || 0, cls: 'ratio-seg-groom' },
+        { label: '신부 측', value: summary.bySide['신부 측']?.possible || 0, cls: 'ratio-seg-bride' },
+        { label: '공통', value: summary.bySide['공통']?.possible || 0, cls: 'ratio-seg-common' }
+      ]
+    }),
     E('div', { class: 'ledger-filter-bar guest-board-toolbar' },
       sideBar,
       E('div', { class: 'ledger-filter-controls' }, search.wrap, inviteSelect, rsvpSelect, resetWrap, countNode)),
@@ -999,9 +1026,26 @@ export function renderGiftLedgerBoard(ctx) {
           button('삭제', () => {
             if (!confirm(`'${item.name}' 축의금 기록을 삭제할까요?`)) return;
             ctx.queuePreference(async () => {
-              const next = (ctx.getPrefs().giftLedger || []).filter(g => g.id !== item.id);
+              const latest = ctx.getPrefs().giftLedger || [];
+              const removedIndex = latest.findIndex(g => g.id === item.id);
+              if (removedIndex < 0) return true;
+              const snapshot = structuredClone(latest[removedIndex]);
+              const next = latest.filter(g => g.id !== item.id);
               const saved = await ctx.savePrefs({ ...ctx.getPrefs(), giftLedger: next });
-              if (saved) { ctx.render(); ctx.toast('축의금 기록을 삭제했습니다.'); }
+              if (saved) {
+                ctx.render();
+                ctx.toast(`‘${item.name}’ 축의금 기록을 삭제했습니다.`, {
+                  undoLabel: '되돌리기',
+                  onUndo: () => ctx.queuePreference(async () => {
+                    const cur = [...(ctx.getPrefs().giftLedger || [])];
+                    if (cur.some(g => g.id === snapshot.id)) return true;
+                    cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
+                    const restored = await ctx.savePrefs({ ...ctx.getPrefs(), giftLedger: cur });
+                    if (restored) { ctx.render(); ctx.toast(`‘${snapshot.name}’ 축의금 기록을 복구했습니다.`); }
+                    return restored;
+                  })
+                });
+              }
               return saved;
             });
           }, 'checklist-note-btn danger-text')));
@@ -1047,6 +1091,15 @@ export function renderGiftLedgerBoard(ctx) {
         E('span', { class: 'small muted' }, '후속 인사 체크'),
         E('strong', {}, `감사 미완료 ${summary.thankYouPending}건`),
         E('span', { class: 'small muted' }, `답례품 미전달 ${summary.returnGiftPending}건`))),
+    renderSideRatioBar({
+      title: '📊 양가별 축의금 합계 비중',
+      formatValue: v => won(v),
+      entries: [
+        { label: '신랑 측', value: summary.bySide['신랑 측']?.amount || 0, cls: 'ratio-seg-groom' },
+        { label: '신부 측', value: summary.bySide['신부 측']?.amount || 0, cls: 'ratio-seg-bride' },
+        { label: '공통', value: summary.bySide['공통']?.amount || 0, cls: 'ratio-seg-common' }
+      ]
+    }),
     summary.totalRecords ? E('div', { class: 'thankyou-progress-bar', 'aria-label': '감사 인사 진행률' },
       E('div', { class: 'thankyou-progress-head' },
         E('span', { class: 'small' }, `💬 감사 인사 진행률 ${thankYouDoneCount} / ${summary.totalRecords}건 (${thankYouPct}%)`),

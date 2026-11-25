@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-55';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-55';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-55';
-import { quoteReview } from './travel.js?v=wedding-features-55';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-55';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-56';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-56';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-56';
+import { quoteReview } from './travel.js?v=wedding-features-56';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-56';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -11,9 +11,10 @@ import {
   weddingBudgetSummary,
   sdmEstimate,
   guestListSummary
-} from './planning.js?v=wedding-features-55';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-55';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-55';
+} from './planning.js?v=wedding-features-56';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-56';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-56';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-56';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
@@ -429,6 +430,7 @@ function renderBudgetCalculator(ctx) {
         E('div', { class: 'budget-stat-card' }, E('span', { class: 'small muted' }, `실제 지출·계약 ${budget.actual.complete ? '합계' : '입력 소계'}`), E('strong', {}, budget.actual.known === null ? '미입력' : won(budget.actual.known))),
         E('div', { class: 'budget-stat-card' + (diff !== null && diff < 0 ? ' over' : '') }, E('span', { class: 'small muted' }, '예산 대비 잔액·차액'), E('strong', {}, diff === null ? '미확인' : diff >= 0 ? `여유 ${won(diff)}` : `초과 ${won(-diff)}`))),
       E('p', { class: 'form-note' }, `목표 ${budget.planned.entered}/6개 · 실제·견적 ${budget.actual.entered}/6개 입력. 미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개. 빈칸은 0원이 아닙니다. 6대 항목의 목표와 실제·견적이 모두 입력되어야 차액을 계산합니다. 없는 비용은 확인 후 0을 입력해 주세요.`),
+      renderBudgetDonutChart(rows, totalPlanned, budget.actual.known),
       totalPlanned > 0 ? E('div', { class: 'trip-budget-visual' },
         E('div', { class: 'budget-visual-head' }, E('span', { class: 'small muted' }, '목표 예산 항목별 비중'), E('strong', { class: 'small' }, `총 ${won(totalPlanned)}`)),
         E('div', { class: 'budget-bar-track', 'aria-hidden': 'true' },

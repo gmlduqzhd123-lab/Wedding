@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-55';
-import { safeUrl } from './content.js?v=wedding-features-55';
-import { StorageConflict } from './storage.js?v=wedding-features-55';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-55';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-55';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-56';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-56';
+import { StorageConflict } from './storage.js?v=wedding-features-56';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-56';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-56';
 
 const fieldSpecs = {
   invitation: [
@@ -390,6 +390,36 @@ export function openEditor(ctx, type, item = null) {
           fields.notice.focus({ preventScroll: true });
           ctx.toast('기본 식사·예식 안내 예시 문구를 채웠습니다. 예식홀 조건에 맞게 수정해 주세요.');
         }, 'button quiet'))));
+
+    const firstAlbumCover = safeUrl(ctx.getContent()?.albums?.[0]?.images?.[0], { image: true });
+    const ogImgSrc = firstAlbumCover || './assets/share-card.png';
+    const ogTitleEl = E('strong', { class: 'kakao-og-title' });
+    const ogDescEl = E('p', { class: 'kakao-og-desc' });
+    const syncOgPreview = () => {
+      const p1 = fields.partner1.value.trim();
+      const p2 = fields.partner2.value.trim();
+      const couple = [p1, p2].filter(Boolean).join(' & ');
+      ogTitleEl.textContent = couple ? `${couple} · 우리의 결혼 기록` : '우리의 모바일 청첩장';
+      const dateStr = fields.date.value ? formatDate(fields.date.value) : '';
+      const descParts = [dateStr, fields.time.value.trim(), fields.venue.value.trim()].filter(Boolean);
+      ogDescEl.textContent = descParts.join(' · ') || '예식 날짜와 장소를 입력하면 카카오톡 공유 설명에 반영됩니다.';
+    };
+    for (const key of ['partner1', 'partner2', 'date', 'time', 'venue']) {
+      fields[key]?.addEventListener('input', syncOgPreview);
+    }
+    syncOgPreview();
+    form.appendChild(E('div', { class: 'kakao-og-preview-box', 'aria-label': '카카오톡 링크 공유 미리보기' },
+      E('div', { class: 'kakao-og-preview-head' },
+        E('strong', { class: 'small' }, '💬 카카오톡 링크 공유 카드 미리보기'),
+        E('span', { class: 'small muted' }, firstAlbumCover ? '대표 앨범 1번 사진 반영' : '기본 공유 카드 반영')),
+      E('div', { class: 'kakao-og-chat-bg' },
+        E('div', { class: 'kakao-og-bubble' },
+          E('div', { class: 'kakao-og-thumb-wrap' },
+            image(ogImgSrc, '카카오톡 공유 카드 미리보기 이미지', { class: 'kakao-og-thumb' })),
+          E('div', { class: 'kakao-og-body' },
+            ogTitleEl,
+            ogDescEl,
+            E('span', { class: 'kakao-og-domain' }, 'gmlduqzhd123-lab.github.io'))))));
   }
 
   let editedPlan, stayFields, quoteFields, extraFields;
