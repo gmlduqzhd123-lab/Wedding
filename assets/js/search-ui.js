@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-58';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-58';
+import { E, button } from './dom.js?v=wedding-features-59';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-59';
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },
@@ -23,7 +23,7 @@ const STATIC_COMMANDS = [
   { id: 'act-quick-gift', category: '빠른 실행', icon: '⚡', title: '축의대 현장 빠른 연속 입력 바로 열기', subtitle: '양가·방식 고정, 1-tap 금액·식권 연속 접수', keywords: '축의대 빠른 입력 연속 접수 현장 당일', route: 'ceremony', subTab: 'gifts', action: 'quick-gift' }
 ];
 
-export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio = null } = {}) {
+export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio = null, studios = [] } = {}) {
   const q = String(query || '').trim().toLocaleLowerCase();
   const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
   const matches = hay => {
@@ -155,6 +155,22 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
     }
   }
 
+  // All 30 preserved reference studios
+  for (const s of Array.isArray(studios) ? studios : []) {
+    const hay = `${s.name || ''} ${s.style || ''} ${s.pros || ''} ${s.cons || ''} ${s.fit || ''} ${s.fee || ''} ${s.contact?.phone || ''} ${s.contact?.note || ''} ${prefs?.notes?.[s.id] || ''}`;
+    if (matches(hay)) {
+      push({
+        id: `studio-ref-${s.id}`,
+        category: '스튜디오 참고',
+        icon: '📸',
+        title: s.name,
+        subtitle: [s.style, s.contact?.phone || '연락처 미기재'].filter(Boolean).join(' · '),
+        route: 'studios',
+        focusStudioQuery: s.name
+      });
+    }
+  }
+
   return results;
 }
 
@@ -164,8 +180,8 @@ export function openGlobalSearchModal(ctx) {
     type: 'search',
     id: 'global-search-input',
     class: 'global-search-input',
-    placeholder: '메뉴, 라크마 헬퍼비, 하객 이름, 발리, 혼수, 산전검사 등 검색…',
-    'aria-label': '전체 메뉴·기록·여행·꿀팁 통합 검색',
+    placeholder: '메뉴, 스튜디오 30곳, 하객 이름, 발리, 혼수, 산전검사 등 검색…',
+    'aria-label': '전체 메뉴·스튜디오·기록·여행·꿀팁 통합 검색',
     autocomplete: 'off'
   });
   const quickChips = E('div', { class: 'global-search-chips' },
@@ -195,6 +211,8 @@ export function openGlobalSearchModal(ctx) {
     ctx.navigateToRoute(item.route, item.subTab || '', item.action || '');
     if (item.focusTripId) {
       setTimeout(() => ctx.focusTrip(item.focusTripId), 160);
+    } else if (item.focusStudioQuery && ctx.focusStudioArchive) {
+      setTimeout(() => ctx.focusStudioArchive(item.focusStudioQuery), 160);
     }
   };
 
@@ -202,12 +220,13 @@ export function openGlobalSearchModal(ctx) {
     currentItems = searchWeddingWorkspace(input.value, {
       content: ctx.getContent(),
       prefs: ctx.getPrefs(),
-      studio: ctx.getStudiosState().activeLachma
+      studio: ctx.getStudiosState().activeLachma,
+      studios: ctx.getStudiosList?.() || []
     });
     if (activeIndex >= currentItems.length) activeIndex = 0;
     countEl.textContent = input.value.trim()
       ? `검색 결과 ${currentItems.length}건 (↑↓ 이동 · Enter로 바로 가기)`
-      : '자주 찾는 핵심 화면 (키워드를 입력하면 30개 여행·50개 꿀팁·개인 기록까지 함께 검색됩니다)';
+      : '자주 찾는 핵심 화면 (키워드를 입력하면 30개 스튜디오·30개 여행·50개 꿀팁·개인 기록까지 함께 검색됩니다)';
     if (!currentItems.length) {
       listWrap.replaceChildren(E('p', { class: 'small muted global-search-empty' }, '일치하는 메뉴나 기록이 없습니다. 다른 키워드로 검색해 보세요.'));
       return;

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'wedding-features-58';
+const CACHE_VERSION = 'wedding-features-59';
 const CACHE_NAME = `wedding-pwa-${CACHE_VERSION}`;
 
 const CORE_PRECACHE_URLS = [

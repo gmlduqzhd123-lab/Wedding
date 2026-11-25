@@ -1,8 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-58';
-import { formatDate } from './content.js?v=wedding-features-58';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-58';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-58';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-58';
+import { E, button } from './dom.js?v=wedding-features-59';
+import { formatDate } from './content.js?v=wedding-features-59';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-59';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-59';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-59';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 
@@ -196,8 +196,8 @@ export function openCeremonyEditor(ctx, focusField = '') {
   vowsInput.value = current.vows || '';
   const declInput = E('textarea', { rows: '7', maxlength: '2000', id: 'ceremony-declaration', placeholder: defaultAmorDeclarationText(inv, current) });
   declInput.value = current.declaration || '';
-  const fillVowsBtn = button('↺ 아모르 기본 혼인서약서 예문 채우기', () => {
-    if (vowsInput.value.trim() && !confirm('현재 작성된 혼인서약서 문구를 기본 예문으로 바꿀까요?')) return;
+  const fillVowsBtn = button('↺ 아모르 기본 혼인서약서 예문 채우기', async () => {
+    if (vowsInput.value.trim() && !await ctx.confirmAction({ title: '혼인서약서 예문 채우기', message: '현재 작성된 혼인서약서 문구를 기본 예문으로 바꿀까요?', confirmLabel: '기본 예문으로 변경' })) return;
     vowsInput.value = defaultAmorVowsText(inv);
     vowsInput.focus({ preventScroll: true });
     ctx.toast('기본 혼인서약서(4가지 약속) 예문을 채웠습니다. 두 분의 말투로 자유롭게 다듬어 보세요.');
@@ -206,8 +206,8 @@ export function openCeremonyEditor(ctx, focusField = '') {
     vowsInput.value = '';
     ctx.toast('기본 서약서 자동 연동 상태로 되돌렸습니다.');
   }, 'checklist-note-btn');
-  const fillDeclBtn = button('↺ 아모르 기본 성혼선언문 채우기', () => {
-    if (declInput.value.trim() && !confirm('현재 작성된 성혼선언문 문구를 기본 예문으로 바꿀까요?')) return;
+  const fillDeclBtn = button('↺ 아모르 기본 성혼선언문 채우기', async () => {
+    if (declInput.value.trim() && !await ctx.confirmAction({ title: '성혼선언문 예문 채우기', message: '현재 작성된 성혼선언문 문구를 기본 예문으로 바꿀까요?', confirmLabel: '기본 예문으로 변경' })) return;
     declInput.value = defaultAmorDeclarationText(inv, { ...current, style: styleSelect.value === 'officiant' ? 'officiant' : 'noOfficiant', mc: mcInput.value.trim(), speech: speechInput.value.trim() });
     declInput.focus({ preventScroll: true });
     ctx.toast('기본 성혼선언문 예문을 채웠습니다.');
@@ -552,12 +552,18 @@ export function renderCeremony(ctx) {
         E('div', { class: 'page-actions live-cue-nav' }, prevBtn, nextBtn));
     };
 
+    let cleaned = false;
+    const cleanupAll = () => {
+      if (cleaned) return;
+      cleaned = true;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('visibilitychange', onVisibility);
+      stopTimer();
+      releaseWakeLock();
+    };
     const onKey = event => {
       if (!body.isConnected) {
-        document.removeEventListener('keydown', onKey);
-        document.removeEventListener('visibilitychange', onVisibility);
-        stopTimer();
-        releaseWakeLock();
+        cleanupAll();
         return;
       }
       if (event.key === 'ArrowRight' && stepIdx < mcSteps.length - 1) { event.preventDefault(); stepIdx++; draw(); }
@@ -567,9 +573,9 @@ export function renderCeremony(ctx) {
     if (ctx.showDialog('🎙️ 본식 사회자 라이브 큐시트', body)) {
       document.addEventListener('keydown', onKey);
       document.addEventListener('visibilitychange', onVisibility);
+      document.getElementById('editor-dialog')?.addEventListener('close', cleanupAll, { once: true });
     } else {
-      stopTimer();
-      releaseWakeLock();
+      cleanupAll();
     }
   };
 

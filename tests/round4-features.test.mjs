@@ -5,6 +5,7 @@ import { parseAccountLine } from '../assets/js/content.js';
 import { wrapCardMessageLines } from '../assets/js/invitation-card.js';
 import { netWeddingCostSummary, computeCashDenominations } from '../assets/js/planning.js';
 import { BGM_PRESETS } from '../assets/js/bgm.js';
+import { searchWeddingWorkspace } from '../assets/js/search-ui.js';
 
 test('wrapCardMessageLines preserves full 3-stanza June greeting with paragraph breaks', async () => {
   const site = JSON.parse(await readFile(new URL('../data/site.json', import.meta.url), 'utf8'));
@@ -85,4 +86,12 @@ test('BGM_PRESETS provides 3 valid Web Audio mood presets', () => {
     assert(preset.tempoMs >= 400 && preset.tempoMs <= 1200);
     assert(Array.isArray(preset.chords) && preset.chords.length >= 4);
   }
+});
+
+test('searchWeddingWorkspace indexes all 30 preserved studios and links to studio archive', async () => {
+  const studios = JSON.parse(await readFile(new URL('../data/studios.json', import.meta.url), 'utf8'));
+  const results = searchWeddingWorkspace('포에버마인', { content: {}, prefs: {}, studios });
+  const studioHits = results.filter(r => r.category === '스튜디오 참고');
+  assert.equal(studioHits.length, 2);
+  assert(studioHits.some(r => r.title.includes('포에버마인 담양점') && r.focusStudioQuery === '포에버마인 담양점'));
 });

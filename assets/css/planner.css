@@ -3609,15 +3609,57 @@ body.is-dark-theme .studio-archive-card.is-confirmed {
   background: linear-gradient(180deg, rgba(88, 138, 102, 0.2) 0%, #1c241f 42%);
   border-color: #5b8a68;
 }
-html.is-dark-theme .invitation-bgm-preset-btn,
-body.is-dark-theme .invitation-bgm-preset-btn,
-html.is-dark-theme .invitation-bgm-vol-btn,
-body.is-dark-theme .invitation-bgm-vol-btn,
-html.is-dark-theme .invitation-account-card,
-body.is-dark-theme .invitation-account-card {
+html.is-dark-theme:not(.is-guest-mode) .invitation-ribbon,
+body.is-dark-theme:not(.is-guest-mode) .invitation-ribbon {
+  background: #1d2b22;
+  border-color: #36503f;
+  color: #c2e6ca;
+}
+html.is-dark-theme:not(.is-guest-mode) .invitation-text-btn,
+body.is-dark-theme:not(.is-guest-mode) .invitation-text-btn,
+html.is-dark-theme:not(.is-guest-mode) .invitation-petals-btn,
+body.is-dark-theme:not(.is-guest-mode) .invitation-petals-btn,
+html.is-dark-theme:not(.is-guest-mode) .invitation-bgm-btn,
+body.is-dark-theme:not(.is-guest-mode) .invitation-bgm-btn,
+html.is-dark-theme:not(.is-guest-mode) .invitation-bgm-preset-btn,
+body.is-dark-theme:not(.is-guest-mode) .invitation-bgm-preset-btn,
+html.is-dark-theme:not(.is-guest-mode) .invitation-bgm-vol-btn,
+body.is-dark-theme:not(.is-guest-mode) .invitation-bgm-vol-btn {
+  background: #1c241f;
+  border-color: #354a3c;
+  color: #e4ede6;
+}
+html.is-dark-theme:not(.is-guest-mode) .invitation-text-btn.is-active,
+body.is-dark-theme:not(.is-guest-mode) .invitation-text-btn.is-active,
+html.is-dark-theme:not(.is-guest-mode) .invitation-petals-btn.is-active,
+body.is-dark-theme:not(.is-guest-mode) .invitation-petals-btn.is-active {
+  background: #284231;
+  border-color: #5b8a68;
+  color: #edf7ef;
+}
+html.is-dark-theme:not(.is-guest-mode) .invitation-bgm-btn.is-playing,
+body.is-dark-theme:not(.is-guest-mode) .invitation-bgm-btn.is-playing {
+  background: rgba(201, 122, 112, 0.22);
+  border-color: rgba(218, 145, 136, 0.55);
+  color: #f9d9d4;
+}
+html.is-dark-theme:not(.is-guest-mode) .invitation-account-card,
+body.is-dark-theme:not(.is-guest-mode) .invitation-account-card {
   background: #1c241f;
   border-color: #2f4135;
   color: #e4ede6;
+}
+html.is-dark-theme:not(.is-guest-mode) .account-bank-badge,
+body.is-dark-theme:not(.is-guest-mode) .account-bank-badge {
+  background: #24362a;
+  border-color: #3c5945;
+  color: #cdebd4;
+}
+html.is-dark-theme:not(.is-guest-mode) .account-holder-name,
+body.is-dark-theme:not(.is-guest-mode) .account-holder-name,
+html.is-dark-theme:not(.is-guest-mode) .account-number-code,
+body.is-dark-theme:not(.is-guest-mode) .account-number-code {
+  color: #e8f0ea;
 }
 
 

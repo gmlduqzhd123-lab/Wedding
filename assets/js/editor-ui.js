@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-58';
-import { safeUrl, formatDate } from './content.js?v=wedding-features-58';
-import { StorageConflict } from './storage.js?v=wedding-features-58';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-58';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-58';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-59';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-59';
+import { StorageConflict } from './storage.js?v=wedding-features-59';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-59';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-59';
 
 const fieldSpecs = {
   invitation: [
@@ -376,23 +376,23 @@ export function openEditor(ctx, type, item = null) {
     form.appendChild(E('div', { class: 'greeting-templates' },
       E('span', { class: 'small muted' }, '✨ 초대 인사 추천 문구 및 교통·예식 안내 빠른 채우기:'),
       E('div', { class: 'greeting-template-buttons' },
-        ...templates.map(([label, text]) => button(label, () => {
+        ...templates.map(([label, text]) => button(label, async () => {
           const cur = fields.message.value.trim();
-          if (cur && !presetMessages.has(cur) && !confirm('현재 입력된 초대 인사를 선택한 추천 문구로 바꿀까요?')) return;
+          if (cur && !presetMessages.has(cur) && !await ctx.confirmAction({ title: '추천 문구 채우기', message: '현재 입력된 초대 인사를 선택한 추천 문구로 바꿀까요?', confirmLabel: '문구 변경' })) return;
           fields.message.value = text;
           fields.message.focus({ preventScroll: true });
           ctx.toast(`‘${label}’ 문구를 초대 인사 입력란에 채웠습니다. 자유롭게 다듬어 보세요.`);
         }, 'button quiet')),
-        button('🚗 순천아모르웨딩컨벤션 기본 교통·주차 문구 채우기', () => {
+        button('🚗 순천아모르웨딩컨벤션 기본 교통·주차 문구 채우기', async () => {
           const cur = fields.transit.value.trim();
-          if (cur && cur !== defaultTransit && !confirm('현재 입력된 교통·주차 안내를 기본 문구로 바꿀까요?')) return;
+          if (cur && cur !== defaultTransit && !await ctx.confirmAction({ title: '기본 교통·주차 안내', message: '현재 입력된 교통·주차 안내를 기본 문구로 바꿀까요?', confirmLabel: '문구 변경' })) return;
           fields.transit.value = defaultTransit;
           fields.transit.focus({ preventScroll: true });
           ctx.toast('기본 교통·주차 안내 문구를 입력란에 채웠습니다.');
         }, 'button quiet'),
-        button('📌 기본 식사·예식 안내 예시 채우기', () => {
+        button('📌 기본 식사·예식 안내 예시 채우기', async () => {
           const cur = fields.notice.value.trim();
-          if (cur && cur !== defaultNotice && !confirm('현재 입력된 예식 안내 메모를 기본 예시 문구로 바꿀까요?')) return;
+          if (cur && cur !== defaultNotice && !await ctx.confirmAction({ title: '기본 예식 안내 예시', message: '현재 입력된 예식 안내 메모를 기본 예시 문구로 바꿀까요?', confirmLabel: '문구 변경' })) return;
           fields.notice.value = defaultNotice;
           fields.notice.focus({ preventScroll: true });
           ctx.toast('기본 식사·예식 안내 예시 문구를 채웠습니다. 예식홀 조건에 맞게 수정해 주세요.');
@@ -472,10 +472,10 @@ export function openEditor(ctx, type, item = null) {
     form.appendChild(E('div', { class: 'greeting-templates' },
       E('span', { class: 'small muted' }, '💡 이야기 주제 가이드 (클릭하면 제목과 작성 가이드가 채워집니다):'),
       E('div', { class: 'greeting-template-buttons' },
-        ...storyGuides.map(([chip, titleText, guideText]) => button(chip, () => {
+        ...storyGuides.map(([chip, titleText, guideText]) => button(chip, async () => {
           const curTitle = fields.title.value.trim(), curBody = fields.body.value.trim();
           const hasCustom = (curTitle && !presetTitles.has(curTitle)) || (curBody && !presetBodies.has(curBody));
-          if (hasCustom && !confirm('현재 작성 중인 내용을 선택한 주제 가이드로 바꿀까요?')) return;
+          if (hasCustom && !await ctx.confirmAction({ title: '이야기 가이드 채우기', message: '현재 작성 중인 내용을 선택한 주제 가이드로 바꿀까요?', confirmLabel: '가이드 채우기' })) return;
           fields.title.value = titleText;
           fields.body.value = guideText;
           fields.body.focus({ preventScroll: true });
@@ -528,8 +528,8 @@ export function openEditor(ctx, type, item = null) {
     const draw = (focusIndex, action) => {
       countBar.replaceChildren(
         E('span', { class: 'small muted' }, `등록된 사진 ${albumImages.length} / 100장 (첫 번째 사진이 앨범·청첩장 대표 사진)`),
-        albumImages.length >= 2 ? button('전체 사진 비우기', () => {
-          if (!confirm(`등록된 사진 ${albumImages.length}장을 모두 비울까요?`)) return;
+        albumImages.length >= 2 ? button('전체 사진 비우기', async () => {
+          if (!await ctx.confirmAction({ title: '전체 사진 비우기', message: `등록된 사진 ${albumImages.length}장을 모두 비울까요?`, confirmLabel: '모두 비우기', danger: true })) return;
           albumImages.length = 0;
           draw();
           ctx.toast('앨범 사진 목록을 비웠습니다.');

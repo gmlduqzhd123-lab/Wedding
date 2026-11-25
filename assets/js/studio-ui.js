@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-58';
-import { weddingDday } from './content.js?v=wedding-features-58';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-58';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-58';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-59';
+import { weddingDday } from './content.js?v=wedding-features-59';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-59';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-59';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -293,11 +293,16 @@ function renderLachmaStudioCard(ctx, studio) {
 
 let archiveQuery = '';
 let archiveFilter = 'all';
+let archiveDrawerOpen = false;
+
+export function openStudioArchiveSearch(query = '') {
+  archiveDrawerOpen = true;
+  archiveFilter = 'all';
+  archiveQuery = String(query || '');
+}
 
 function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
   if (!Array.isArray(allStudios) || allStudios.length <= 1) return null;
-  const prefs = ctx.getPrefs();
-  const favSet = new Set(prefs.favorites || []);
   const withPhoneCount = allStudios.filter(s => Boolean(s.contact?.phone)).length;
 
   const listWrap = E('div', { class: 'studio-archive-grid' });
@@ -318,6 +323,7 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
       if (added) cur.add(studio.id); else cur.delete(studio.id);
       const saved = await ctx.savePrefs({ ...ctx.getPrefs(), favorites: [...cur] });
       if (saved) {
+        archiveDrawerOpen = true;
         ctx.render();
         ctx.toast(added ? `‘${studio.name}’을 관심 스튜디오에 추가했습니다.` : `‘${studio.name}’ 관심 표시를 해제했습니다.`);
       }
@@ -393,7 +399,7 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
   };
 
   draw();
-  return E('details', { class: 'disclosure studio-archive-drawer', 'aria-label': '보관된 전체 스튜디오 참고 자료' },
+  const drawer = E('details', { class: 'disclosure studio-archive-drawer', 'aria-label': '보관된 전체 스튜디오 참고 자료' },
     E('summary', {}, `📚 보관된 전체 스튜디오 참고 자료 보기 (${allStudios.length}곳 · 대표 샘플 ${allStudios.length * 2}장)`),
     E('div', { class: 'studio-archive-body' },
       E('p', { class: 'small muted' }, '확정 전 검토했던 전체 30개 스튜디오의 대표 샘플(60장), 장단점, 추가금 및 제공 연락처 출처 한계(공동 번호·지점 미구분 포함)를 그대로 보존하고 있습니다. 개인 포토 앨범과는 분리됩니다.'),
@@ -402,6 +408,9 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
         chipBar,
         countEl),
       listWrap));
+  drawer.open = archiveDrawerOpen;
+  drawer.addEventListener('toggle', () => { archiveDrawerOpen = drawer.open; });
+  return drawer;
 }
 
 export function renderStudios(ctx) {

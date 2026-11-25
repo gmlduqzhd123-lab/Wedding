@@ -1,4 +1,4 @@
-import { safeUrl } from './content.js?v=wedding-features-58';
+import { safeUrl } from './content.js?v=wedding-features-59';
 
 export const $ = selector => document.querySelector(selector);
 

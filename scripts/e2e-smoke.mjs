@@ -54,6 +54,7 @@ const chrome = spawn(chromeBin, [
   '--no-sandbox',
   '--disable-gpu',
   '--disable-dev-shm-usage',
+  '--autoplay-policy=no-user-gesture-required',
   `--remote-debugging-port=${CDP_PORT}`,
   `--user-data-dir=${userDataDir}`,
   'about:blank'
@@ -109,7 +110,7 @@ class CDP {
     });
   }
   async eval(expr) {
-    const res = await this.send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
+    const res = await this.send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true, userGesture: true });
     if (res.exceptionDetails) throw new Error(res.exceptionDetails.text + ' ' + (res.exceptionDetails.exception?.description || ''));
     return res.result.value;
   }
@@ -186,6 +187,15 @@ try {
   assert(!requestedUrls.some(u => u.includes('/data/site.json')), 'Guest mode must NOT load full site.json');
   assert(!requestedUrls.some(u => u.includes('planner.css')), 'Guest mode must NOT load planner.css');
   assert(!requestedUrls.some(u => u.includes('charts.js') || u.includes('search-ui.js') || u.includes('planning.js') || u.includes('preferences.js') || u.includes('home-dashboard-ui.js') || u.includes('manager-ui.js') || u.includes('studios.json')), 'Guest mode must NOT load planner JS or studios.json');
+  const petalsBtnText = await cdp.eval(`document.querySelector('.invitation-petals-btn')?.textContent?.trim()`);
+  const textBtnText = await cdp.eval(`document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)')?.textContent?.trim()`);
+  assert(petalsBtnText && petalsBtnText.includes('🌸'), `Petals button must show flower label, got: ${petalsBtnText}`);
+  assert.equal(textBtnText, '가+ 크게', `Large-text button must show 가+ 크게, got: ${textBtnText}`);
+  assert.equal(await cdp.eval(`document.querySelector('.invitation-bgm-preset-btn')?.hidden`), true, 'BGM preset chip hidden until BGM starts');
+  await cdp.eval(`document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)').click()`);
+  assert.equal(await cdp.eval(`document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)')?.textContent?.trim()`), '가- 보통', 'Large-text click updates large-text label only');
+  assert(await cdp.eval(`document.querySelector('.invitation-petals-btn')?.textContent?.includes('🌸')`), 'Large-text click must NOT overwrite petals button');
+  await cdp.eval(`document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)').click()`);
   const petalsBefore = await cdp.eval(`document.querySelector('.invitation-petals-layer').hidden`);
   await cdp.eval(`document.querySelector('.invitation-petals-btn').click()`);
   const petalsAfter = await cdp.eval(`document.querySelector('.invitation-petals-layer').hidden`);
@@ -194,7 +204,7 @@ try {
   assert(dockTargets.includes('inv-sec-schedule') && dockTargets.includes('inv-sec-location'), 'Guest quick dock must include Scroll-Spy targets');
   assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, 'Guest mobile zero overflow');
   await cdp.eval(`localStorage.removeItem('wedding:v1:theme')`);
-  console.log('E2E PASS 1/8: Guest lightweight boot, dark-theme immunity, petals, Scroll-Spy dock, 390px OK');
+  console.log('E2E PASS 1/8: Guest lightweight boot, dark-theme immunity, petals/text isolation, clean topbar, 390px OK');
 
   // 2. Desktop planner: Home scroll diet, Dark Theme + FOUC root class persistence, Global Search navigation
   await setViewport(1280, 900);
@@ -332,15 +342,24 @@ try {
   await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer'))`);
   await cdp.eval(`document.querySelector('.studio-archive-drawer summary').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 30`);
+  await cdp.eval(`document.querySelector('.studio-archive-card button[aria-pressed]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.studio-archive-drawer')?.open === true && document.querySelector('.studio-archive-card button[aria-pressed]')?.getAttribute('aria-pressed') === 'true'`);
   await cdp.eval(`(() => { const inp = document.querySelector('#studio-archive-search'); inp.value = '포에버마인'; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 2`);
-  console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call mode, 30-studio archive search OK');
+  console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call mode, 30-studio archive persistence & search OK');
 
-  // 7. Invitation BGM preset cycling + live KakaoTalk OG preview + Draft save -> reload -> diff -> revert to public
+  // 7. Dark-mode topbar contrast + BGM play-reveal preset cycling + live KakaoTalk OG preview + Draft save/reload/diff/revert
   await cdp.eval(`location.hash = '#/invitation'`);
-  await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent === '예식 정보 편집') && Boolean(document.querySelector('.invitation-bgm-preset-btn'))`);
+  await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent === '예식 정보 편집') && Boolean(document.querySelector('.invitation-bgm-btn'))`);
+  const darkBtnBg = await cdp.eval(`getComputedStyle(document.querySelector('.invitation-bgm-btn')).backgroundColor`);
+  assert.equal(darkBtnBg, 'rgb(28, 36, 31)', `Dark-mode invitation BGM button must have dark surface, got: ${darkBtnBg}`);
+  assert.equal(await cdp.eval(`document.querySelector('.invitation-bgm-preset-btn')?.hidden`), true, 'BGM preset button hidden while paused');
+  await cdp.eval(`document.querySelector('.invitation-bgm-btn').click()`);
+  await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.hidden === false`);
   await cdp.eval(`document.querySelector('.invitation-bgm-preset-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.textContent.includes('오르골')`);
+  await cdp.eval(`document.querySelector('.invitation-bgm-btn').click()`);
+  await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.hidden === true`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '예식 정보 편집').click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.kakao-og-bubble'))`);
   await cdp.eval(`(() => {

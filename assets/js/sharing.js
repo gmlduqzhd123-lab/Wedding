@@ -1,6 +1,6 @@
-import { formatDate } from './content.js?v=wedding-features-58';
+import { formatDate } from './content.js?v=wedding-features-59';
 export const PUBLIC_URL='https://gmlduqzhd123-lab.github.io/Wedding/?view=guest';
-export const SHARE_IMAGE_URL='https://gmlduqzhd123-lab.github.io/Wedding/assets/share-card.png?v=wedding-features-58';
+export const SHARE_IMAGE_URL='https://gmlduqzhd123-lab.github.io/Wedding/assets/share-card.png?v=wedding-features-59';
 export function shareMetadata(content) {
   const info=content.invitation;
   const names=[info.partner1.trim(),info.partner2.trim()].filter(Boolean).join(' & ');

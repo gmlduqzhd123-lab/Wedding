@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-58';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-58';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-58';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-58';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-58';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-59';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-59';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-59';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-59';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-59';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';
@@ -191,15 +191,17 @@ export function openManager(ctx) {
   const isDraft = ctx.getIsDraft();
   const draftRevision = ctx.getDraftRevision();
   const baseRevision = ctx.getBaseRevision();
+  const ROLLBACK_KEY = 'wedding:v1:prefRollback';
   const managerBase = structuredClone(content);
   const managerRaw = ctx.readStorage(ctx.DRAFT_KEY);
   const prefRaw = ctx.readStorage(ctx.PREF_KEY);
+  const rollbackRaw = ctx.readStorage(ROLLBACK_KEY);
   const byteLen = str => (str ? new TextEncoder().encode(str).length : 0);
-  const draftBytes = byteLen(managerRaw), prefBytes = byteLen(prefRaw), totalBytes = draftBytes + prefBytes;
+  const draftBytes = byteLen(managerRaw), prefBytes = byteLen(prefRaw), rollbackBytes = byteLen(rollbackRaw);
+  const totalBytes = draftBytes + prefBytes + rollbackBytes;
   const maxQuota = 5 * 1024 * 1024, pct = Math.min(100, Math.max(totalBytes > 0 ? 1 : 0, Math.round((totalBytes / maxQuota) * 100)));
   const fmtSize = b => (b >= 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(2)} MB` : `${(b / 1024).toFixed(1)} KB`);
 
-  const ROLLBACK_KEY = 'wedding:v1:prefRollback';
   const readRollback = () => {
     try {
       const parsed = JSON.parse(localStorage.getItem(ROLLBACK_KEY) || 'null');
@@ -364,7 +366,7 @@ export function openManager(ctx) {
   const rollbackSection = rollbackSnap
     ? E('section', { class: 'manager-section rollback-snap-section', 'aria-label': '직전 개인 설정 롤백 스냅샷' },
       E('h3', {}, '↩ 직전 상태 빠른 복구 (자동 롤백 스냅샷)'),
-      E('p', { class: 'small muted' }, `${rollbackSnap.reason} 시점(${ctx.formatBackupTime(rollbackSnap.savedAt)})의 개인 설정이 이 기기에 자동 보관되어 있습니다.`),
+      E('p', { class: 'small muted' }, `${rollbackSnap.reason} 시점(${ctx.formatBackupTime(rollbackSnap.savedAt)} · 약 ${fmtSize(rollbackBytes)})의 개인 설정이 이 기기에 자동 보관되어 있습니다.`),
       E('div', { class: 'manager-actions' },
         button('↩ 직전 상태로 되돌리기', async () => {
           const ok = await ctx.confirmAction({
@@ -379,6 +381,18 @@ export function openManager(ctx) {
             ctx.closeDialog(); ctx.render();
             ctx.toast('직전 롤백 스냅샷으로 개인 설정을 복구했습니다.');
           }
+        }, 'button quiet'),
+        button('스냅샷 비우기', async () => {
+          const ok = await ctx.confirmAction({
+            title: '롤백 스냅샷 비우기',
+            message: '자동 보관된 직전 롤백 스냅샷을 삭제해 저장 공간을 확보할까요? 현재 개인 설정은 유지됩니다.',
+            confirmLabel: '스냅샷 삭제',
+            danger: true
+          });
+          if (!ok) return;
+          try { localStorage.removeItem(ROLLBACK_KEY); } catch {}
+          ctx.closeDialog();
+          ctx.toast('롤백 스냅샷을 비웠습니다.');
         }, 'button quiet')))
     : null;
 
@@ -386,7 +400,7 @@ export function openManager(ctx) {
     E('p', { class: 'form-note' }, '공개본은 저장소의 콘텐츠입니다. 여기서 편집한 내용은 이 기기에만 저장되며 자동으로 공개되지 않습니다.'),
     E('section', { class: 'manager-section storage-meter-section' },
       E('h3', {}, '브라우저 저장 공간 현황'),
-      E('p', { class: 'small muted' }, `현재 사용량 약 ${fmtSize(totalBytes)} / 권장 한도 5.00 MB (${pct}%) · 초안 ${fmtSize(draftBytes)} · 개인 설정·메모 ${fmtSize(prefBytes)}`),
+      E('p', { class: 'small muted' }, `현재 사용량 약 ${fmtSize(totalBytes)} / 권장 한도 5.00 MB (${pct}%) · 초안 ${fmtSize(draftBytes)} · 개인 설정·메모 ${fmtSize(prefBytes)}${rollbackBytes ? ` · 롤백 스냅샷 ${fmtSize(rollbackBytes)}` : ''}`),
       E('div', { class: 'checklist-progress-track storage-meter-track', 'aria-hidden': 'true' },
         E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` })),
       pct >= 70 ? E('p', { class: 'form-note warning' }, '⚠️ 저장 공간 사용량이 70%를 넘었습니다. 앨범 사진이 많다면 브라우저에 직접 넣는 대신 저장소에서 npm run photos로 웹용 사본을 만들어 연결하면 용량을 크게 줄일 수 있습니다.') : null),

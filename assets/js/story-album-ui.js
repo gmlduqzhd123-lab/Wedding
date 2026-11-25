@@ -1,5 +1,5 @@
-import { formatDate } from './content.js?v=wedding-features-58';
-import { E, button, image } from './dom.js?v=wedding-features-58';
+import { formatDate } from './content.js?v=wedding-features-59';
+import { E, button, image } from './dom.js?v=wedding-features-59';
 
 let storySort = 'asc';
 

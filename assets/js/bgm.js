@@ -1,4 +1,4 @@
-import { E } from './dom.js?v=wedding-features-58';
+import { E } from './dom.js?v=wedding-features-59';
 
 export const BGM_PRESETS = [
   {
@@ -86,6 +86,7 @@ export function syncBgmButtonUi() {
   const preset = getBgmPreset();
   const presetBtn = document.querySelector('.invitation-bgm-preset-btn');
   if (presetBtn) {
+    presetBtn.hidden = !bgmPlaying;
     presetBtn.textContent = `🎼 ${preset.shortLabel} ↻`;
     presetBtn.setAttribute('aria-label', `배경음악 분위기 전환 (현재: ${preset.label})`);
     presetBtn.title = `배경음악 곡 변경 · 현재: ${preset.label}`;
@@ -93,6 +94,7 @@ export function syncBgmButtonUi() {
   const vol = getBgmVolume();
   const volBtn = document.querySelector('.invitation-bgm-vol-btn');
   if (volBtn) {
+    volBtn.hidden = !bgmPlaying;
     volBtn.textContent = vol.icon;
     volBtn.setAttribute('aria-label', `배경음악 음량 조절 (현재: ${vol.label})`);
     volBtn.title = `음량: ${vol.label} (누르면 변경)`;
@@ -233,20 +235,24 @@ export function renderInvitationBgmButton(notify) {
 export function renderInvitationBgmControls(notify) {
   const preset = getBgmPreset();
   const vol = getBgmVolume();
+  const presetBtn = E('button', {
+    type: 'button',
+    class: 'invitation-bgm-preset-btn',
+    'aria-label': `배경음악 분위기 전환 (현재: ${preset.label})`,
+    title: `배경음악 곡 변경 · 현재: ${preset.label}`,
+    onclick: () => cycleBgmPreset(notify)
+  }, `🎼 ${preset.shortLabel} ↻`);
+  presetBtn.hidden = !bgmPlaying;
+  const volBtn = E('button', {
+    type: 'button',
+    class: 'invitation-bgm-vol-btn',
+    'aria-label': `배경음악 음량 조절 (현재: ${vol.label})`,
+    title: `음량: ${vol.label} (누르면 변경)`,
+    onclick: () => setBgmVolume(bgmVolumeIdx + 1, notify)
+  }, vol.icon);
+  volBtn.hidden = !bgmPlaying;
   return E('div', { class: 'invitation-bgm-controls', role: 'group', 'aria-label': '청첩장 배경음악 제어' },
     renderInvitationBgmButton(notify),
-    E('button', {
-      type: 'button',
-      class: 'invitation-bgm-preset-btn',
-      'aria-label': `배경음악 분위기 전환 (현재: ${preset.label})`,
-      title: `배경음악 곡 변경 · 현재: ${preset.label}`,
-      onclick: () => cycleBgmPreset(notify)
-    }, `🎼 ${preset.shortLabel} ↻`),
-    E('button', {
-      type: 'button',
-      class: 'invitation-bgm-vol-btn',
-      'aria-label': `배경음악 음량 조절 (현재: ${vol.label})`,
-      title: `음량: ${vol.label} (누르면 변경)`,
-      onclick: () => setBgmVolume(bgmVolumeIdx + 1, notify)
-    }, vol.icon));
+    presetBtn,
+    volBtn);
 }

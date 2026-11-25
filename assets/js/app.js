@@ -1,10 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-58';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-58';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-58';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-58';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-58';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-58';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-58';
+import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-59';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-59';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-59';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-59';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-59';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-59';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-59';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
 const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', BACKUP_META_KEY = 'wedding:v1:backupMeta', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
@@ -31,18 +31,18 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-58'),
-  storage: () => import('./storage.js?v=wedding-features-58'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-58'),
-  manager: () => import('./manager-ui.js?v=wedding-features-58'),
-  studios: () => import('./studio-ui.js?v=wedding-features-58'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-58'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-58'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-58'),
-  tips: () => import('./planning-ui.js?v=wedding-features-58'),
-  editor: () => import('./editor-ui.js?v=wedding-features-58'),
-  search: () => import('./search-ui.js?v=wedding-features-58'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-58')
+  preferences: () => import('./preferences.js?v=wedding-features-59'),
+  storage: () => import('./storage.js?v=wedding-features-59'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-59'),
+  manager: () => import('./manager-ui.js?v=wedding-features-59'),
+  studios: () => import('./studio-ui.js?v=wedding-features-59'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-59'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-59'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-59'),
+  tips: () => import('./planning-ui.js?v=wedding-features-59'),
+  editor: () => import('./editor-ui.js?v=wedding-features-59'),
+  search: () => import('./search-ui.js?v=wedding-features-59'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-59')
 };
 
 function loadModule(key) {
@@ -179,7 +179,7 @@ function canShareBackupFiles() {
 }
 function syncLargeTextUi() {
   document.body.classList.toggle('is-large-text', largeTextMode);
-  const btn = document.querySelector('.invitation-text-btn');
+  const btn = document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)');
   if (btn) {
     btn.textContent = largeTextMode ? '가- 보통' : '가+ 크게';
     btn.setAttribute('aria-pressed', String(largeTextMode));
@@ -458,6 +458,19 @@ function moduleCtx() {
     openEditor: (type, item) => openEditor(type, item),
     focusTrip,
     focusRecord,
+    focusStudioArchive: query => {
+      if (guestMode || currentRoute() !== 'studios') return;
+      loadModule('studios').then(mod => {
+        mod.openStudioArchiveSearch?.(query);
+        if (currentRoute() === 'studios') {
+          render();
+          setTimeout(() => {
+            const drawer = main.querySelector('.studio-archive-drawer');
+            drawer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 40);
+        }
+      }).catch(() => {});
+    },
     recordActions,
     copyTextToClipboard,
     copyVenueAddress,
@@ -1307,7 +1320,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-58')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-59')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {
