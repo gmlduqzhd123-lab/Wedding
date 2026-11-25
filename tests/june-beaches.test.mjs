@@ -27,7 +27,7 @@ test('thirty Incheon direct-flight beach candidates (5 FIT + 25 packages) satisf
   assert.equal(data.invitation.partner1,'김희엽');assert.equal(data.invitation.partner2,'유미혜');
   assert.equal(data.invitation.address,'전라남도 순천시 서면 압곡길 94 (압곡리 607)');
   assert.equal(data.invitation.mapUrl,'https://map.naver.com/p/search/%EC%88%9C%EC%B2%9C%EC%95%84%EB%AA%A8%EB%A5%B4%EC%9B%A8%EB%94%A9%EC%BB%A8%EB%B2%A4%EC%85%98');
-  assert.equal(data.invitation.message,'');
+  assert(data.invitation.message.trim().length > 0 && data.invitation.message.includes('6월'));
 });
 
 test('research provenance and safe source links survive round trips and reject malformed imports',()=>{
