@@ -3268,4 +3268,357 @@ body.is-dark-theme:not(.is-guest-mode) .confirm-dialog {
   }
 }
 
+/* ===== Round 4: Settlement, Batch Thank-You, Live Cue Utilities, Cash Denom, Studio Archive & Rollback ===== */
+.budget-net-settlement {
+  margin: 14px 0 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--olive-soft) 0%, var(--surface) 100%);
+  border: 1px solid var(--olive-line);
+  display: grid;
+  gap: 12px;
+}
+.budget-net-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.budget-net-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.budget-net-stat {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+}
+.budget-net-stat strong {
+  font-family: var(--display);
+  font-size: 1.08rem;
+  color: var(--ink);
+}
+.budget-net-stat.is-highlight {
+  background: var(--rose-soft);
+  border-color: var(--rose-line);
+}
+.budget-net-stat.is-highlight.is-surplus {
+  background: var(--olive-soft);
+  border-color: var(--olive-line);
+}
+.thankyou-progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.batch-thankyou-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.batch-thankyou-recipient {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.batch-thankyou-done {
+  text-align: center;
+  padding: 20px 12px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+.live-cue-utility-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.live-cue-font-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.live-cue-font-pct {
+  min-width: 40px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.live-cue-wake-btn.is-active {
+  background: var(--olive);
+  border-color: var(--olive);
+  color: #ffffff;
+}
+.live-cue-stage-badge {
+  margin-left: auto;
+}
+.cash-denom-box {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--olive-line);
+  display: grid;
+  gap: 10px;
+}
+.cash-denom-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.cash-denom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.photo-call-board {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+.photo-call-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.photo-call-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.photo-call-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.photo-call-btn:hover {
+  border-color: var(--olive);
+  background: var(--olive-soft);
+}
+.photo-call-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: var(--olive-soft);
+  color: var(--olive-dark);
+  border: 1px solid var(--olive-line);
+}
+.photo-call-item.is-done .photo-call-btn {
+  background: var(--olive-soft);
+  border-color: var(--olive-line);
+  opacity: 0.78;
+}
+.photo-call-item.is-done .photo-call-check {
+  background: var(--olive);
+  color: #ffffff;
+  border-color: var(--olive);
+}
+.photo-call-item.is-done .photo-call-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.studio-archive-drawer {
+  margin-top: 22px;
+}
+.studio-archive-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+.studio-archive-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.studio-archive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
+}
+.studio-archive-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--card-shadow);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.studio-archive-card.is-confirmed {
+  border-color: var(--olive);
+  background: linear-gradient(180deg, var(--olive-soft) 0%, var(--surface) 42%);
+}
+.studio-archive-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.studio-archive-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.studio-archive-thumbs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.studio-archive-thumb-btn {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: var(--paper);
+}
+.studio-archive-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.studio-archive-dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 5px 10px;
+}
+.studio-archive-dl dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+.studio-archive-dl dd {
+  margin: 0;
+  color: var(--ink-soft);
+  word-break: keep-all;
+}
+.studio-archive-memo {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.pref-merge-preview-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1.5px solid var(--olive-line);
+  display: grid;
+  gap: 10px;
+}
+.pref-merge-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.rollback-snap-section {
+  background: var(--surface-tint);
+  border-color: var(--olive-line);
+}
+@media (max-width: 720px) {
+  .budget-net-grid {
+    grid-template-columns: 1fr;
+  }
+  .live-cue-stage-badge {
+    margin-left: 0;
+  }
+  .studio-archive-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark Botanical Theme Overrides for Round 4 Components */
+html.is-dark-theme .budget-net-settlement,
+body.is-dark-theme .budget-net-settlement {
+  background: linear-gradient(135deg, rgba(64, 96, 74, 0.24) 0%, #1c241f 100%);
+  border-color: #2f4135;
+}
+html.is-dark-theme .budget-net-stat,
+body.is-dark-theme .budget-net-stat,
+html.is-dark-theme .batch-thankyou-recipient,
+body.is-dark-theme .batch-thankyou-recipient,
+html.is-dark-theme .live-cue-utility-bar,
+body.is-dark-theme .live-cue-utility-bar,
+html.is-dark-theme .cash-denom-box,
+body.is-dark-theme .cash-denom-box,
+html.is-dark-theme .photo-call-btn,
+body.is-dark-theme .photo-call-btn,
+html.is-dark-theme .studio-archive-card,
+body.is-dark-theme .studio-archive-card,
+html.is-dark-theme .pref-merge-preview-card,
+body.is-dark-theme .pref-merge-preview-card,
+html.is-dark-theme .rollback-snap-section,
+body.is-dark-theme .rollback-snap-section {
+  background: #1c241f;
+  border-color: #2c3830;
+}
+html.is-dark-theme .budget-net-stat.is-highlight,
+body.is-dark-theme .budget-net-stat.is-highlight {
+  background: rgba(201, 122, 112, 0.14);
+  border-color: rgba(201, 122, 112, 0.34);
+}
+html.is-dark-theme .budget-net-stat.is-highlight.is-surplus,
+body.is-dark-theme .budget-net-stat.is-highlight.is-surplus,
+html.is-dark-theme .photo-call-item.is-done .photo-call-btn,
+body.is-dark-theme .photo-call-item.is-done .photo-call-btn {
+  background: rgba(88, 138, 102, 0.2);
+  border-color: rgba(126, 178, 141, 0.36);
+}
+html.is-dark-theme .studio-archive-card.is-confirmed,
+body.is-dark-theme .studio-archive-card.is-confirmed {
+  background: linear-gradient(180deg, rgba(88, 138, 102, 0.2) 0%, #1c241f 42%);
+  border-color: #5b8a68;
+}
+html.is-dark-theme .invitation-bgm-preset-btn,
+body.is-dark-theme .invitation-bgm-preset-btn,
+html.is-dark-theme .invitation-bgm-vol-btn,
+body.is-dark-theme .invitation-bgm-vol-btn,
+html.is-dark-theme .invitation-account-card,
+body.is-dark-theme .invitation-account-card {
+  background: #1c241f;
+  border-color: #2f4135;
+  color: #e4ede6;
+}
+
+
 

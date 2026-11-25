@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-57';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-57';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-57';
-import { quoteReview } from './travel.js?v=wedding-features-57';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-57';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-58';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-58';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-58';
+import { quoteReview } from './travel.js?v=wedding-features-58';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-58';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -10,11 +10,12 @@ import {
   venueEstimate,
   weddingBudgetSummary,
   sdmEstimate,
-  guestListSummary
-} from './planning.js?v=wedding-features-57';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-57';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-57';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-57';
+  guestListSummary,
+  netWeddingCostSummary
+} from './planning.js?v=wedding-features-58';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-58';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-58';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-58';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
@@ -139,6 +140,10 @@ function renderVenueSimulator(ctx) {
   const hasSim = sim && (sim.mealPrice !== null || sim.guestCount !== null || sim.minGuarantee !== null || sim.hallFee !== null || sim.deposit !== null || sim.note);
   const meal = sim?.mealPrice ?? null, hall = sim?.hallFee ?? null;
   const state = venueEstimate(sim), { billedGuests, mealTotal, total: grandTotal, balance } = state;
+  const gSummary = guestListSummary(prefs.guestList || []);
+  const syncGuestsTarget = gSummary.attendingHeadcount > 0 ? gSummary.attendingHeadcount : gSummary.possibleHeadcount;
+  const syncGuestsLabel = gSummary.attendingHeadcount > 0 ? '확정' : '예상';
+  const showGuestSync = gSummary.totalRecords > 0 && syncGuestsTarget > 0 && sim?.guestCount !== syncGuestsTarget;
   return E('div', { class: 'venue-sim-box' },
     E('div', { class: 'venue-sim-head' },
       E('div', {},
@@ -146,6 +151,15 @@ function renderVenueSimulator(ctx) {
         E('p', { class: 'small muted' }, hasSim ? (sim.note || '입력값으로 계산한 시뮬레이션입니다. 미입력 항목은 0원으로 계산하지 않습니다.') : '1인 식대, 예상 하객 수, 보증인원, 대관료·계약금을 입력해 웨딩홀 총액을 시뮬레이션해 보세요.')),
       E('div', { class: 'page-actions' },
         button(hasSim ? '시뮬레이터 수정' : '시뮬레이터 입력', () => openVenueSimulator(ctx), 'button quiet'),
+        showGuestSync ? button(`👥 하객 ${syncGuestsLabel} ${syncGuestsTarget}명 반영`, () => {
+          const curSim = structuredClone(ctx.getPrefs().venueSim || { mealPrice: null, guestCount: null, minGuarantee: null, hallFee: null, deposit: null, note: '' });
+          curSim.guestCount = syncGuestsTarget;
+          ctx.queuePreference(async () => {
+            const saved = await ctx.savePrefs({ ...ctx.getPrefs(), venueSim: curSim });
+            if (saved) { ctx.render(); ctx.toast(`하객 명단 ${syncGuestsLabel} 인원(${syncGuestsTarget}명)을 예상 하객 수에 반영했습니다.`); }
+            return saved;
+          });
+        }, 'button quiet') : null,
         hasSim && state.complete ? button('계산 총액을 웨딩홀 예산에 반영', () => {
           const nextPlan = structuredClone(ctx.getPrefs().budgetPlan || {});
           const curVenue = nextPlan.venue || { planned: null, actual: null, note: '' };
@@ -413,9 +427,31 @@ function renderBudgetCalculator(ctx) {
     return { key, title, cls, desc, planned: item.planned ?? null, actual: item.actual ?? null, note: item.note || '' };
   });
   const budget = weddingBudgetSummary(plan, WEDDING_BUDGET_CATEGORIES.map(([key]) => key));
+  const net = netWeddingCostSummary(plan, ctx.getPrefs().giftLedger || [], WEDDING_BUDGET_CATEGORIES.map(([key]) => key));
   const totalPlanned = budget.planned.known;
   const hasAny = rows.some(r => r.planned !== null || r.actual !== null || r.note);
   const diff = budget.difference;
+  const netSettlementCard = (net.giftTotal > 0 || (hasAny && net.actualKnown !== null))
+    ? E('div', { class: 'budget-net-settlement', 'aria-label': '축의금 반영 실제 순부담 정산' },
+      E('div', { class: 'budget-net-head' },
+        E('div', {},
+          E('strong', {}, '💳 축의금 반영 실부담 정산 (실제 지출 − 축의금 합계)'),
+          E('p', { class: 'small muted' }, net.giftCount > 0
+            ? `축의금 장부 ${net.giftCount}건 합계가 자동 반영됩니다.${net.actualComplete ? '' : ' (실제 지출은 입력된 항목 소계 기준)'}`
+            : '축의금 장부에 기록을 입력하면 실제 지출에서 축의금을 뺀 순부담액과 충당률이 자동 계산됩니다.')),
+        button('축의금 장부 열기 →', () => { location.hash = '#/ceremony/gifts'; }, 'button quiet small-copy-btn')),
+      E('div', { class: 'budget-net-grid' },
+        E('div', { class: 'budget-net-stat' },
+          E('span', { class: 'small muted' }, net.actualComplete ? '실제 지출 총액' : '실제 지출 소계'),
+          E('strong', {}, net.actualKnown === null ? '미입력' : won(net.actualKnown))),
+        E('div', { class: 'budget-net-stat' },
+          E('span', { class: 'small muted' }, `축의금 합계 (${net.giftCount}건)`),
+          E('strong', {}, won(net.giftTotal))),
+        E('div', { class: 'budget-net-stat is-highlight' + (net.netActual !== null && net.netActual <= 0 ? ' is-surplus' : '') },
+          E('span', { class: 'small muted' }, net.netActual !== null && net.netActual < 0 ? '축의금 차감 후 잉여' : '실제 순부담액'),
+          E('strong', {}, net.netActual === null ? '지출 입력 필요' : (net.netActual < 0 ? `+${won(-net.netActual)}` : won(net.netActual))),
+          net.coveragePct !== null ? E('span', { class: 'small muted' }, `축의금 충당률 ${net.coveragePct}%`) : null)))
+    : null;
   return E('section', { class: 'wedding-budget-calc', 'aria-labelledby': 'wedding-budget-title' },
     E('div', { class: 'section-heading' },
       E('div', {},
@@ -429,6 +465,7 @@ function renderBudgetCalculator(ctx) {
         E('div', { class: 'budget-stat-card' }, E('span', { class: 'small muted' }, `목표 예산 ${budget.planned.complete ? '합계' : '입력 소계'}`), E('strong', {}, totalPlanned === null ? '미입력' : won(totalPlanned))),
         E('div', { class: 'budget-stat-card' }, E('span', { class: 'small muted' }, `실제 지출·계약 ${budget.actual.complete ? '합계' : '입력 소계'}`), E('strong', {}, budget.actual.known === null ? '미입력' : won(budget.actual.known))),
         E('div', { class: 'budget-stat-card' + (diff !== null && diff < 0 ? ' over' : '') }, E('span', { class: 'small muted' }, '예산 대비 잔액·차액'), E('strong', {}, diff === null ? '미확인' : diff >= 0 ? `여유 ${won(diff)}` : `초과 ${won(-diff)}`))),
+      netSettlementCard,
       E('p', { class: 'form-note' }, `목표 ${budget.planned.entered}/6개 · 실제·견적 ${budget.actual.entered}/6개 입력. 미입력: 목표 ${budget.planned.missing}개 · 실제·견적 ${budget.actual.missing}개. 빈칸은 0원이 아닙니다. 6대 항목의 목표와 실제·견적이 모두 입력되어야 차액을 계산합니다. 없는 비용은 확인 후 0을 입력해 주세요.`),
       renderBudgetDonutChart(rows, totalPlanned, budget.actual.known),
       totalPlanned > 0 ? E('div', { class: 'trip-budget-visual' },
@@ -450,7 +487,8 @@ function renderBudgetCalculator(ctx) {
           E('dt', {}, '실제·견적'), E('dd', {}, r.actual === null ? '미입력' : won(r.actual))),
         r.note ? E('p', { class: 'small muted' }, r.note) : E('p', { class: 'small muted' }, r.desc)))))
       : E('div', { class: 'budget-empty-prompt' },
-        E('p', { class: 'small muted' }, '아직 입력한 결혼 예산 항목이 없습니다. 오른쪽 위의 ‘첫 예산표 작성하기’ 버튼을 눌러 신혼여행 계획예산과 웨딩홀·스드메 예산을 함께 정리해 보세요.')),
+        E('p', { class: 'small muted' }, '아직 입력한 결혼 예산 항목이 없습니다. 오른쪽 위의 ‘첫 예산표 작성하기’ 버튼을 눌러 신혼여행 계획예산과 웨딩홀·스드메 예산을 함께 정리해 보세요.'),
+        netSettlementCard),
     renderVenueSimulator(ctx),
     renderSdmSimulator(ctx));
 }

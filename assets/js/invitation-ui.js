@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, safeUrl } from './content.js?v=wedding-features-57';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-57';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-57';
-import { renderInvitationBgmButton } from './bgm.js?v=wedding-features-57';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-58';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-58';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-58';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-58';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-57';
+} from './invitation-card.js?v=wedding-features-58';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();
@@ -62,14 +62,27 @@ function renderAccountGroup(ctx, title, rawText) {
   if (!lines.length) return null;
   return E('details', { class: 'disclosure invitation-account-group' },
     E('summary', {}, title),
-    E('ul', { class: 'invitation-contacts-list' }, lines.map(line => {
-      const acct = extractAccountNumber(line, { allowPhoneLike: true });
-      const copyTarget = acct ? acct.display : line;
-      const copyNotice = acct ? `계좌번호(${acct.display})를 복사했습니다.` : '계좌 안내를 복사했습니다.';
-      return E('li', { class: 'invitation-contact-row' },
-        E('span', { class: 'contact-row-text' }, line),
+    E('ul', { class: 'invitation-contacts-list invitation-account-cards' }, lines.map(line => {
+      const parsed = parseAccountLine(line);
+      const hasParsedAcct = Boolean(parsed.account);
+      const copyTarget = hasParsedAcct ? parsed.account : line;
+      const copyNotice = hasParsedAcct
+        ? `${parsed.bank ? `${parsed.bank} ` : ''}계좌번호(${parsed.account})를 복사했습니다.`
+        : '계좌 안내를 복사했습니다.';
+      const infoBlock = hasParsedAcct
+        ? E('div', { class: 'account-card-meta' },
+          E('div', { class: 'account-card-head' },
+            parsed.bank ? E('span', { class: 'account-bank-badge' }, parsed.bank) : null,
+            parsed.holder ? E('strong', { class: 'account-holder-name' }, parsed.holder) : null),
+          E('span', { class: 'account-number-code' }, parsed.account))
+        : E('span', { class: 'contact-row-text' }, line);
+      return E('li', { class: 'invitation-contact-row invitation-account-card' },
+        infoBlock,
         E('div', { class: 'contact-row-actions' },
-          button(acct ? '계좌 복사' : '복사', () => ctx.copyTextToClipboard(copyTarget, copyNotice, '계좌번호 복사'), 'button quiet small-copy-btn')));
+          button(hasParsedAcct ? '계좌 복사' : '복사', () => ctx.copyTextToClipboard(copyTarget, copyNotice, '계좌번호 복사'), 'button quiet small-copy-btn'),
+          hasParsedAcct && (parsed.bank || parsed.holder)
+            ? button('전체 복사', () => ctx.copyTextToClipboard(line, '은행·예금주·계좌 안내를 복사했습니다.', '계좌 전체 복사'), 'button quiet small-copy-btn')
+            : null));
     })));
 }
 
@@ -384,7 +397,7 @@ export function renderInvitationView(ctx) {
         E('div', { class: 'invitation-topbar-tools' },
           ctx.renderPetalsButton(),
           ctx.renderLargeTextButton(),
-          renderInvitationBgmButton(ctx.toast))),
+          renderInvitationBgmControls(ctx.toast))),
       E('div', { class: 'invitation-title' }, '우리 두 사람, 결혼합니다'),
       E('p', { class: 'invitation-sub' }, 'With love, together'),
       renderInvitationHeroVisual(info, content.albums, ctx.openPhotos),

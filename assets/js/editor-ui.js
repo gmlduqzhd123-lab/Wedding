@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-57';
-import { safeUrl, formatDate } from './content.js?v=wedding-features-57';
-import { StorageConflict } from './storage.js?v=wedding-features-57';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-57';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-57';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-58';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-58';
+import { StorageConflict } from './storage.js?v=wedding-features-58';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-58';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-58';
 
 const fieldSpecs = {
   invitation: [
@@ -70,7 +70,14 @@ export async function shrinkPhoto(file) {
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  return canvas.toDataURL('image/jpeg', 0.78);
+  const jpegUrl = canvas.toDataURL('image/jpeg', 0.78);
+  try {
+    const webpUrl = canvas.toDataURL('image/webp', 0.8);
+    if (webpUrl.startsWith('data:image/webp;') && webpUrl.length < jpegUrl.length) {
+      return webpUrl;
+    }
+  } catch {}
+  return jpegUrl;
 }
 
 function createPhotoDropzone({ input, label, hint, multiple = false, onFiles }) {

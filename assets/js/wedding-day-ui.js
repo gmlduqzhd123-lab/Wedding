@@ -1,9 +1,20 @@
-import { E, button } from './dom.js?v=wedding-features-57';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-57';
-import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-57';
-import { weddingDaySummary } from './planning.js?v=wedding-features-57';
+import { E, button } from './dom.js?v=wedding-features-58';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-58';
+import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-58';
+import { weddingDaySummary, computeCashDenominations } from './planning.js?v=wedding-features-58';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
+const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
+let photoCallMode = false;
+function readPhotoCallChecked() {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(PHOTO_CALL_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch { return new Set(); }
+}
+function writePhotoCallChecked(set) {
+  try { sessionStorage.setItem(PHOTO_CALL_KEY, JSON.stringify([...set])); } catch {}
+}
 
 const STARTER_DAY_ROLES = [
   ['축의대(신랑 측)', '신랑 측 축의대 접수 · 식권 배부 (2명 권장)'],
@@ -372,71 +383,127 @@ export function renderWeddingDayOpsBoard(ctx) {
           button('+ 봉투 추가', () => openEnvelopeEditor(ctx), 'button'),
           button('✨ 기본 봉투 5종 채우기', addStarterEnvelopes, 'button quiet'))),
       envelopes.length
-        ? E('div', { class: 'ledger-list' }, envelopes.map(env => E('article', { class: 'ledger-row' + (env.ready ? ' is-settled' : '') },
-          E('div', { class: 'ledger-row-main' },
-            E('div', { class: 'ledger-row-title' },
-              E('span', { class: 'badge' }, env.payee),
-              E('strong', {}, env.recipient || env.payee)),
-            E('div', { class: 'home-item-metrics small' },
-              E('strong', {}, won(env.amount)),
-              env.note ? E('span', { class: 'muted' }, `· ${env.note}`) : null)),
-          E('div', { class: 'ledger-row-controls' },
-            E('button', {
-              type: 'button',
-              class: 'quick-cycle-btn ' + (env.ready ? 'is-done' : 'is-warn'),
-              onclick: () => toggleEnvelopeReady(env)
-            }, env.ready ? '✅ 준비 완료' : '☐ 미준비'),
-            button('수정', () => openEnvelopeEditor(ctx, env), 'button quiet small-copy-btn'),
-            button('삭제', () => {
-              ctx.queuePreference(async () => {
-                const latest = ctx.getPrefs().weddingDayEnvelopes || [];
-                const removedIndex = latest.findIndex(x => x.id === env.id);
-                if (removedIndex < 0) return true;
-                const snapshot = structuredClone(latest[removedIndex]);
-                const ok = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: latest.filter(x => x.id !== env.id) });
-                if (ok) {
-                  ctx.render();
-                  ctx.toast(`‘${env.recipient || env.payee}’ 봉투 항목을 삭제했습니다.`, {
-                    undoLabel: '되돌리기',
-                    onUndo: () => ctx.queuePreference(async () => {
-                      const cur = [...(ctx.getPrefs().weddingDayEnvelopes || [])];
-                      if (cur.some(x => x.id === snapshot.id)) return true;
-                      cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
-                      const restored = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: cur });
-                      if (restored) { ctx.render(); ctx.toast(`‘${snapshot.recipient || snapshot.payee}’ 봉투 항목을 복구했습니다.`); }
-                      return restored;
-                    })
-                  });
-                }
-                return ok;
-              });
-            }, 'text-button small')))))
+        ? (() => {
+          const denom = computeCashDenominations(envelopes);
+          const denomBox = denom.all.counted > 0
+            ? E('div', { class: 'cash-denom-box', 'aria-label': '은행 신권 권종별 필요 매수 계산' },
+              E('div', { class: 'cash-denom-head' },
+                E('strong', {}, '🏦 은행 신권 권종 계산기 (봉투별 5만·1만 원권 합산)'),
+                button('📋 은행 신권 메모 복사', () => {
+                  const a = denom.all, p = denom.pending;
+                  const lines = [
+                    `[본식 당일 신권 인출 메모]`,
+                    `· 전체 봉투 (${a.counted}건 · ${a.totalAmount.toLocaleString('ko-KR')}원): 5만 원권 ${a.fiftyK}장${a.tenK ? ` + 1만 원권 ${a.tenK}장` : ''}${a.remainder ? ` + 잔액 ${a.remainder.toLocaleString('ko-KR')}원` : ''}`,
+                    p.counted > 0
+                      ? `· 미준비 봉투 (${p.counted}건 · ${p.totalAmount.toLocaleString('ko-KR')}원): 5만 원권 ${p.fiftyK}장${p.tenK ? ` + 1만 원권 ${p.tenK}장` : ''}${p.remainder ? ` + 잔액 ${p.remainder.toLocaleString('ko-KR')}원` : ''}`
+                      : '· 모든 현금 봉투 준비 완료'
+                  ];
+                  ctx.copyTextToClipboard(lines.join('\n'), '은행 신권 인출 메모를 복사했습니다.', '은행 신권 메모');
+                }, 'button quiet small-copy-btn')),
+              E('div', { class: 'cash-denom-chips' },
+                E('span', { class: 'spec-chip direct' }, `전체: 5만 원권 ${denom.all.fiftyK}장${denom.all.tenK ? ` · 1만 원권 ${denom.all.tenK}장` : ''}${denom.all.remainder ? ` · 기타 ${denom.all.remainder.toLocaleString('ko-KR')}원` : ''}`),
+                denom.pending.counted > 0
+                  ? E('span', { class: 'spec-chip highlight' }, `미준비 인출 필요: 5만 원권 ${denom.pending.fiftyK}장${denom.pending.tenK ? ` · 1만 원권 ${denom.pending.tenK}장` : ''}${denom.pending.remainder ? ` · 기타 ${denom.pending.remainder.toLocaleString('ko-KR')}원` : ''}`)
+                  : E('span', { class: 'spec-chip direct' }, '✅ 미준비 현금 없음')))
+            : null;
+          return [denomBox, E('div', { class: 'ledger-list' }, envelopes.map(env => E('article', { class: 'ledger-row' + (env.ready ? ' is-settled' : '') },
+            E('div', { class: 'ledger-row-main' },
+              E('div', { class: 'ledger-row-title' },
+                E('span', { class: 'badge' }, env.payee),
+                E('strong', {}, env.recipient || env.payee)),
+              E('div', { class: 'home-item-metrics small' },
+                E('strong', {}, won(env.amount)),
+                env.note ? E('span', { class: 'muted' }, `· ${env.note}`) : null)),
+            E('div', { class: 'ledger-row-controls' },
+              E('button', {
+                type: 'button',
+                class: 'quick-cycle-btn ' + (env.ready ? 'is-done' : 'is-warn'),
+                onclick: () => toggleEnvelopeReady(env)
+              }, env.ready ? '✅ 준비 완료' : '☐ 미준비'),
+              button('수정', () => openEnvelopeEditor(ctx, env), 'button quiet small-copy-btn'),
+              button('삭제', () => {
+                ctx.queuePreference(async () => {
+                  const latest = ctx.getPrefs().weddingDayEnvelopes || [];
+                  const removedIndex = latest.findIndex(x => x.id === env.id);
+                  if (removedIndex < 0) return true;
+                  const snapshot = structuredClone(latest[removedIndex]);
+                  const ok = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: latest.filter(x => x.id !== env.id) });
+                  if (ok) {
+                    ctx.render();
+                    ctx.toast(`‘${env.recipient || env.payee}’ 봉투 항목을 삭제했습니다.`, {
+                      undoLabel: '되돌리기',
+                      onUndo: () => ctx.queuePreference(async () => {
+                        const cur = [...(ctx.getPrefs().weddingDayEnvelopes || [])];
+                        if (cur.some(x => x.id === snapshot.id)) return true;
+                        cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
+                        const restored = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: cur });
+                        if (restored) { ctx.render(); ctx.toast(`‘${snapshot.recipient || snapshot.payee}’ 봉투 항목을 복구했습니다.`); }
+                        return restored;
+                      })
+                    });
+                  }
+                  return ok;
+                });
+              }, 'text-button small')))))];
+        })()
         : E('div', { class: 'no-results-box' },
           E('p', { class: 'no-results' }, '아직 등록된 현금 봉투 항목이 없습니다. ‘✨ 기본 봉투 5종 채우기’로 시작해 보세요.'))),
 
-    E('article', { class: 'prenatal-card' },
-      E('div', { class: 'prenatal-card-head' },
-        E('div', {},
-          E('h3', {}, '3) 📸 본식 원판 사진 호명 순서표'),
-          E('p', { class: 'small muted' }, '폐회식 직후 가족·친지·친구 촬영 순서를 적어 두고 호명 도우미와 스냅 작가님께 공유하세요.')),
-        E('div', { class: 'prenatal-quick-actions' },
-          button('표준 순서 채우기', () => {
-            photoArea.value = DEFAULT_PHOTO_ORDER;
-            ctx.toast('순천아모르 표준 원판 촬영 순서를 채웠습니다. 수정 후 저장해 주세요.');
-          }, 'button quiet'))),
-      E('label', { class: 'field', for: photoArea.id }, '촬영 호명 순서 (최대 2,000자)', photoArea),
-      E('div', { class: 'page-actions prenatal-note-actions' },
-        button('💾 순서표 저장', () => {
-          const val = photoArea.value.trim();
-          if (val.length > 2000) { ctx.toast('순서표는 2,000자 이하로 입력해 주세요.', true); return; }
-          ctx.queuePreference(async () => {
-            const latest = ctx.getPrefs();
-            const next = { ...latest };
-            if (val) next.photoOrderNote = val; else delete next.photoOrderNote;
-            const ok = await ctx.savePrefs(next);
-            if (ok) { ctx.render(); ctx.toast(val ? '원판 촬영 순서표를 저장했습니다.' : '원판 촬영 순서표를 비웠습니다.'); }
-            return ok;
-          });
-        }, 'button'),
-        button('📋 순서표만 복사', () => ctx.copyTextToClipboard(photoArea.value.trim() || DEFAULT_PHOTO_ORDER, '원판 촬영 순서표를 복사했습니다.', '원판 순서표 복사'), 'button quiet'))));
+    (() => {
+      const effectiveText = (photoOrder || DEFAULT_PHOTO_ORDER).trim();
+      const photoLines = effectiveText.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const checkedLines = readPhotoCallChecked();
+      const donePhotoCount = photoLines.filter((_, idx) => checkedLines.has(String(idx))).length;
+      const callModeWrap = photoCallMode
+        ? E('div', { class: 'photo-call-board', 'aria-label': '현장 원판 촬영 호명 체크리스트' },
+          E('div', { class: 'photo-call-head' },
+            E('span', { class: 'spec-chip direct' }, `촬영 완료 ${donePhotoCount} / ${photoLines.length}컷`),
+            donePhotoCount > 0 ? button('↺ 체크 초기화', () => { writePhotoCallChecked(new Set()); ctx.render(); ctx.toast('원판 호명 체크를 초기화했습니다.'); }, 'button quiet small-copy-btn') : null),
+          E('ul', { class: 'photo-call-list' }, photoLines.map((line, idx) => {
+            const key = String(idx);
+            const isDone = checkedLines.has(key);
+            return E('li', { class: 'photo-call-item' + (isDone ? ' is-done' : '') },
+              E('button', {
+                type: 'button',
+                class: 'photo-call-btn',
+                'aria-pressed': String(isDone),
+                onclick: () => {
+                  const next = readPhotoCallChecked();
+                  if (next.has(key)) next.delete(key); else next.add(key);
+                  writePhotoCallChecked(next);
+                  ctx.render();
+                }
+              },
+              E('span', { class: 'photo-call-check', 'aria-hidden': 'true' }, isDone ? '✓' : String(idx + 1)),
+              E('span', { class: 'photo-call-text' }, line)));
+          })))
+        : null;
+      return E('article', { class: 'prenatal-card' },
+        E('div', { class: 'prenatal-card-head' },
+          E('div', {},
+            E('h3', {}, '3) 📸 본식 원판 사진 호명 순서표'),
+            E('p', { class: 'small muted' }, '폐회식 직후 가족·친지·친구 촬영 순서를 적어 두고 호명 도우미와 스냅 작가님께 공유하세요.')),
+          E('div', { class: 'prenatal-quick-actions' },
+            button(photoCallMode ? '✏️ 순서 편집 모드' : '✅ 현장 호명 체크 모드', () => { photoCallMode = !photoCallMode; ctx.render(); }, photoCallMode ? 'button quiet' : 'button'),
+            !photoCallMode ? button('표준 순서 채우기', () => {
+              photoArea.value = DEFAULT_PHOTO_ORDER;
+              ctx.toast('순천아모르 표준 원판 촬영 순서를 채웠습니다. 수정 후 저장해 주세요.');
+            }, 'button quiet') : null)),
+        callModeWrap || E('div', {},
+          E('label', { class: 'field', for: photoArea.id }, '촬영 호명 순서 (최대 2,000자)', photoArea),
+          E('div', { class: 'page-actions prenatal-note-actions' },
+            button('💾 순서표 저장', () => {
+              const val = photoArea.value.trim();
+              if (val.length > 2000) { ctx.toast('순서표는 2,000자 이하로 입력해 주세요.', true); return; }
+              ctx.queuePreference(async () => {
+                const latest = ctx.getPrefs();
+                const next = { ...latest };
+                if (val) next.photoOrderNote = val; else delete next.photoOrderNote;
+                const ok = await ctx.savePrefs(next);
+                if (ok) { ctx.render(); ctx.toast(val ? '원판 촬영 순서표를 저장했습니다.' : '원판 촬영 순서표를 비웠습니다.'); }
+                return ok;
+              });
+            }, 'button'),
+            button('📋 순서표만 복사', () => ctx.copyTextToClipboard(photoArea.value.trim() || DEFAULT_PHOTO_ORDER, '원판 촬영 순서표를 복사했습니다.', '원판 순서표 복사'), 'button quiet'))));
+    })());
 }

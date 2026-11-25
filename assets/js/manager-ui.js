@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-57';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-57';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-57';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-57';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-57';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-58';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-58';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-58';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-58';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-58';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';
@@ -199,44 +199,99 @@ export function openManager(ctx) {
   const maxQuota = 5 * 1024 * 1024, pct = Math.min(100, Math.max(totalBytes > 0 ? 1 : 0, Math.round((totalBytes / maxQuota) * 100)));
   const fmtSize = b => (b >= 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(2)} MB` : `${(b / 1024).toFixed(1)} KB`);
 
+  const ROLLBACK_KEY = 'wedding:v1:prefRollback';
+  const readRollback = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ROLLBACK_KEY) || 'null');
+      if (!parsed || typeof parsed !== 'object' || !parsed.preferences) return null;
+      return { savedAt: parsed.savedAt || 0, reason: String(parsed.reason || '직전 상태'), preferences: validatePreferences(parsed.preferences) };
+    } catch { return null; }
+  };
+  const saveRollback = (reason, snapshotPrefs) => {
+    try {
+      localStorage.setItem(ROLLBACK_KEY, JSON.stringify({ savedAt: Date.now(), reason, preferences: validatePreferences(snapshotPrefs) }));
+    } catch {}
+  };
+
   const mergeRadio = E('input', { type: 'radio', name: 'pref-import-mode', id: 'pref-import-merge', value: 'merge' });
   mergeRadio.checked = true;
   const replaceRadio = E('input', { type: 'radio', name: 'pref-import-mode', id: 'pref-import-replace', value: 'replace' });
   const personal = E('input', { type: 'file', accept: '.json,application/json', class: 'file-input', 'aria-label': '개인 메모·선택 백업 선택' });
+  const prefPreviewSlot = E('div', { class: 'pref-merge-preview-slot', 'aria-live': 'polite' });
+  let pendingPrefBackup = null;
+
+  const renderPrefImportPreview = () => {
+    if (!pendingPrefBackup) {
+      prefPreviewSlot.replaceChildren();
+      return;
+    }
+    const { incoming, filename } = pendingPrefBackup;
+    const isMerge = mergeRadio.checked;
+    const currentPrefs = ctx.readRawPrefs();
+    const merged = isMerge ? mergePreferences(currentPrefs, incoming) : incoming;
+    const diff = isMerge ? summarizePreferencesMerge(currentPrefs, merged) : null;
+    const chips = isMerge
+      ? [
+        diff.guestsAdded ? `하객 +${diff.guestsAdded}건` : '',
+        diff.giftsAdded ? `축의금 +${diff.giftsAdded}건` : '',
+        diff.schedulesAdded ? `업체 일정 +${diff.schedulesAdded}건` : '',
+        diff.homeItemsAdded ? `혼수 품목 +${diff.homeItemsAdded}건` : '',
+        diff.dayOpsAdded ? `당일 역할·봉투 +${diff.dayOpsAdded}건` : '',
+        diff.checksAdded ? `체크 +${diff.checksAdded}건` : '',
+        diff.customItemsAdded ? `직접 항목 +${diff.customItemsAdded}건` : '',
+        diff.favoritesAdded ? `관심 +${diff.favoritesAdded}건` : '',
+        diff.notesUpdated ? `메모 ${diff.notesUpdated}건 반영` : ''
+      ].filter(Boolean)
+      : [
+        `하객 ${(incoming.guestList || []).length}건`,
+        `축의금 ${(incoming.giftLedger || []).length}건`,
+        `혼수 ${(incoming.homeItems || []).length}건`,
+        `당일 역할·봉투 ${(incoming.weddingDayRoles || []).length + (incoming.weddingDayEnvelopes || []).length}건`,
+        `체크 ${(incoming.checklist || []).length + (incoming.shootChecklist || []).length + (incoming.ceremonyChecks || []).length + (incoming.prenatalChecks || []).length}건`
+      ];
+
+    prefPreviewSlot.replaceChildren(
+      E('div', { class: 'pref-merge-preview-card' },
+        E('div', { class: 'pref-merge-preview-head' },
+          E('strong', {}, isMerge ? `🔀 병합 미리보기 · ${filename}` : `⚠️ 전체 덮어쓰기 미리보기 · ${filename}`),
+          E('span', { class: 'badge' }, isMerge ? '기존 기록 유지 + 병합' : '전체 교체')),
+        E('div', { class: 'draft-diff-chips' },
+          chips.length
+            ? chips.map(text => E('span', { class: 'draft-diff-chip ' + (isMerge ? 'is-added' : 'is-modified') }, text))
+            : [E('span', { class: 'draft-diff-chip is-modified' }, '중복 없는 신규 항목 없음 (빈 설정만 보완)')]),
+        E('p', { class: 'small muted' }, '적용 직전 현재 이 기기의 개인 설정을 자동 롤백 스냅샷으로 저장하므로, 필요하면 언제든 직전 상태로 되돌릴 수 있습니다.'),
+        E('div', { class: 'manager-actions' },
+          button(isMerge ? '✅ 이대로 안전하게 합치기' : '⚠️ 백업으로 전체 덮어쓰기', async () => {
+            const latestCurrent = ctx.readRawPrefs();
+            saveRollback(isMerge ? '백업 병합 직전' : '백업 덮어쓰기 직전', latestCurrent);
+            const target = isMerge ? mergePreferences(latestCurrent, incoming) : incoming;
+            const baseArg = isMerge ? latestCurrent : validatePreferences({});
+            if (await ctx.savePrefs(target, baseArg, ctx.readStorage(ctx.PREF_KEY))) {
+              pendingPrefBackup = null;
+              ctx.closeDialog(); ctx.render();
+              ctx.toast(isMerge
+                ? (chips.length ? `개인 백업을 기존 기록과 합쳤습니다. (${chips.join(', ')})` : '개인 백업을 기존 기록과 확인·병합했습니다.')
+                : '개인 메모와 설정을 백업 내용으로 복원했습니다. (직전 상태는 롤백 스냅샷에 보관됨)');
+            }
+          }, isMerge ? 'button' : 'button danger'),
+          button('취소', () => { pendingPrefBackup = null; personal.value = ''; renderPrefImportPreview(); }, 'button quiet'))));
+  };
+
+  mergeRadio.addEventListener('change', renderPrefImportPreview);
+  replaceRadio.addEventListener('change', renderPrefImportPreview);
+
   personal.addEventListener('change', async () => {
     const selected = personal.files?.[0]; if (!selected) return;
     try {
       if (selected.size > MAX_IMPORT_BYTES) throw new Error('개인 백업은 8MB 이하로 선택해 주세요.');
       const incoming = parsePreferencesBackup(await selected.text());
-      if (mergeRadio.checked) {
-        const currentPrefs = ctx.readRawPrefs();
-        const merged = mergePreferences(currentPrefs, incoming);
-        const diff = summarizePreferencesMerge(currentPrefs, merged);
-        const parts = [
-          diff.guestsAdded ? `하객 +${diff.guestsAdded}건` : '',
-          diff.giftsAdded ? `축의금 +${diff.giftsAdded}건` : '',
-          diff.schedulesAdded ? `업체 일정 +${diff.schedulesAdded}건` : '',
-          diff.homeItemsAdded ? `혼수 품목 +${diff.homeItemsAdded}건` : '',
-          diff.dayOpsAdded ? `당일 역할·봉투 +${diff.dayOpsAdded}건` : '',
-          diff.checksAdded ? `체크 +${diff.checksAdded}건` : '',
-          diff.customItemsAdded ? `직접 항목 +${diff.customItemsAdded}건` : '',
-          diff.favoritesAdded ? `관심 +${diff.favoritesAdded}건` : '',
-          diff.notesUpdated ? `메모 ${diff.notesUpdated}건 반영` : ''
-        ].filter(Boolean);
-        const previewText = parts.length ? parts.join(' · ') : '기존 기록과 중복되지 않는 신규 항목은 없으며, 비어 있던 설정만 보완됩니다.';
-        if (!confirm(`백업 파일을 이 기기의 기존 기록에 합칠까요?\n\n예상 반영 내용: ${previewText}\n\n※ 기존 하객·축의금·혼수·당일 운영표·메모·체크는 유지되고 새 항목만 안전하게 합쳐집니다.`)) return;
-        if (await ctx.savePrefs(merged, currentPrefs, ctx.readStorage(ctx.PREF_KEY))) {
-          ctx.closeDialog(); ctx.render();
-          ctx.toast(parts.length ? `개인 백업을 기존 기록과 합쳤습니다. (${parts.join(', ')})` : '개인 백업을 기존 기록과 확인·병합했습니다.');
-        }
-      } else {
-        if (!confirm('이 기기의 라크마 촬영 메모·준비물 체크, 여행·꿀팁 선택과 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 혼수·가전 목록, 신혼부부 혜택 체크, 업체 일정 보드, 본식 식순·당일 역할·현금 봉투·원판 순서, 산전검사 일정·체크·메모, 하객 명단·축의금 장부, 출국 준비물을 백업 내용으로 전체 덮어쓸까요?')) return;
-        if (await ctx.savePrefs(incoming, validatePreferences({}), ctx.readStorage(ctx.PREF_KEY))) {
-          ctx.closeDialog(); ctx.render();
-          ctx.toast('개인 메모와 선택, 체크리스트·예산·혼수·신혼혜택·당일 운영표·산전검사·하객·축의금 장부 설정을 복원했습니다.');
-        }
-      }
-    } catch (error) { ctx.toast(error.message, true); } finally { personal.value = ''; }
+      pendingPrefBackup = { incoming, filename: selected.name || 'wedding-private-preferences.json' };
+      renderPrefImportPreview();
+    } catch (error) {
+      pendingPrefBackup = null;
+      renderPrefImportPreview();
+      ctx.toast(error.message, true);
+    } finally { personal.value = ''; }
   });
 
   const file = E('input', { type: 'file', accept: '.json,application/json', class: 'file-input', 'aria-label': '콘텐츠 JSON 파일 선택' });
@@ -305,13 +360,36 @@ export function openManager(ctx) {
       E('ul', { class: 'draft-diff-list' }, ...rows));
   };
 
+  const rollbackSnap = readRollback();
+  const rollbackSection = rollbackSnap
+    ? E('section', { class: 'manager-section rollback-snap-section', 'aria-label': '직전 개인 설정 롤백 스냅샷' },
+      E('h3', {}, '↩ 직전 상태 빠른 복구 (자동 롤백 스냅샷)'),
+      E('p', { class: 'small muted' }, `${rollbackSnap.reason} 시점(${ctx.formatBackupTime(rollbackSnap.savedAt)})의 개인 설정이 이 기기에 자동 보관되어 있습니다.`),
+      E('div', { class: 'manager-actions' },
+        button('↩ 직전 상태로 되돌리기', async () => {
+          const ok = await ctx.confirmAction({
+            title: '직전 상태로 복구',
+            message: `${rollbackSnap.reason} 시점의 개인 설정으로 되돌릴까요?`,
+            confirmLabel: '복구하기'
+          });
+          if (!ok) return;
+          const currentNow = ctx.readRawPrefs();
+          saveRollback('롤백 복구 직전', currentNow);
+          if (await ctx.savePrefs(rollbackSnap.preferences, validatePreferences({}), ctx.readStorage(ctx.PREF_KEY))) {
+            ctx.closeDialog(); ctx.render();
+            ctx.toast('직전 롤백 스냅샷으로 개인 설정을 복구했습니다.');
+          }
+        }, 'button quiet')))
+    : null;
+
   ctx.showDialog('내용 관리', E('div', {},
     E('p', { class: 'form-note' }, '공개본은 저장소의 콘텐츠입니다. 여기서 편집한 내용은 이 기기에만 저장되며 자동으로 공개되지 않습니다.'),
     E('section', { class: 'manager-section storage-meter-section' },
       E('h3', {}, '브라우저 저장 공간 현황'),
       E('p', { class: 'small muted' }, `현재 사용량 약 ${fmtSize(totalBytes)} / 권장 한도 5.00 MB (${pct}%) · 초안 ${fmtSize(draftBytes)} · 개인 설정·메모 ${fmtSize(prefBytes)}`),
       E('div', { class: 'checklist-progress-track storage-meter-track', 'aria-hidden': 'true' },
-        E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` }))),
+        E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` })),
+      pct >= 70 ? E('p', { class: 'form-note warning' }, '⚠️ 저장 공간 사용량이 70%를 넘었습니다. 앨범 사진이 많다면 브라우저에 직접 넣는 대신 저장소에서 npm run photos로 웹용 사본을 만들어 연결하면 용량을 크게 줄일 수 있습니다.') : null),
     E('section', { class: 'manager-section' },
       E('h3', {}, '개인 메모·선택 백업'),
       E('p', {}, '라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·혼수 가전 목록·혼인신고 및 신혼부부 혜택 체크·주요 업체 일정 보드·본식 식순·당일 역할/현금 봉투/원판 순서·산전검사 일정/체크/메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
@@ -322,7 +400,9 @@ export function openManager(ctx) {
       E('div', { class: 'pref-restore-modes', role: 'radiogroup', 'aria-label': '개인 백업 불러오기 방식' },
         E('label', { class: 'check-label', for: 'pref-import-merge' }, mergeRadio, '기존 기록에 합치기 (병합 · 권장 — 신랑·신부·양가 백업 통합)'),
         E('label', { class: 'check-label', for: 'pref-import-replace' }, replaceRadio, '기존 기록 전체 덮어쓰기')),
-      personal),
+      personal,
+      prefPreviewSlot),
+    rollbackSection,
     E('section', { class: 'manager-section' },
       E('h3', {}, '방문자용 보기'),
       E('p', {}, '방문자용 링크는 공개본만 표시하며 편집 버튼과 이 기기의 개인 메모·결혼 준비 탭을 숨깁니다. 접근 권한을 제한하는 기능은 아닙니다.'),
@@ -364,8 +444,9 @@ export function openManager(ctx) {
       E('p', {}, '이 기기에 저장된 라크마 촬영 메모·준비물 체크, 여행·꿀팁 관심 및 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 혼수·가전 목록, 신혼부부 혜택 체크, 업체 일정, 본식 식순·당일 역할·현금 봉투·원판 순서, 산전검사 일정·체크·메모, 하객 명단, 축의금 장부를 초기 상태로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),
       button('개인 설정·메모 초기화', async () => {
         if (!confirm('이 기기의 모든 개인 메모·관심 선택·예산·혼수·신혼혜택·체크리스트·식순·당일 운영표·산전검사·하객 명단·축의금 장부 설정을 초기화할까요?')) return;
+        saveRollback('개인 설정 초기화 직전', ctx.readRawPrefs());
         if (await ctx.savePrefs(validatePreferences({}), validatePreferences({}), ctx.readStorage(ctx.PREF_KEY))) {
-          ctx.closeDialog(); ctx.render(); ctx.toast('이 기기의 개인 설정과 메모를 초기화했습니다.');
+          ctx.closeDialog(); ctx.render(); ctx.toast('이 기기의 개인 설정과 메모를 초기화했습니다. (내용 관리에서 직전 상태로 복구 가능)');
         }
       }, 'button danger'))));
 }

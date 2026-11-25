@@ -241,7 +241,7 @@ function buildShareCardHtml(content, coverSrc) {
     display: grid;
     justify-items: center;
     text-align: center;
-    gap: 20px;
+    gap: 16px;
   }
   .ribbon {
     display: inline-flex;
@@ -312,10 +312,13 @@ function buildShareCardHtml(content, coverSrc) {
     flex-shrink: 0;
   }
   .invite-line {
-    font-size: 24px;
+    font-size: 19px;
     font-weight: 500;
+    line-height: 1.5;
     color: #46423e;
     letter-spacing: -0.01em;
+    max-width: 550px;
+    white-space: pre-line;
   }
   .venue-box {
     width: 100%;
@@ -349,7 +352,13 @@ function buildShareCardHtml(content, coverSrc) {
       <span class="ribbon">${escapeHtml(ribbonText)}</span>
       <span class="sub">WITH LOVE, TOGETHER</span>
       ${coupleHtml}
-      <p class="invite-line">소중한 분들을 결혼식에 초대합니다</p>
+      <p class="invite-line">${escapeHtml(
+        (() => {
+          const firstStanza = String(info.message || '').trim().split(/\r?\n\s*\r?\n/)[0] || '';
+          const lines = firstStanza.split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+          return lines.length ? lines.join('\n') : '소중한 분들을 결혼식에 초대합니다';
+        })()
+      )}</p>
       <div class="venue-box">
         <div class="venue-date">${escapeHtml(dateLine)}</div>
         <div class="venue-place">${escapeHtml(venueLine)}</div>

@@ -1,9 +1,10 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-57';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-57';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-57';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-57';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-57';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-57';
+import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-58';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-58';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-58';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-58';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-58';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-58';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-58';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
 const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', BACKUP_META_KEY = 'wedding:v1:backupMeta', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
@@ -30,18 +31,18 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-57'),
-  storage: () => import('./storage.js?v=wedding-features-57'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-57'),
-  manager: () => import('./manager-ui.js?v=wedding-features-57'),
-  studios: () => import('./studio-ui.js?v=wedding-features-57'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-57'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-57'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-57'),
-  tips: () => import('./planning-ui.js?v=wedding-features-57'),
-  editor: () => import('./editor-ui.js?v=wedding-features-57'),
-  search: () => import('./search-ui.js?v=wedding-features-57'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-57')
+  preferences: () => import('./preferences.js?v=wedding-features-58'),
+  storage: () => import('./storage.js?v=wedding-features-58'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-58'),
+  manager: () => import('./manager-ui.js?v=wedding-features-58'),
+  studios: () => import('./studio-ui.js?v=wedding-features-58'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-58'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-58'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-58'),
+  tips: () => import('./planning-ui.js?v=wedding-features-58'),
+  editor: () => import('./editor-ui.js?v=wedding-features-58'),
+  search: () => import('./search-ui.js?v=wedding-features-58'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-58')
 };
 
 function loadModule(key) {
@@ -76,7 +77,6 @@ function applySubTabSelection(route, tab) {
 let baseContent, content, studios = [], prefs = {}, isDraft = false, toastTimer;
 const DEFAULT_STUDIO_ID = 'studio-09';
 const activeLachmaStudio = () => studios.find(s => s.id === DEFAULT_STUDIO_ID) || studios.find(s => s.name === '라크마');
-let storySort = 'asc';
 let largeTextMode = (() => { try { return sessionStorage.getItem(LARGE_TEXT_KEY) === '1'; } catch { return false; } })();
 let darkTheme = (() => { try { return localStorage.getItem(THEME_KEY) === 'dark'; } catch { return false; } })();
 let petalsEnabled = (() => {
@@ -835,7 +835,7 @@ function renderInvitation() {
 }
 
 function sortedStories() {
-  return [...content.stories].sort((a, b) => (storySort === 'desc' ? (b.date || '0000').localeCompare(a.date || '0000') : (a.date || '9999').localeCompare(b.date || '9999')));
+  return sortStoryRecords(content.stories);
 }
 function focusTrip(id) {
   if (currentRoute() !== 'honeymoon' || dialog.open) return;
@@ -921,25 +921,7 @@ function recordActions(type, item) {
 }
 
 function renderStories() {
-  const records = sortedStories();
-  const sortBar = records.length ? E('div', { class: 'story-toolbar' },
-    E('span', { class: 'small muted' }, `총 ${records.length}개의 이야기`),
-    E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '일대기 정렬 순서' },
-      [['asc', '🕰️ 시간순 (첫 만남부터)'], ['desc', '✨ 최신순 (최근 기록부터)']].map(([key, label]) => E('button', {
-        type: 'button',
-        class: 'button quiet trip-filter-chip',
-        'data-story-sort': key,
-        'aria-pressed': String(storySort === key),
-        onclick: () => {
-          storySort = key; render(); main.querySelector(`[data-story-sort="${key}"]`)?.focus({ preventScroll: true });
-        }
-      }, label)))) : null;
-  return [pageHeader('우리가 함께 걸어온 시간', '첫 만남, 기억하고 싶은 날, 함께 내린 결심을 기록해요.', editButton('이야기 추가', () => openEditor('stories')), 'OUR STORY'),
-    sortBar,
-    records.length ? E('section', { class: 'timeline' }, records.map(item => E('article', { class: 'story-card' + (item.image ? ' has-image' : ''), 'data-record-id': item.id },
-      item.image ? E('button', { type: 'button', class: 'photo-open story-photo-open', 'aria-label': `${item.title} 사진 확대`, onclick: () => openPhotos(item.title, [item.image], 0) }, image(item.image, item.title, { decoding: 'async' })) : null,
-      E('div', {}, E('p', { class: 'record-date' }, item.date ? formatDate(item.date) : '날짜 없는 기록'), E('h2', {}, item.title), E('p', { class: 'record-body' }, item.body), recordActions('stories', item))))) :
-      empty(guestMode ? '두 사람의 이야기를 정성껏 담고 있습니다.' : '첫 번째 이야기를 남겨 볼까요?', guestMode ? '첫 만남부터 결혼을 결심한 순간까지, 곧 따뜻한 이야기로 찾아뵙겠습니다.' : '처음 만난 날도, 함께 웃었던 평범한 날도 우리의 일대기가 됩니다.', '첫 이야기 쓰기', () => openEditor('stories'))];
+  return renderStoriesView(moduleCtx());
 }
 
 function openPhotos(title, photos, index = 0) {
@@ -950,25 +932,8 @@ function openPhotos(title, photos, index = 0) {
     photoCleanup = handle.cleanup;
   }
 }
-function openAlbum(album) {
-  if (album.images.length) openPhotos(album.title, album.images);
-  else showDialog(album.title, E('p', {}, '아직 등록된 사진이 없습니다.'));
-}
 function renderAlbums() {
-  return [pageHeader('오래 간직할 우리의 순간', '사진을 앨범으로 모으고, 그날의 이야기를 함께 남겨요.', editButton('앨범 추가', () => openEditor('albums')), 'PHOTO ALBUM'),
-    content.albums.length ? E('section', { class: 'album-grid' }, content.albums.map((item, idx) => E('article', { class: 'album-card', 'data-record-id': item.id },
-      item.images.length
-        ? E('button', { type: 'button', class: 'photo-open album-cover-open', 'aria-label': `${item.title} 앨범 사진 ${item.images.length}장 보기`, onclick: () => openAlbum(item) }, image(item.images[0], item.title, { class: 'album-cover', decoding: 'async' }))
-        : E('div', { class: 'album-placeholder' }, 'Our memories'),
-      E('div', { class: 'album-info' },
-        E('p', { class: 'record-date' },
-          [item.date ? formatDate(item.date) : '', `사진 ${item.images.length}장`].filter(Boolean).join(' · '),
-          !guestMode && idx === 0 && item.images.length ? [' ', E('span', { class: 'badge' }, '✨ 청첩장 대표')] : null),
-        E('h2', {}, item.title),
-        E('p', { class: 'record-body' }, item.body),
-        button('사진 보기', () => openAlbum(item), 'text-button'),
-        recordActions('albums', item))))) :
-      empty(guestMode ? '웨딩 포토 앨범을 준비하고 있습니다.' : '우리의 사진을 담을 첫 앨범', guestMode ? '두 사람의 소중한 웨딩 사진들이 곧 이곳에 채워질 예정입니다.' : '사진을 직접 선택하거나 npm run photos로 웹용 사본을 만들어 앨범을 등록할 수 있어요.', '첫 앨범 만들기', () => openEditor('albums'))];
+  return renderAlbumsView(moduleCtx());
 }
 
 function renderLazyRoute(route, guestTitle, guestSubtitle, eyebrow, fnName) {
@@ -1342,7 +1307,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-57')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-58')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {

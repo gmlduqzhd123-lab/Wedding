@@ -1098,5 +1098,57 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
   };
 }
 
+export function netWeddingCostSummary(budgetPlan = {}, giftLedger = [], categories = WEDDING_BUDGET_CATEGORIES.map(([key]) => key)) {
+  const budget = weddingBudgetSummary(budgetPlan, categories);
+  const gifts = giftLedgerSummary(giftLedger);
+  const actualKnown = budget.actual.known;
+  const plannedKnown = budget.planned.known;
+  const giftTotal = gifts.totalAmount;
+  const hasAny = actualKnown !== null || plannedKnown !== null || giftTotal > 0;
+  const netActual = actualKnown !== null ? actualKnown - giftTotal : null;
+  const coveragePct = actualKnown && actualKnown > 0
+    ? Math.round((giftTotal / actualKnown) * 100)
+    : null;
+  return {
+    hasAny,
+    plannedKnown,
+    actualKnown,
+    actualComplete: budget.actual.complete,
+    giftTotal,
+    giftCount: gifts.totalRecords,
+    netActual,
+    coveragePct
+  };
+}
+
+export function computeCashDenominations(envelopes = []) {
+  const tally = list => {
+    let fiftyK = 0;
+    let tenK = 0;
+    let remainder = 0;
+    let totalAmount = 0;
+    let counted = 0;
+    for (const item of list) {
+      const amt = Number(item?.amount);
+      if (!Number.isFinite(amt) || amt <= 0) continue;
+      counted++;
+      totalAmount += amt;
+      const f = Math.floor(amt / 50000);
+      const afterF = amt - f * 50000;
+      const t = Math.floor(afterF / 10000);
+      const rem = afterF - t * 10000;
+      fiftyK += f;
+      tenK += t;
+      remainder += rem;
+    }
+    return { fiftyK, tenK, remainder, totalAmount, counted };
+  };
+  const safe = Array.isArray(envelopes) ? envelopes : [];
+  return {
+    all: tally(safe),
+    pending: tally(safe.filter(e => !e?.ready))
+  };
+}
+
 
 

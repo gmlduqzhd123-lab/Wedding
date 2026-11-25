@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText } from './dom.js?v=wedding-features-57';
-import { weddingDday } from './content.js?v=wedding-features-57';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-57';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-57';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-58';
+import { weddingDday } from './content.js?v=wedding-features-58';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-58';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-58';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -291,9 +291,123 @@ function renderLachmaStudioCard(ctx, studio) {
     studio.deepGuide ? renderLachmaDeepGuide(ctx, studio) : renderStudioOfficialLocation(ctx, studio));
 }
 
+let archiveQuery = '';
+let archiveFilter = 'all';
+
+function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
+  if (!Array.isArray(allStudios) || allStudios.length <= 1) return null;
+  const prefs = ctx.getPrefs();
+  const favSet = new Set(prefs.favorites || []);
+  const withPhoneCount = allStudios.filter(s => Boolean(s.contact?.phone)).length;
+
+  const listWrap = E('div', { class: 'studio-archive-grid' });
+  const countEl = E('span', { class: 'small muted', 'aria-live': 'polite' });
+  const chipBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '보관 스튜디오 필터' });
+  const search = searchBox({
+    id: 'studio-archive-search',
+    value: archiveQuery,
+    placeholder: '스튜디오명·스타일·장단점·추가금 검색',
+    ariaLabel: '보관된 스튜디오 30곳 검색',
+    onInput: val => { archiveQuery = val; draw(); }
+  });
+
+  const toggleFav = studio => {
+    ctx.queuePreference(async () => {
+      const cur = new Set(ctx.getPrefs().favorites || []);
+      const added = !cur.has(studio.id);
+      if (added) cur.add(studio.id); else cur.delete(studio.id);
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), favorites: [...cur] });
+      if (saved) {
+        ctx.render();
+        ctx.toast(added ? `‘${studio.name}’을 관심 스튜디오에 추가했습니다.` : `‘${studio.name}’ 관심 표시를 해제했습니다.`);
+      }
+      return saved;
+    });
+  };
+
+  const draw = () => {
+    const latestFavs = new Set(ctx.getPrefs().favorites || []);
+    chipBar.replaceChildren(...[
+      ['all', `전체 (${allStudios.length})`],
+      ['phone', `연락처 기재 (${withPhoneCount})`],
+      ['fav', `관심 (${latestFavs.size})`]
+    ].map(([key, label]) => {
+      const btn = button(label, () => { archiveFilter = key; draw(); }, 'button quiet trip-filter-chip');
+      btn.setAttribute('aria-pressed', String(archiveFilter === key));
+      return btn;
+    }));
+
+    const q = archiveQuery.trim().toLocaleLowerCase();
+    const filtered = allStudios.filter(s =>
+      (archiveFilter === 'all' || (archiveFilter === 'phone' ? Boolean(s.contact?.phone) : latestFavs.has(s.id))) &&
+      (!q || `${s.name} ${s.style} ${s.pros} ${s.cons} ${s.fit} ${s.fee} ${s.contact?.phone || ''} ${s.contact?.note || ''}`.toLocaleLowerCase().includes(q))
+    );
+    countEl.textContent = `${filtered.length}곳 표시 중 (전체 ${allStudios.length}곳)`;
+
+    if (!filtered.length) {
+      listWrap.replaceChildren(E('div', { class: 'no-results-box' },
+        E('p', { class: 'no-results' }, '검색 조건에 맞는 스튜디오가 없습니다.'),
+        button('필터 초기화', () => { archiveQuery = ''; archiveFilter = 'all'; search.input.value = ''; search.syncClear(); draw(); }, 'button quiet')));
+      return;
+    }
+
+    listWrap.replaceChildren(...filtered.map(studio => {
+      const isFav = latestFavs.has(studio.id);
+      const isConfirmed = studio.id === activeId;
+      const phone = studio.contact?.phone || '';
+      const phoneDigits = phone.replace(/\D/g, '');
+      const contactText = phone
+        ? `${phone}${studio.contact?.note ? ` (${studio.contact.note})` : ''}`
+        : (studio.contact?.note || '제공된 목록에 연락처 미기재');
+      const noteText = ctx.getPrefs().notes?.[studio.id]?.trim() || '';
+      return E('article', { class: 'studio-archive-card' + (isConfirmed ? ' is-confirmed' : ''), 'data-archive-studio-id': studio.id },
+        E('div', { class: 'studio-archive-card-head' },
+          E('div', {},
+            E('div', { class: 'studio-archive-title-row' },
+              E('strong', {}, studio.name),
+              isConfirmed ? E('span', { class: 'badge' }, '확정 스튜디오') : null),
+            E('p', { class: 'small muted' }, studio.style)),
+          E('button', {
+            type: 'button',
+            class: 'button quiet small-copy-btn' + (isFav ? ' is-fav' : ''),
+            'aria-pressed': String(isFav),
+            onclick: () => toggleFav(studio)
+          }, isFav ? '★ 관심' : '☆ 관심')),
+        E('div', { class: 'studio-archive-thumbs' }, studio.images.map((im, idx) => E('button', {
+          type: 'button',
+          class: 'photo-open studio-archive-thumb-btn',
+          'aria-label': `${studio.name} 샘플 사진 ${idx + 1} 확대`,
+          onclick: () => ctx.openPhotos(`${studio.name} 샘플`, studio.images.map(v => v.src), idx)
+        }, image(im.src, `${studio.name} · ${im.file}`, { loading: 'lazy', decoding: 'async' })))),
+        E('dl', { class: 'studio-archive-dl small' },
+          E('dt', {}, '장점'), E('dd', {}, studio.pros || '미기재'),
+          E('dt', {}, '아쉬움'), E('dd', {}, studio.cons || '미기재'),
+          E('dt', {}, '추천 취향'), E('dd', {}, studio.fit || '미기재'),
+          E('dt', {}, '추가금'), E('dd', {}, studio.fee || '미기재'),
+          E('dt', {}, '연락처'), E('dd', {},
+            phone && phoneDigits
+              ? [E('a', { href: `tel:${phoneDigits}`, class: 'text-button small' }, phone), studio.contact?.note ? ` · ${studio.contact.note}` : null]
+              : contactText)),
+        noteText ? E('p', { class: 'small muted studio-archive-memo' }, `📝 메모: ${noteText}`) : null);
+    }));
+  };
+
+  draw();
+  return E('details', { class: 'disclosure studio-archive-drawer', 'aria-label': '보관된 전체 스튜디오 참고 자료' },
+    E('summary', {}, `📚 보관된 전체 스튜디오 참고 자료 보기 (${allStudios.length}곳 · 대표 샘플 ${allStudios.length * 2}장)`),
+    E('div', { class: 'studio-archive-body' },
+      E('p', { class: 'small muted' }, '확정 전 검토했던 전체 30개 스튜디오의 대표 샘플(60장), 장단점, 추가금 및 제공 연락처 출처 한계(공동 번호·지점 미구분 포함)를 그대로 보존하고 있습니다. 개인 포토 앨범과는 분리됩니다.'),
+      E('div', { class: 'studio-archive-toolbar' },
+        search.wrap,
+        chipBar,
+        countEl),
+      listWrap));
+}
+
 export function renderStudios(ctx) {
   if (ctx.isGuestMode()) return ctx.guestRestrictedView('라크마 스튜디오 촬영 안내', '신랑·신부의 웨딩 촬영 일정과 준비물을 정리한 공간입니다.', 'OUR STUDIO · LACMA');
   const { status, error, activeLachma } = ctx.getStudiosState();
+  const allStudios = ctx.getStudiosList?.() || [];
   if (status !== 'ready') return [
     ctx.pageHeader('라크마 스튜디오 촬영 안내', '확정된 촬영 일정과 당일 방문 동선, 필수 준비물을 확인해요.', null, 'OUR STUDIO · LACMA'),
     status === 'loading' ? E('p', { role: 'status' }, '스튜디오 자료를 불러오는 중입니다.') : ctx.empty('스튜디오 자료를 불러오지 못했어요.', error, '스튜디오 다시 불러오기', ctx.loadStudios, true)
@@ -304,6 +418,7 @@ export function renderStudios(ctx) {
   ];
   return [
     ctx.pageHeader('라크마 스튜디오 촬영 안내', '확정된 촬영 일정과 당일 방문 동선, 필수 준비물, 대표 샘플을 한곳에 모았습니다.', null, 'OUR STUDIO · LACMA'),
-    renderLachmaStudioCard(ctx, activeLachma)
+    renderLachmaStudioCard(ctx, activeLachma),
+    renderStudioArchiveDrawer(ctx, allStudios, activeLachma.id)
   ];
 }

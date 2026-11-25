@@ -1,5 +1,5 @@
-import { E, S, image } from './dom.js?v=wedding-features-57';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-57';
+import { E, S, image } from './dom.js?v=wedding-features-58';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-58';
 
 export function isKakaoInApp(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
   return /KAKAOTALK/i.test(ua || '');
@@ -372,28 +372,43 @@ function drawCanvasBotanicalArch(ctx, cx, topY) {
   ctx.restore();
 }
 
-function wrapCanvasLines(ctx, text, maxWidth, maxLines = 4) {
+export function wrapCardMessageLines(measureWidth, text, maxWidth, maxLines = 12) {
   const result = [];
+  let textCount = 0;
+  let pendingBreak = false;
   for (const para of String(text || '').split(/\r?\n/)) {
     const trimmed = para.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      if (textCount > 0) pendingBreak = true;
+      continue;
+    }
+    if (pendingBreak && textCount < maxLines) {
+      result.push(null);
+      pendingBreak = false;
+    }
     let line = '';
     for (const ch of trimmed) {
       const test = line + ch;
-      if (ctx.measureText(test).width > maxWidth && line) {
+      if (measureWidth(test) > maxWidth && line) {
         result.push(line);
+        textCount++;
         line = ch;
-        if (result.length >= maxLines) return result;
+        if (textCount >= maxLines) return result;
       } else {
         line = test;
       }
     }
     if (line) {
       result.push(line);
-      if (result.length >= maxLines) return result;
+      textCount++;
+      if (textCount >= maxLines) return result;
     }
   }
   return result;
+}
+
+function wrapCanvasLines(ctx, text, maxWidth, maxLines = 4) {
+  return wrapCardMessageLines(t => ctx.measureText(t).width, text, maxWidth, maxLines).filter(line => line !== null);
 }
 
 async function loadImageSafe(src) {
@@ -411,7 +426,7 @@ async function loadImageSafe(src) {
 async function loadQrSvgImage(url) {
   if (!url) return null;
   try {
-    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-57');
+    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-58');
     const svgMarkup = renderQrSvgString(url, { margin: 2 });
     const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);
@@ -445,7 +460,9 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
   const plaqueH = (gp && bp) ? 190 : ((gp || bp) ? 156 : 114);
 
   ctx.font = '500 24px SUITE, sans-serif';
-  const msgLines = (info.message || '').trim() ? wrapCanvasLines(ctx, info.message, 740, 4) : [];
+  const msgLines = (info.message || '').trim()
+    ? wrapCardMessageLines(t => ctx.measureText(t).width, info.message, 740, 12)
+    : [];
 
   ctx.font = '500 22px SUITE, sans-serif';
   const addrLines = (info.address || '').trim() ? wrapCanvasLines(ctx, info.address, 740, 2) : [];
@@ -453,8 +470,9 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
   const shareUrl = options.includeQr ? String(options.shareUrl || '').trim() : '';
   const qrImg = shareUrl ? await loadQrSvgImage(shareUrl) : null;
 
-  const msgStartY = plaqueY + plaqueH + 40;
-  const afterMsgY = msgLines.length ? (msgStartY + msgLines.length * 36 + 18) : (plaqueY + plaqueH + 34);
+  const msgStartY = plaqueY + plaqueH + 42;
+  const msgBlockHeight = msgLines.reduce((acc, line) => acc + (line === null ? 20 : 38), 0);
+  const afterMsgY = msgLines.length ? (msgStartY + msgBlockHeight + 24) : (plaqueY + plaqueH + 34);
   const dateBoxY = Math.max(afterMsgY, 870);
   const dateBoxH = 136;
   const venueBoxY = dateBoxY + dateBoxH + 22;
@@ -580,13 +598,19 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
     if (bp) ctx.fillText(`${bp}${p2 ? ` ${p2}` : ''}`, W / 2, plaqueY + (gp ? 166 : 134));
   }
 
-  // Optional invitation greeting excerpt
+  // Optional invitation greeting (preserves 3-stanza paragraph breaks)
   if (msgLines.length) {
     ctx.font = '500 24px SUITE, sans-serif';
     ctx.fillStyle = '#44403c';
-    msgLines.forEach((line, idx) => {
-      ctx.fillText(line, W / 2, msgStartY + idx * 36);
-    });
+    let cursorY = msgStartY;
+    for (const line of msgLines) {
+      if (line === null) {
+        cursorY += 20;
+      } else {
+        ctx.fillText(line, W / 2, cursorY);
+        cursorY += 38;
+      }
+    }
   }
 
   // Date & Time card

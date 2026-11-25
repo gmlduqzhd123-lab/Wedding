@@ -194,7 +194,7 @@ try {
   assert(dockTargets.includes('inv-sec-schedule') && dockTargets.includes('inv-sec-location'), 'Guest quick dock must include Scroll-Spy targets');
   assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, 'Guest mobile zero overflow');
   await cdp.eval(`localStorage.removeItem('wedding:v1:theme')`);
-  console.log('E2E PASS 1/7: Guest lightweight boot, dark-theme immunity, petals, Scroll-Spy dock, 390px OK');
+  console.log('E2E PASS 1/8: Guest lightweight boot, dark-theme immunity, petals, Scroll-Spy dock, 390px OK');
 
   // 2. Desktop planner: Home scroll diet, Dark Theme + FOUC root class persistence, Global Search navigation
   await setViewport(1280, 900);
@@ -220,7 +220,7 @@ try {
   await cdp.waitFor(`() => document.querySelectorAll('.global-search-item').length >= 1`);
   await cdp.eval(`[...document.querySelectorAll('.global-search-item')].find(b => b.textContent.includes('신혼여행')).click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main')?.dataset.renderedRoute === 'honeymoon' && !document.querySelector('.loading-state')`);
-  console.log('E2E PASS 2/7: Home scroll diet, Dark Botanical Theme FOUC-free persistence, Global Search OK');
+  console.log('E2E PASS 2/8: Home scroll diet, Dark Botanical Theme FOUC-free persistence, Global Search OK');
 
   // 3. Honeymoon compare floating tray
   await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 2`);
@@ -230,7 +230,7 @@ try {
   await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (2/2)')`);
   await cdp.eval(`[...document.querySelectorAll('.compare-floating-tray button')].find(b => b.textContent === '비우기').click()`);
   await cdp.waitFor(`() => !document.querySelector('.compare-floating-tray')`);
-  console.log('E2E PASS 3/7: Honeymoon floating compare tray OK');
+  console.log('E2E PASS 3/8: Honeymoon floating compare tray OK');
 
   // 4. Budget SVG donut chart
   await cdp.eval(`location.hash = '#/tips/budget'`);
@@ -247,13 +247,15 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.budget-donut-card svg.budget-donut-svg'))`);
   const donutCenter = await cdp.eval(`document.querySelector('.donut-center-value')?.textContent`);
   assert(donutCenter && donutCenter.includes('2,000만'), `Expected donut center 2,000만, got: ${donutCenter}`);
-  console.log('E2E PASS 4/7: Inline SVG budget donut chart OK');
+  console.log('E2E PASS 4/8: Inline SVG budget donut chart OK');
 
-  // 5. Ceremony Live MC Cue Sheet + Custom Confirm Dialog + Quick Gift Entry + Side Ratio Bar + Instant Undo Delete
+  // 5. Ceremony Live MC Cue Sheet (Wake Lock + font zoom + staging cue) + Custom Confirm + Guest->Quick Gift RSVP Auto-Sync + Batch Thank-You + Undo
   await cdp.eval(`location.hash = '#/ceremony/rundown'`);
   await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent.includes('라이브 큐시트 모드'))`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('라이브 큐시트 모드')).click()`);
-  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('.live-cue-stage')?.innerText.includes('STEP 01')`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('.live-cue-stage')?.innerText.includes('STEP 01') && Boolean(document.querySelector('.live-cue-wake-btn')) && Boolean(document.querySelector('.live-cue-stage-badge'))`);
+  await cdp.eval(`[...document.querySelectorAll('.live-cue-font-group button')].find(b => b.textContent === 'A+').click()`);
+  await cdp.waitFor(`() => document.querySelector('.live-cue-font-pct')?.textContent === '115%'`);
   await cdp.eval(`[...document.querySelectorAll('.live-cue-nav button')].find(b => b.textContent.includes('다음 단계')).click()`);
   await cdp.waitFor(`() => document.querySelector('.live-cue-stage')?.innerText.includes('STEP 02')`);
   await cdp.eval(`document.querySelector('#close-dialog').click()`);
@@ -267,10 +269,22 @@ try {
   await cdp.eval(`document.querySelector('#confirm-ok').click()`);
   await cdp.waitFor(`() => !document.querySelector('#confirm-dialog').open && ![...document.querySelectorAll('button')].some(b => b.textContent === '체크 초기화')`);
 
+  // Add a guest with 미확인 RSVP first, then log gift via Quick Entry and verify RSVP auto-syncs to 참석
+  await cdp.eval(`location.hash = '#/ceremony/guests'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#guest-board-title'))`);
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ 하객 추가').click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#guest-name'))`);
+  await cdp.eval(`(() => {
+    document.querySelector('#guest-name').value = '테스트하객';
+    document.querySelector('#guest-rsvp').value = '미확인';
+    document.querySelector('#dialog-actions [type="submit"]').click();
+  })()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main').innerText.includes('테스트하객')`);
+
   await cdp.eval(`location.hash = '#/ceremony/gifts'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#gift-ledger-title'))`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('축의대 빠른 입력')).click()`);
-  await cdp.waitFor(`() => Boolean(document.querySelector('#quick-gift-name'))`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#quick-gift-name')) && Boolean(document.querySelector('#quick-gift-sync-rsvp')?.checked)`);
   await cdp.eval(`(() => {
     document.querySelector('#quick-gift-name').value = '테스트하객';
     [...document.querySelectorAll('.quick-gift-amounts button')].find(b => b.textContent === '10만').click();
@@ -280,16 +294,53 @@ try {
   await cdp.eval(`[...document.querySelectorAll('#dialog-actions button')].find(b => b.textContent === '완료 닫기').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.side-ratio-card')) && document.querySelector('#main').innerText.includes('테스트하객')`);
 
+  // Verify guest RSVP was auto-updated to 참석
+  const syncedRsvp = await cdp.eval(`JSON.parse(localStorage.getItem('wedding:v1:preferences') || '{}').guestList?.find(g => g.name === '테스트하객')?.rsvp`);
+  assert.equal(syncedRsvp, '참석', `Expected quick gift entry to auto-sync guest RSVP to 참석, got: ${syncedRsvp}`);
+
+  // Verify batch thank-you queue completes pending thank-you
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('미감사 1명 연속 보내기')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.batch-thankyou-modal'))`);
+  await cdp.eval(`[...document.querySelectorAll('.batch-thankyou-actions button')].find(b => b.textContent.includes('완료만 체크')).click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.batch-thankyou-done'))`);
+  await cdp.eval(`[...document.querySelectorAll('.batch-thankyou-done button')].find(b => b.textContent.includes('장부로 돌아가기')).click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
+
   // Instant delete without blocking confirm() -> Undo toast restores record
   await cdp.eval(`[...document.querySelectorAll('.ledger-row button')].find(b => b.textContent === '삭제').click()`);
   await cdp.waitFor(`() => !document.querySelector('#toast').hidden && Boolean(document.querySelector('.toast-undo-btn')) && !document.querySelector('#main').innerText.includes('테스트하객')`);
   await cdp.eval(`document.querySelector('.toast-undo-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('#main').innerText.includes('테스트하객')`);
-  console.log('E2E PASS 5/7: Live MC cue sheet, custom confirm modal, side ratio bar, instant Undo delete OK');
+  console.log('E2E PASS 5/8: Live MC cue sheet (Wake Lock + A+), RSVP auto-sync, Batch Thank-You, instant Undo OK');
 
-  // 6. Invitation live KakaoTalk OG preview + Draft save -> reload -> diff -> revert to public
+  // 6. Round 4 cross-links: Budget Net Cost Settlement, Day Ops Cash Denominations & Photo Call Mode, 30-Studio Archive, BGM preset cycle
+  await cdp.eval(`location.hash = '#/tips/budget'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.budget-net-settlement'))`);
+  const netText = await cdp.eval(`document.querySelector('.budget-net-settlement')?.innerText || ''`);
+  assert(netText.includes('100,000원') && netText.includes('13,900,000원'), `Expected net cost settlement card to reflect 14M - 100k = 13.9M, got: ${netText}`);
+
+  await cdp.eval(`location.hash = '#/ceremony/dayops'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#dayops-title'))`);
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('기본 봉투 5종')).click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.ledger-row').length >= 5`);
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('현장 호명 체크 모드')).click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.photo-call-board'))`);
+  await cdp.eval(`document.querySelector('.photo-call-btn').click()`);
+  await cdp.waitFor(`() => document.querySelector('.photo-call-head')?.innerText.includes('촬영 완료 1 /')`);
+
+  await cdp.eval(`location.hash = '#/studios'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer'))`);
+  await cdp.eval(`document.querySelector('.studio-archive-drawer summary').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 30`);
+  await cdp.eval(`(() => { const inp = document.querySelector('#studio-archive-search'); inp.value = '포에버마인'; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 2`);
+  console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call mode, 30-studio archive search OK');
+
+  // 7. Invitation BGM preset cycling + live KakaoTalk OG preview + Draft save -> reload -> diff -> revert to public
   await cdp.eval(`location.hash = '#/invitation'`);
-  await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent === '예식 정보 편집')`);
+  await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent === '예식 정보 편집') && Boolean(document.querySelector('.invitation-bgm-preset-btn'))`);
+  await cdp.eval(`document.querySelector('.invitation-bgm-preset-btn').click()`);
+  await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.textContent.includes('오르골')`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '예식 정보 편집').click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.kakao-og-bubble'))`);
   await cdp.eval(`(() => {
@@ -308,9 +359,9 @@ try {
   await cdp.eval(`[...document.querySelectorAll('#editor-body button')].find(b => b.textContent === '공개본으로 돌아가기').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#draft-banner').hidden`);
   assert.equal(await cdp.eval(`localStorage.getItem('wedding:v1:draft')`), null, 'Draft cleared on revert to public');
-  console.log('E2E PASS 6/7: Invitation live OG preview + Draft save/reload/diff/revert OK');
+  console.log('E2E PASS 7/8: BGM preset cycling + Invitation live OG preview + Draft save/reload/diff/revert OK');
 
-  // 7. All 9 routes zero horizontal overflow in 1280px (Dark) & 390px (Light) + zero console errors
+  // 8. All 9 routes zero horizontal overflow in 1280px (Dark) & 390px (Light) + zero console errors
   const allRoutes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
   for (const r of allRoutes) {
     await cdp.eval(`location.hash = '#/${r}'`);
@@ -328,7 +379,7 @@ try {
     const overflow = await cdp.eval(`document.documentElement.scrollWidth - window.innerWidth`);
     assert(overflow <= 0, `Mobile 390px horizontal overflow on ${r}: +${overflow}px`);
   }
-  console.log('E2E PASS 7/7: All 9 routes zero overflow on 1280px (Dark) & 390px (Light)');
+  console.log('E2E PASS 8/8: All 9 routes zero overflow on 1280px (Dark) & 390px (Light)');
 
   assert.deepEqual(consoleErrors, [], 'Browser console errors detected:\n' + consoleErrors.join('\n'));
   console.log('ALL E2E SMOKE TESTS PASSED WITH ZERO CONSOLE ERRORS!');

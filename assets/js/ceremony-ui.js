@@ -1,8 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-57';
-import { formatDate } from './content.js?v=wedding-features-57';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-57';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-57';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-57';
+import { E, button } from './dom.js?v=wedding-features-58';
+import { formatDate } from './content.js?v=wedding-features-58';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-58';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-58';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-58';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 
@@ -417,10 +417,59 @@ export function renderCeremony(ctx) {
     const completed = new Set();
     let elapsedSec = 0;
     let timerId = null;
+    let fontScale = 100;
+    let wakeLockSentinel = null;
+    let wakeLockRequested = false;
     const body = E('div', { class: 'live-cue-modal' });
 
     const fmtClock = sec => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
     const stopTimer = () => { if (timerId) { clearInterval(timerId); timerId = null; } };
+    const releaseWakeLock = async () => {
+      wakeLockRequested = false;
+      if (wakeLockSentinel) {
+        try { await wakeLockSentinel.release(); } catch {}
+        wakeLockSentinel = null;
+      }
+    };
+    const requestWakeLock = async (silent = false) => {
+      if (!navigator.wakeLock?.request) {
+        if (!silent) ctx.toast('이 브라우저는 화면 꺼짐 방지(Wake Lock)를 지원하지 않습니다.', true);
+        return false;
+      }
+      try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockRequested = true;
+        wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; if (body.isConnected) draw(); });
+        if (!silent) ctx.toast('☀️ 화면 꺼짐 방지를 켰습니다. 본식 진행 중 화면이 유지됩니다.');
+        return true;
+      } catch {
+        wakeLockRequested = false;
+        if (!silent) ctx.toast('화면 꺼짐 방지를 켜지 못했습니다. 기기 절전 설정을 확인해 주세요.', true);
+        return false;
+      }
+    };
+    const onVisibility = () => {
+      if (!body.isConnected) {
+        document.removeEventListener('visibilitychange', onVisibility);
+        releaseWakeLock();
+        return;
+      }
+      if (document.visibilityState === 'visible' && wakeLockRequested && !wakeLockSentinel) {
+        requestWakeLock(true).then(() => { if (body.isConnected) draw(); });
+      }
+    };
+    const stagingCueBadge = (title, cue) => {
+      const text = `${title} ${cue}`;
+      if (/화촉|점화/.test(text)) return '🕯️ 화촉 BGM · 조명 다운';
+      if (/신랑 입장/.test(text)) return '🎵 신랑 입장곡 · 핀조명';
+      if (/신부 입장/.test(text)) return '🎵 신부 등장·입장곡 · 문 오픈 큐';
+      if (/축가/.test(text)) return '🎤 축가 반주 · 마이크 2대 확인';
+      if (/행진/.test(text)) return '🎊 행진곡 · 플라워샤워·드레스 정리';
+      if (/원판|폐회/.test(text)) return '📸 원판 촬영 안내 · 연회홀 멘트';
+      if (/서약|선언/.test(text)) return '📜 단상 서약서 · 잔잔한 배경음';
+      if (/인사|맞절/.test(text)) return '🙇 양가 혼주·하객 방향 안내';
+      return '🎙️ 사회자 마이크 · 홀 안내';
+    };
 
     const draw = () => {
       const [no, title, cue, scripts] = mcSteps[stepIdx];
@@ -430,7 +479,7 @@ export function renderCeremony(ctx) {
         if (timerId) stopTimer();
         else {
           timerId = setInterval(() => {
-            if (!body.isConnected) { stopTimer(); return; }
+            if (!body.isConnected) { stopTimer(); releaseWakeLock(); return; }
             elapsedSec++;
             const el = body.querySelector('.live-cue-clock');
             if (el) el.textContent = fmtClock(elapsedSec);
@@ -439,6 +488,27 @@ export function renderCeremony(ctx) {
         draw();
       }, 'button quiet small-copy-btn');
       const resetTimerBtn = button('↺ 초기화', () => { stopTimer(); elapsedSec = 0; draw(); }, 'button quiet small-copy-btn');
+      const wakeBtn = E('button', {
+        type: 'button',
+        class: 'button quiet small-copy-btn live-cue-wake-btn' + (wakeLockSentinel ? ' is-active' : ''),
+        'aria-pressed': String(Boolean(wakeLockSentinel)),
+        title: '진행 중 스마트폰 화면이 자동으로 꺼지지 않게 유지',
+        onclick: async () => {
+          if (wakeLockSentinel) {
+            await releaseWakeLock();
+            ctx.toast('화면 꺼짐 방지를 껐습니다.');
+          } else {
+            await requestWakeLock(false);
+          }
+          if (body.isConnected) draw();
+        }
+      }, wakeLockSentinel ? '☀️ 화면 유지 중' : '☀️ 화면 유지');
+      const fontDownBtn = button('A−', () => { fontScale = Math.max(85, fontScale - 15); draw(); }, 'button quiet small-copy-btn');
+      fontDownBtn.setAttribute('aria-label', '대본 글자 작게');
+      fontDownBtn.disabled = fontScale <= 85;
+      const fontUpBtn = button('A+', () => { fontScale = Math.min(145, fontScale + 15); draw(); }, 'button quiet small-copy-btn');
+      fontUpBtn.setAttribute('aria-label', '대본 글자 크게');
+      fontUpBtn.disabled = fontScale >= 145;
       const dots = E('div', { class: 'live-cue-dots', role: 'tablist', 'aria-label': '식순 단계 선택' },
         mcSteps.map(([sNo, sTitle], idx) => E('button', {
           type: 'button',
@@ -461,8 +531,15 @@ export function renderCeremony(ctx) {
         E('div', { class: 'live-cue-topbar' },
           E('span', { class: 'spec-chip direct' }, `진행 ${stepIdx + 1} / ${mcSteps.length} (완료 ${completed.size})`),
           E('div', { class: 'live-cue-timer-box' }, E('span', { class: 'small muted' }, '경과'), clockVal, toggleTimerBtn, resetTimerBtn)),
+        E('div', { class: 'live-cue-utility-bar' },
+          wakeBtn,
+          E('div', { class: 'live-cue-font-group', role: 'group', 'aria-label': '대본 글자 크기 조절' },
+            fontDownBtn,
+            E('span', { class: 'small muted live-cue-font-pct' }, `${fontScale}%`),
+            fontUpBtn),
+          E('span', { class: 'spec-chip highlight live-cue-stage-badge' }, stagingCueBadge(title, cue))),
         dots,
-        E('article', { class: 'live-cue-stage' },
+        E('article', { class: 'live-cue-stage', style: `font-size:${fontScale}%` },
           E('span', { class: 'badge' }, `STEP ${no}`),
           E('h3', { class: 'live-cue-title' }, title),
           E('p', { class: 'live-cue-check' }, `📌 현장 체크: ${cue}`),
@@ -476,15 +553,23 @@ export function renderCeremony(ctx) {
     };
 
     const onKey = event => {
-      if (!body.isConnected) { document.removeEventListener('keydown', onKey); stopTimer(); return; }
+      if (!body.isConnected) {
+        document.removeEventListener('keydown', onKey);
+        document.removeEventListener('visibilitychange', onVisibility);
+        stopTimer();
+        releaseWakeLock();
+        return;
+      }
       if (event.key === 'ArrowRight' && stepIdx < mcSteps.length - 1) { event.preventDefault(); stepIdx++; draw(); }
       else if (event.key === 'ArrowLeft' && stepIdx > 0) { event.preventDefault(); stepIdx--; draw(); }
     };
     draw();
     if (ctx.showDialog('🎙️ 본식 사회자 라이브 큐시트', body)) {
       document.addEventListener('keydown', onKey);
+      document.addEventListener('visibilitychange', onVisibility);
     } else {
       stopTimer();
+      releaseWakeLock();
     }
   };
 

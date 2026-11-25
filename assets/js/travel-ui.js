@@ -1,6 +1,6 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-57';
-import { safeUrl } from './content.js?v=wedding-features-57';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-57';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-58';
+import { safeUrl } from './content.js?v=wedding-features-58';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-58';
 import {
   COST_LABELS,
   budgetSummary,
@@ -14,7 +14,7 @@ import {
   climateReview,
   climateBadgeInfo,
   tripFlightBadge
-} from './travel.js?v=wedding-features-57';
+} from './travel.js?v=wedding-features-58';
 
 export { tripFlightBadge };
 
@@ -299,23 +299,45 @@ function selectedTripSummary(ctx) {
   const item = content.honeymoon.find(trip => trip.id === prefs.tripSelected);
   if (!item) return E('p', { class: 'form-note' }, '최종 선택한 여행지가 없습니다. 후보의 최종 선택 버튼으로 이 기기에 저장할 수 있어요.');
   const note = prefs.tripNotes?.[item.id] || '';
+  const qReview = quoteReview(item);
+  const syncTripToBudget = () => {
+    const curPlan = structuredClone(ctx.getPrefs().budgetPlan || {});
+    const curHoney = curPlan.honeymoon || { planned: null, actual: null, note: '' };
+    const plannedVal = Number.isFinite(item.budget) && item.budget > 0 ? item.budget : curHoney.planned;
+    const actualVal = (qReview.complete && qReview.total !== null) ? qReview.total : curHoney.actual;
+    curPlan.honeymoon = {
+      planned: plannedVal,
+      actual: actualVal,
+      note: `${item.title}${item.startDate && item.endDate ? ` (${item.startDate}~${item.endDate})` : ''}`
+    };
+    ctx.queuePreference(async () => {
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), budgetPlan: curPlan });
+      if (saved) {
+        ctx.render();
+        ctx.toast(`최종 선택 신혼여행(${item.title} · ${won(plannedVal)})을 통합 예산 계산기에 반영했습니다.`);
+      }
+      return saved;
+    });
+  };
   return E('section', { class: 'selected-trip' },
     E('h2', {}, '최종 선택 · ' + item.title),
     E('p', {}, `${item.startDate || '미정'} 한국 출발 → ${item.endDate || '미정'} 한국 도착 · 2인 계획예산 ${won(item.budget)}`),
     E('div', { class: 'selected-trip-status' }, tripBudgetStatus(item), tripQuoteStatus(item), tripStayStatus(item)),
     note ? E('p', { class: 'checklist-item-note small' }, `📝 우리의 상담 메모: ${note}`) : null,
     E('p', { class: 'small muted' }, '이 기기에 저장한 선택입니다. 예약 확정을 의미하지 않습니다.'),
-    button('선택한 계획 보기', () => {
-      if (!matchesAllTripFilters(ctx, item)) { resetTripFilters(); ctx.render(); }
-      const card = [...main.querySelectorAll('[data-trip-id]')].find(node => node.dataset.tripId === item.id);
-      if (!card) return;
-      const details = card.querySelector('.travel-details');
-      if (details) details.open = true;
-      const heading = card.querySelector('h2');
-      heading.tabIndex = -1;
-      heading.focus({ preventScroll: true });
-      card.scrollIntoView({ block: 'start' });
-    }, 'button quiet'));
+    E('div', { class: 'page-actions' },
+      button('선택한 계획 보기', () => {
+        if (!matchesAllTripFilters(ctx, item)) { resetTripFilters(); ctx.render(); }
+        const card = [...main.querySelectorAll('[data-trip-id]')].find(node => node.dataset.tripId === item.id);
+        if (!card) return;
+        const details = card.querySelector('.travel-details');
+        if (details) details.open = true;
+        const heading = card.querySelector('h2');
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+        card.scrollIntoView({ block: 'start' });
+      }, 'button quiet'),
+      button('💰 통합 예산(신혼여행)에 반영', syncTripToBudget, 'button quiet')));
 }
 
 function tripComparison(ctx) {

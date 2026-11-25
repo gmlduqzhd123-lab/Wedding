@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-57';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-57';
+import { E, button } from './dom.js?v=wedding-features-58';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-58';
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },

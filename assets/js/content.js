@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-57';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-58';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -233,6 +233,51 @@ export function extractAccountNumber(line, { allowPhoneLike = false } = {}) {
     if (fallback) return { display: fallback.display, digits: fallback.digits };
   }
   return null;
+}
+
+const KNOWN_BANKS = [
+  'KB국민은행', '국민은행', 'KB국민', 'KB',
+  '신한은행', '신한',
+  '우리은행', '우리',
+  '하나은행', 'KEB하나은행', 'KEB하나', '하나',
+  'NH농협은행', '농협은행', 'NH농협', '농협', 'NH',
+  'IBK기업은행', '기업은행', 'IBK기업', '기업', 'IBK',
+  '카카오뱅크', '카카오',
+  '토스뱅크', '토스',
+  '케이뱅크', 'K뱅크',
+  'SC제일은행', '제일은행', 'SC제일',
+  'iM뱅크', '대구은행', '부산은행', '경남은행', '광주은행', '전북은행', '제주은행',
+  '수협은행', '수협', '우체국', '새마을금고', '새마을', '신협', '씨티은행', '씨티'
+];
+
+export function parseAccountLine(line) {
+  const raw = String(line || '').trim();
+  if (!raw) return { bank: '', account: '', digits: '', holder: '', raw: '' };
+  const acct = extractAccountNumber(raw, { allowPhoneLike: true });
+  let rest = acct ? raw.replace(acct.display, ' ') : raw;
+  let bank = '';
+  for (const name of KNOWN_BANKS) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:^|[\\s·:/|,(\\[])(${escaped})(?=$|[\\s·:/|,)\\]])`, 'i');
+    const m = rest.match(re);
+    if (m) {
+      bank = m[1];
+      rest = rest.replace(m[1], ' ');
+      break;
+    }
+  }
+  const holder = rest
+    .replace(/[\s·:/|,()[\]]+/g, ' ')
+    .replace(/\b(?:계좌번호|계좌|예금주)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return {
+    bank,
+    account: acct ? acct.display : '',
+    digits: acct ? acct.digits : '',
+    holder,
+    raw
+  };
 }
 
 const INVITATION_DIFF_LABELS = {
