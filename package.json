@@ -11,6 +11,7 @@
     "build": "node scripts/build.mjs",
     "share-card": "node scripts/generate-share-card.mjs",
     "photos": "node scripts/optimize-photos.mjs",
-    "bump": "node scripts/bump-version.mjs"
+    "bump": "node scripts/bump-version.mjs",
+    "e2e": "node scripts/e2e-smoke.mjs"
   }
 }

@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadText } from './dom.js?v=wedding-features-56';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-56';
-import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-56';
-import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-56';
-import { multiScheduleCalendar } from './calendar.js?v=wedding-features-56';
+import { $, E, button, linkButton, downloadText } from './dom.js?v=wedding-features-57';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-57';
+import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-57';
+import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-57';
+import { multiScheduleCalendar } from './calendar.js?v=wedding-features-57';
 import {
   weddingBudgetSummary,
   guestListSummary,
@@ -15,7 +15,7 @@ import {
   activeVendorSchedules,
   collectMasterTimeline,
   weddingPhaseInfo
-} from './planning.js?v=wedding-features-56';
+} from './planning.js?v=wedding-features-57';
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 let checklistIncompleteOnly = false;
@@ -466,7 +466,6 @@ export function renderHomeChecklist(ctx) {
     return saved;
   });
   const deleteCustom = (id, label) => {
-    if (!confirm(`‘${label}’ 할 일을 삭제할까요?`)) return;
     ctx.queuePreference(async () => {
       const latest = ctx.getPrefs();
       const curCustom = latest.customChecklist || [];

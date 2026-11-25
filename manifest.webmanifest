@@ -20,5 +20,35 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "모바일 청첩장",
+      "short_name": "청첩장",
+      "description": "하객용 모바일 청첩장 화면 바로 열기",
+      "url": "./?view=guest#/invitation",
+      "icons": [{ "src": "./assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+    },
+    {
+      "name": "축의대 · 축의금 장부",
+      "short_name": "축의금",
+      "description": "본식 축의금 빠른 입력 및 정산 장부",
+      "url": "./#/ceremony/gifts",
+      "icons": [{ "src": "./assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+    },
+    {
+      "name": "본식 식순 · 큐시트",
+      "short_name": "본식 식순",
+      "description": "순천아모르 12단계 식순 및 라이브 큐시트",
+      "url": "./#/ceremony/rundown",
+      "icons": [{ "src": "./assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+    },
+    {
+      "name": "라크마 촬영 안내",
+      "short_name": "스튜디오",
+      "description": "2027-02-03 라크마 촬영 동선 및 준비물",
+      "url": "./#/studios",
+      "icons": [{ "src": "./assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+    }
   ]
 }

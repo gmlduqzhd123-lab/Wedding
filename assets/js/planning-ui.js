@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-56';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-56';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-56';
-import { quoteReview } from './travel.js?v=wedding-features-56';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-56';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-57';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-57';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-57';
+import { quoteReview } from './travel.js?v=wedding-features-57';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-57';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -11,10 +11,10 @@ import {
   weddingBudgetSummary,
   sdmEstimate,
   guestListSummary
-} from './planning.js?v=wedding-features-56';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-56';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-56';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-56';
+} from './planning.js?v=wedding-features-57';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-57';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-57';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-57';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
@@ -579,11 +579,27 @@ function renderVendorScheduleBoard(ctx) {
           }, 'checklist-note-btn') : null,
           button('수정', () => openVendorScheduleEditor(ctx, item), 'checklist-note-btn'),
           button('삭제', () => {
-            if (!confirm(`‘${item.name}’ 일정을 삭제할까요?`)) return;
             ctx.queuePreference(async () => {
-              const nextList = activeVendorSchedules(ctx.getPrefs()).filter(v => v.id !== item.id);
+              const latest = activeVendorSchedules(ctx.getPrefs());
+              const removedIndex = latest.findIndex(v => v.id === item.id);
+              if (removedIndex < 0) return true;
+              const snapshot = structuredClone(latest[removedIndex]);
+              const nextList = latest.filter(v => v.id !== item.id);
               const saved = await ctx.savePrefs({ ...ctx.getPrefs(), vendorSchedules: nextList });
-              if (saved) { ctx.render(); ctx.toast('일정을 삭제했습니다.'); }
+              if (saved) {
+                ctx.render();
+                ctx.toast(`‘${item.name}’ 일정을 삭제했습니다.`, {
+                  undoLabel: '되돌리기',
+                  onUndo: () => ctx.queuePreference(async () => {
+                    const cur = [...activeVendorSchedules(ctx.getPrefs())];
+                    if (cur.some(v => v.id === snapshot.id)) return true;
+                    cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
+                    const restored = await ctx.savePrefs({ ...ctx.getPrefs(), vendorSchedules: cur });
+                    if (restored) { ctx.render(); ctx.toast(`‘${snapshot.name}’ 일정을 복구했습니다.`); }
+                    return restored;
+                  })
+                });
+              }
               return saved;
             });
           }, 'checklist-note-btn danger-text')));

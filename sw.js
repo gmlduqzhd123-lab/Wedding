@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'wedding-features-56';
+const CACHE_VERSION = 'wedding-features-57';
 const CACHE_NAME = `wedding-pwa-${CACHE_VERSION}`;
 
 const CORE_PRECACHE_URLS = [
@@ -13,6 +13,7 @@ const CORE_PRECACHE_URLS = [
   `./assets/js/dom.js?v=${CACHE_VERSION}`,
   `./assets/js/bgm.js?v=${CACHE_VERSION}`,
   `./assets/js/invitation-card.js?v=${CACHE_VERSION}`,
+  `./assets/js/invitation-ui.js?v=${CACHE_VERSION}`,
   `./assets/js/photo-viewer.js?v=${CACHE_VERSION}`,
   './assets/favicon.svg',
   './assets/apple-touch-icon.png',

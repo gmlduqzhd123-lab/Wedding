@@ -80,7 +80,11 @@ await access(new URL('404.html',root));
 const manifest=JSON.parse(await readFile(new URL('manifest.webmanifest',root),'utf8'));
 assert(manifest.name&&manifest.short_name&&Array.isArray(manifest.icons)&&manifest.icons.length>=2,'manifest.webmanifest must define name, short_name, and icons.');
 for(const icon of manifest.icons)await access(new URL(String(icon.src||'').replace(/^\.\//,''),root));
-for(const cli of ['scripts/bump-version.mjs','scripts/optimize-photos.mjs']){
+for(const sc of manifest.shortcuts||[]){
+  assert(sc.name&&sc.url,'Each manifest shortcut must define name and url.');
+  for(const icon of sc.icons||[])await access(new URL(String(icon.src||'').replace(/^\.\//,''),root));
+}
+for(const cli of ['scripts/bump-version.mjs','scripts/optimize-photos.mjs','scripts/e2e-smoke.mjs']){
   execFileSync(process.execPath,['--check',fileURLToPath(new URL(cli,root))]);
 }
 console.log('Content, guest projection, 50 wedding tips, all 30 studios, 60 photographs, contacts, manifest, sw.js, 404 fallback, split CSS tokens, CLI tools, asset versions and JavaScript syntax verified.');

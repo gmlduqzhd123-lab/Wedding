@@ -1,6 +1,6 @@
-import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-56';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-56';
-import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-56';
+import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-57';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-57';
+import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-57';
 
 export { PRENATAL_CHECK_ITEMS };
 
@@ -480,7 +480,8 @@ export function renderPrenatal(ctx) {
     });
   }, 'button');
   const clearNoteBtn = savedNote ? button('메모 지우기', () => {
-    if (!confirm('저장된 산전검사 메모를 지울까요?')) return;
+    const prevNote = ctx.getPrefs().prenatalNote || '';
+    if (!prevNote) return;
     ctx.queuePreference(async () => {
       const latest = ctx.getPrefs();
       const next = { ...latest };
@@ -488,7 +489,14 @@ export function renderPrenatal(ctx) {
       const ok = await ctx.savePrefs(next);
       if (ok) {
         if (ctx.currentRoute() === 'prenatal') ctx.render();
-        ctx.toast('산전검사 메모를 지웠습니다.');
+        ctx.toast('산전검사 메모를 지웠습니다.', {
+          undoLabel: '되돌리기',
+          onUndo: () => ctx.queuePreference(async () => {
+            const restored = await ctx.savePrefs({ ...ctx.getPrefs(), prenatalNote: prevNote });
+            if (restored) { ctx.render(); ctx.toast('산전검사 메모를 복구했습니다.'); }
+            return restored;
+          })
+        });
       }
       return ok;
     });
@@ -542,10 +550,10 @@ export function renderPrenatal(ctx) {
         E('div', {},
           E('h3', { id: 'prenatal-checklist-title' }, `✅ 우리 두 사람 산전검사 진행 체크 (${checkDone}/${checkTotal} 완료 · ${pct}%)`),
           E('p', { class: 'small muted' }, '체크 상태는 이 기기의 개인 설정에만 저장되며 개인 백업에 함께 포함됩니다.')),
-        checkDone > 0 ? button('체크 초기화', () => {
-          if (!confirm('산전검사 진행 체크 표시를 초기화할까요?')) return;
+        checkDone > 0 ? button('체크 초기화', async () => {
+          if (!await ctx.confirmAction({ title: '산전검사 체크 초기화', message: '산전검사 진행 체크 표시를 모두 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
           ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), prenatalChecks: [] }).then(ok => {
-            if (ok && ctx.currentRoute() === 'prenatal') ctx.render();
+            if (ok && ctx.currentRoute() === 'prenatal') { ctx.render(); ctx.toast('산전검사 체크를 초기화했습니다.'); }
             return ok;
           }));
         }, 'checklist-note-btn') : null),

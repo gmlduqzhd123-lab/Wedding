@@ -1,8 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-56';
-import { formatDate } from './content.js?v=wedding-features-56';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-56';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-56';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-56';
+import { E, button } from './dom.js?v=wedding-features-57';
+import { formatDate } from './content.js?v=wedding-features-57';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-57';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-57';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-57';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 
@@ -571,9 +571,9 @@ export function renderCeremony(ctx) {
     E('div', { class: 'ceremony-prep-box' },
       E('div', { class: 'lachma-prep-head' },
         E('strong', {}, `✅ 본식 식순 · 낭독문 사전 준비 체크 (${prepDone}/${CEREMONY_PREP_ITEMS.length} 완료)`),
-        prepDone > 0 ? button('체크 초기화', () => {
-          if (!confirm('본식 식순 사전 준비 체크 표시를 초기화할까요?')) return;
-          ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), ceremonyChecks: [] }).then(ok => { if (ok) ctx.render(); return ok; }));
+        prepDone > 0 ? button('체크 초기화', async () => {
+          if (!await ctx.confirmAction({ title: '식순 준비 체크 초기화', message: '본식 식순 사전 준비 체크 표시를 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
+          ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), ceremonyChecks: [] }).then(ok => { if (ok) { ctx.render(); ctx.toast('본식 식순 체크를 초기화했습니다.'); } return ok; }));
         }, 'checklist-note-btn') : null),
       E('ul', { class: 'ceremony-prep-list' }, CEREMONY_PREP_ITEMS.map(([cid, label]) => {
         const done = checkedSet.has(cid);

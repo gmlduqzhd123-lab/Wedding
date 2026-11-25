@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-56';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-56';
-import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-56';
-import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-56';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-56';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-57';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-57';
+import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-57';
+import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-57';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-57';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 
@@ -176,7 +176,6 @@ export function renderHomeItemsBoard(ctx) {
   };
 
   const deleteItem = item => {
-    if (!confirm(`‘${item.name}’ 항목을 삭제할까요?`)) return;
     ctx.queuePreference(async () => {
       const latest = ctx.getPrefs().homeItems || [];
       const removedIndex = latest.findIndex(row => row.id === item.id);
@@ -579,9 +578,9 @@ export function renderBenefitsGuideBoard(ctx) {
         E('div', {},
           E('h3', { id: 'benefit-checklist-title' }, `✅ 혼인신고 · 신혼부부 혜택 진행 체크 (${checkDone}/${checkTotal} 완료 · ${pct}%)`),
           E('p', { class: 'small muted' }, '체크 상태와 메모는 이 기기의 개인 설정에만 저장됩니다.')),
-        checkDone > 0 ? button('체크 초기화', () => {
-          if (!confirm('혼인신고·혜택 진행 체크를 초기화할까요?')) return;
-          ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), benefitChecks: [] }).then(ok => { if (ok) ctx.render(); return ok; }));
+        checkDone > 0 ? button('체크 초기화', async () => {
+          if (!await ctx.confirmAction({ title: '혜택 진행 체크 초기화', message: '혼인신고·신혼부부 혜택 진행 체크를 모두 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
+          ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), benefitChecks: [] }).then(ok => { if (ok) { ctx.render(); ctx.toast('혼인신고·혜택 체크를 초기화했습니다.'); } return ok; }));
         }, 'checklist-note-btn') : null),
       E('div', { class: 'checklist-progress-track', 'aria-hidden': 'true' },
         E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` })),

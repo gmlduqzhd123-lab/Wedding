@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText } from './dom.js?v=wedding-features-56';
-import { weddingDday } from './content.js?v=wedding-features-56';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-56';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-56';
+import { $, E, button, externalLink, image, downloadText } from './dom.js?v=wedding-features-57';
+import { weddingDday } from './content.js?v=wedding-features-57';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-57';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-57';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -168,8 +168,8 @@ function renderLachmaDeepGuide(ctx, studio, compact = false) {
         E('h3', { class: 'lachma-subtitle' }, '🎒 신랑 & 신부 필수 준비사항 (공식 안내 & 2월 겨울 대비)'),
         !guestMode ? E('div', { class: 'lachma-prep-controls' },
           E('span', { class: 'badge' }, `준비물 점검 ${donePrepCount}/${totalPrepCount} (${prepPct}%)`),
-          donePrepCount > 0 ? button('준비물 체크 초기화', () => {
-            if (!confirm('라크마 촬영 준비물 체크 상태를 모두 초기화할까요?')) return;
+          donePrepCount > 0 ? button('준비물 체크 초기화', async () => {
+            if (!await ctx.confirmAction({ title: '촬영 준비물 초기화', message: '라크마 촬영 준비물 체크 상태를 모두 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
             ctx.queuePreference(async () => {
               const saved = await ctx.savePrefs({ ...ctx.getPrefs(), shootChecklist: [] });
               if (saved) { ctx.render(); ctx.toast('촬영 준비물 체크를 초기화했습니다.'); }

@@ -27,6 +27,8 @@ jobs:
           package-manager-cache: false
       - name: Validate content and application
         run: npm run check
+      - name: Run headless Chrome E2E smoke tests
+        run: npm run e2e
       - name: Build static files
         run: npm run build
       - uses: actions/configure-pages@v6

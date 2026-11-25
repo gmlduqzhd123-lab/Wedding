@@ -1,6 +1,6 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-56';
-import { safeUrl } from './content.js?v=wedding-features-56';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-56';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-57';
+import { safeUrl } from './content.js?v=wedding-features-57';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-57';
 import {
   COST_LABELS,
   budgetSummary,
@@ -14,7 +14,7 @@ import {
   climateReview,
   climateBadgeInfo,
   tripFlightBadge
-} from './travel.js?v=wedding-features-56';
+} from './travel.js?v=wedding-features-57';
 
 export { tripFlightBadge };
 
@@ -911,9 +911,9 @@ function renderHoneymoonPackingList(ctx) {
         E('div', { class: 'page-actions' },
           button('+ 우리만의 준비물 추가', () => openCustomPackingEditor(ctx), 'button quiet'),
           button('🖨️ 인쇄 / PDF 저장', () => window.print(), 'button quiet'),
-          doneCount > 0 ? button('짐 체크 초기화', () => {
-            if (!confirm('신혼여행 짐 싸기 체크 기록을 모두 초기화할까요?')) return;
-            ctx.queuePreference(async () => { const saved = await ctx.savePrefs({ ...ctx.getPrefs(), packingList: [] }); if (saved) ctx.render(); return saved; });
+          doneCount > 0 ? button('짐 체크 초기화', async () => {
+            if (!await ctx.confirmAction({ title: '짐 체크 초기화', message: '신혼여행 짐 싸기 체크 기록을 모두 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
+            ctx.queuePreference(async () => { const saved = await ctx.savePrefs({ ...ctx.getPrefs(), packingList: [] }); if (saved) { ctx.render(); ctx.toast('신혼여행 짐 체크를 초기화했습니다.'); } return saved; });
           }, 'button quiet') : null)),
       E('div', { class: 'checklist-grid' }, cats.map(([cat, items]) => E('article', { class: 'checklist-stage-card' },
         E('div', { class: 'checklist-stage-head' },
@@ -929,12 +929,32 @@ function renderHoneymoonPackingList(ctx) {
               isCustom ? E('div', { class: 'checklist-item-actions' },
                 button('수정', () => openCustomPackingEditor(ctx, { id, category: cat, title: label }), 'checklist-note-btn'),
                 button('삭제', () => {
-                  if (!confirm(`‘${label}’ 준비물을 삭제할까요?`)) return;
                   ctx.queuePreference(async () => {
-                    const nextList = (ctx.getPrefs().customPackingList || []).filter(c => c.id !== id);
-                    const nextChecked = (ctx.getPrefs().packingList || []).filter(k => k !== id);
-                    const saved = await ctx.savePrefs({ ...ctx.getPrefs(), customPackingList: nextList, packingList: nextChecked });
-                    if (saved) { ctx.render(); ctx.toast('준비물을 삭제했습니다.'); }
+                    const latest = ctx.getPrefs();
+                    const curList = latest.customPackingList || [];
+                    const removedIndex = curList.findIndex(c => c.id === id);
+                    if (removedIndex < 0) return true;
+                    const snapshot = structuredClone(curList[removedIndex]);
+                    const wasChecked = (latest.packingList || []).includes(id);
+                    const nextList = curList.filter(c => c.id !== id);
+                    const nextChecked = (latest.packingList || []).filter(k => k !== id);
+                    const saved = await ctx.savePrefs({ ...latest, customPackingList: nextList, packingList: nextChecked });
+                    if (saved) {
+                      ctx.render();
+                      ctx.toast(`‘${label}’ 준비물을 삭제했습니다.`, {
+                        undoLabel: '되돌리기',
+                        onUndo: () => ctx.queuePreference(async () => {
+                          const cur = ctx.getPrefs();
+                          const restoredList = [...(cur.customPackingList || [])];
+                          if (restoredList.some(c => c.id === snapshot.id)) return true;
+                          restoredList.splice(Math.min(removedIndex, restoredList.length), 0, snapshot);
+                          const restoredChecked = wasChecked ? [...new Set([...(cur.packingList || []), snapshot.id])] : (cur.packingList || []);
+                          const restored = await ctx.savePrefs({ ...cur, customPackingList: restoredList, packingList: restoredChecked });
+                          if (restored) { ctx.render(); ctx.toast(`‘${snapshot.title}’ 준비물을 복구했습니다.`); }
+                          return restored;
+                        })
+                      });
+                    }
                     return saved;
                   });
                 }, 'checklist-note-btn danger-text')) : null));

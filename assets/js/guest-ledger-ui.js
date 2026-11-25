@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-56';
-import { formatDate } from './content.js?v=wedding-features-56';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-56';
-import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, buildThankYouMessage } from './planning.js?v=wedding-features-56';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-56';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-57';
+import { formatDate } from './content.js?v=wedding-features-57';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES, GIFT_CHANNELS } from './preferences.js?v=wedding-features-57';
+import { guestListSummary, giftLedgerSummary, guestsToCsv, giftsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, buildThankYouMessage } from './planning.js?v=wedding-features-57';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-57';
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
@@ -644,7 +644,6 @@ export function renderGuestListBoard(ctx) {
           button('+ 장부', () => openGiftEditor(ctx, null, item), 'checklist-note-btn'),
           button('수정', () => openGuestEditor(ctx, item), 'checklist-note-btn'),
           button('삭제', () => {
-            if (!confirm(`'${item.name}' 하객을 명단에서 삭제할까요?`)) return;
             ctx.queuePreference(async () => {
               const latest = ctx.getPrefs().guestList || [];
               const removedIndex = latest.findIndex(g => g.id === item.id);
@@ -1024,7 +1023,6 @@ export function renderGiftLedgerBoard(ctx) {
           button('💬 감사문자', () => openThankYouModal(ctx, item), 'checklist-note-btn'),
           button('수정', () => openGiftEditor(ctx, item), 'checklist-note-btn'),
           button('삭제', () => {
-            if (!confirm(`'${item.name}' 축의금 기록을 삭제할까요?`)) return;
             ctx.queuePreference(async () => {
               const latest = ctx.getPrefs().giftLedger || [];
               const removedIndex = latest.findIndex(g => g.id === item.id);

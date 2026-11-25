@@ -1604,19 +1604,19 @@ body.is-large-text .invitation .invitation-actions .button {
 .record-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 18px; font-size: 12.5px; }
 .record-actions button { font-size: 12.5px; }
 
-.album-grid, .travel-grid {
+.album-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
-.album-card, .travel-card {
+.album-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 24px;
   box-shadow: var(--card-shadow);
   overflow: hidden;
 }
-.album-card h2, .travel-card h2 { font-family: var(--display); }
+.album-card h2 { font-family: var(--display); }
 .album-card .album-cover { width: 100%; height: 260px; object-fit: cover; background: var(--soft); }
 .album-placeholder {
   height: 220px;
@@ -1628,38 +1628,11 @@ body.is-large-text .invitation .invitation-actions .button {
   letter-spacing: -0.02em;
 }
 .album-info { padding: 24px; }
-.travel-card { padding: 22px 24px; }
 .photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .photo-grid img { width: 100%; height: 200px; object-fit: cover; border-radius: 14px; }
 .photo-grid a { display: block; }
 
-/* Honeymoon & Travel Cards */
-.travel-card { scroll-margin-top: 24px; }
-.travel-card h2 {
-  font-size: clamp(15px, 1.18vw, 17px);
-  letter-spacing: -0.032em;
-  line-height: 1.38;
-  word-break: keep-all;
-}
-.travel-card .country {
-  font-size: 12px;
-  color: var(--green);
-  margin-bottom: 6px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.travel-card dl {
-  margin: 18px 0;
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: 8px;
-  font-size: 13px;
-}
-.travel-card dt { color: var(--muted); white-space: nowrap; }
-.travel-card dd { margin: 0; white-space: pre-line; word-break: keep-all; overflow-wrap: anywhere; }
-
-/* Studios & Forms */
-.studio-intro { margin-bottom: 22px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Shared Badges & Forms */
 .badge {
   background: var(--olive-soft);
   border: 1px solid var(--olive-line);
@@ -1845,32 +1818,10 @@ summary + * { margin-top: 18px; }
   font-weight: 700;
 }
 
-.trip-comparison { margin: 0 0 32px; }
 .table-scroll { overflow-x: auto; }
-.travel-comparison {
-  border-collapse: collapse;
-  width: 100%;
-  table-layout: fixed;
-  margin-top: 16px;
-  background: var(--surface);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: var(--card-shadow);
-}
-.travel-comparison th, .travel-comparison td {
-  border: 1px solid var(--line);
-  padding: 12px;
-  text-align: left;
-  vertical-align: top;
-  white-space: pre-line;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.travel-comparison th { background: var(--surface-tint); color: var(--green-dark); font-weight: 700; }
-.travel-comparison th:first-child { width: 22%; }
 
 h1, h2, h3, p, dd, a, .couple-names { word-break: keep-all; overflow-wrap: anywhere; }
-.main > *, .hero > *, .story-card > *, .album-info, .travel-card, .compare-card, .dialog-heading h2 { min-width: 0; }
+.main > *, .hero > *, .story-card > *, .album-info, .dialog-heading h2 { min-width: 0; }
 .page-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
 
 .editor-dialog[open] { display: flex; flex-direction: column; overflow: hidden; padding: 0; max-height: 88dvh; }
@@ -1929,8 +1880,7 @@ h1, h2, h3, p, dd, a, .couple-names { word-break: keep-all; overflow-wrap: anywh
 .conflict-list section { padding: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; }
 .conflict-list p { white-space: pre-wrap; }
 
-/* Spec Chips & Budget Visual Bars */
-.trip-spec-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 11px 0 13px; }
+/* Spec Chips */
 .spec-chip {
   display: inline-flex;
   align-items: center;
@@ -1964,64 +1914,6 @@ a.spec-chip:hover {
   font-weight: 700;
 }
 
-.trip-budget-visual {
-  padding: 13px 15px;
-  margin: 12px 0;
-  border-radius: 16px;
-  background: var(--surface-tint);
-  border: 1px solid var(--line);
-}
-.budget-visual-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-.budget-bar-track {
-  display: flex;
-  width: 100%;
-  height: 10px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(59, 89, 68, 0.12);
-  gap: 2px;
-}
-.budget-seg { display: block; height: 100%; border-radius: 999px; }
-.seg-airfare { background: #3b5944; }
-.seg-lodging { background: #688b73; }
-.seg-other { background: #c97a70; }
-.seg-reserve { background: #b8b3a8; }
-.seg-honeymoon { background: #527988; }
-.seg-living { background: #9a7885; }
-
-.budget-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 9px; font-size: 11.5px; }
-.budget-legend-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.legend-item { display: flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.legend-label { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
-.legend-val { margin-left: auto; font-variant-numeric: tabular-nums; }
-
-.trip-pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
-.pros-box, .cons-box {
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  font-size: 12.5px;
-  line-height: 1.65;
-  min-width: 0;
-}
-.pros-box { background: var(--olive-soft); border-color: var(--olive-line); }
-.cons-box { background: var(--rose-soft); border-color: var(--rose-line); }
-.pros-title, .cons-title { display: block; font-size: 12.5px; margin-bottom: 6px; color: var(--olive-dark); font-weight: 700; }
-.cons-title { color: var(--rose-accent-dark); }
-.pros-cons-list { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
-
-.travel-card .trip-meta-dl {
-  margin: 12px 0;
-  padding: 11px 13px;
-  border-radius: 14px;
-  background: var(--surface-tint);
-  border: 1px solid var(--line);
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 5px 10px;
-  font-size: 12.5px;
-}
-
 .greeting-templates {
   padding: 12px 14px;
   border-radius: 14px;
@@ -2032,11 +1924,6 @@ a.spec-chip:hover {
 }
 .greeting-template-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .greeting-template-buttons .button { padding: 6px 12px; min-height: 34px; font-size: 12px; }
-
-.studio-quick-filters { margin: 10px 0 14px; }
-.studio-spec-chips { margin: 10px 0 12px; }
-.studio-pros-cons { margin: 12px 0; }
-.studio-pros-cons p { margin-top: 4px; line-height: 1.6; }
 
 /* Invitation Readiness, QR & Guest Preview */
 .invitation-readiness-card {
@@ -2226,23 +2113,15 @@ a.spec-chip:hover {
 @media (max-width: 960px) {
   .hero { grid-template-columns: 1fr; padding: 28px 26px; gap: 20px; }
   .art-arch { width: 100%; padding: 20px 18px; }
-  .lachma-location-grid, .journey-ribbon-grid, .ceremony-papers-grid { grid-template-columns: 1fr; }
-  .amor-cue-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 860px) {
-  .budget-category-grid, .venue-sim-grid, .lachma-prep-grid, .ledger-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .album-grid, .travel-grid, .tips-grid { grid-template-columns: 1fr; }
+  .album-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {
   body { font-size: 14px; }
   .button { max-width: 100%; text-align: center; }
-  .trip-controls { flex-wrap: wrap; }
-  .overview-row-top { flex-wrap: wrap; }
-  .travel-overview .text-button { white-space: normal; }
   .header-inner { padding: 10px 14px; gap: 8px; }
   .brand { font-size: 15px; }
   .brand-mark { width: 30px; height: 30px; font-size: 13px; border-radius: 9px; }
@@ -2316,23 +2195,10 @@ a.spec-chip:hover {
   .contact-row-actions { justify-content: flex-end; }
   .invitation-rsvp-card { padding: 18px 16px; }
 
-  .studio-photos img { height: 210px; }
-  .selected-studio-card .studio-photos {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .studio-photo-frame { aspect-ratio: 3 / 4; border-radius: 14px; }
-  .selected-studio-card .studio-photos img { height: 100%; }
-  .studio-photo-zoom { right: 6px; bottom: 6px; padding: 4px 8px; font-size: 10.5px; }
-  .directory-controls { flex-wrap: wrap; align-items: flex-start; }
-  .directory-controls input { max-width: none; }
-
   .story-card { padding: 20px; }
   .story-card.has-image { grid-template-columns: 1fr; }
   .story-card img { width: 100%; height: 240px; border-radius: 18px; }
 
-  .trip-video-list { grid-template-columns: 1fr; }
-  .tip-card { padding: 20px; }
   .photo-grid { grid-template-columns: 1fr 1fr; }
   .photo-grid img { height: 160px; }
 
@@ -2381,47 +2247,7 @@ a.spec-chip:hover {
   .section-heading > :first-child { flex: initial; }
   .section-heading h2 { font-size: 19.5px; }
   .section-heading a { font-size: 12px; white-space: nowrap; }
-
-  .budget-legend, .budget-legend-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .trip-pros-cons,
-  .checklist-grid,
-  .budget-summary-cards,
-  .budget-category-grid,
-  .dashboard-grid,
-  .ceremony-grid,
-  .amor-cue-grid,
-  .ceremony-papers-grid,
-  .ceremony-prep-list,
-  .venue-sim-grid,
-  .lachma-scene-grid,
-  .lachma-prep-grid,
-  .lachma-location-grid {
-    grid-template-columns: 1fr;
-  }
-  .ceremony-paper-card { padding: 18px 16px; }
-  .ceremony-paper-text { padding: 14px 12px; font-size: 13px; }
-  .lachma-timetable .timetable-row { grid-template-columns: 1fr; }
-  .travel-overview ol { columns: 1; }
-  .travel-overview,
-  .journey-ribbon,
-  .home-checklist,
-  .wedding-budget-calc,
-  .home-dashboard,
-  .ceremony-planner,
-  .private-ledger-section,
-  .selected-studio-card,
-  .vendor-schedule-board,
-  .lachma-deep-guide,
-  .invitation-readiness-card {
-    padding: 18px 16px;
-  }
-  .ledger-row { padding: 12px; }
-  .ledger-row-controls { width: 100%; }
-  .vendor-schedule-item { flex-direction: column; }
-  .overview-head p { margin-top: 4px; }
-  .overview-stats .spec-chip { font-size: 11px; padding: 3px 8px; }
-  .lachma-penalty-table { font-size: 11.8px; }
-  .lachma-penalty-table th, .lachma-penalty-table td { padding: 6px 5px; }
+  .invitation-readiness-card { padding: 18px 16px; }
 }
 
 @media (max-width: 480px) {
@@ -2429,9 +2255,7 @@ a.spec-chip:hover {
   .spec-chip,
   .badge,
   .trip-filter-chip,
-  .checklist-summary-pill,
   .readiness-chip,
-  .lachma-step-badge,
   .eyebrow,
   .hero-date-pill,
   .hero-role-caption,
@@ -2447,7 +2271,6 @@ a.spec-chip:hover {
     white-space: normal;
   }
   .cal-header { flex-wrap: wrap; align-items: center; }
-  .trip-card-topline { flex-wrap: wrap; }
   .invitation-cal-actions,
   .invitation-map-actions,
   .invitation-share-foot {
@@ -2469,24 +2292,16 @@ a.spec-chip:hover {
   .invitation-share-foot .button:last-child:nth-child(odd) {
     flex: 1 1 100%;
   }
-  .ledger-kpi-card { padding: 12px 12px; gap: 4px; }
-  .ledger-kpi-card strong { font-size: 15.5px; }
-  .ledger-filter-controls input[type='search'] { flex: 1 1 100%; width: 100%; }
-  .ledger-filter-controls select { flex: 1 1 calc(50% - 4px); min-width: 0; }
 }
 
 @media (max-width: 420px) {
   .photo-editor, .menu-grid, .overview { grid-template-columns: 1fr; }
   .viewer-controls .button { padding: 8px 12px; }
-  .travel-comparison { font-size: 12px; }
-  .travel-comparison th, .travel-comparison td { padding: 10px 8px; }
   .header-inner { flex-wrap: wrap; }
   .manage-button { padding: 6px 10px; font-size: 11.5px; }
 }
 
 @media (max-width: 360px) {
-  .ledger-kpi-grid { grid-template-columns: 1fr; }
-  .ledger-filter-controls select { flex: 1 1 100%; width: 100%; }
   .invitation { padding: 30px 15px 26px; }
   .invitation-milestone-strip { grid-template-columns: 1fr; }
   .milestone-cell {
@@ -2904,45 +2719,13 @@ body.is-mobile-menu-open { overflow: hidden; }
     min-height: 35px;
   }
 }
-@media (max-width: 720px) {
-  .prenatal-card { padding: 18px 16px; border-radius: 20px; }
-  .home-timeline { padding: 18px 16px; border-radius: 20px; }
-  .master-timeline-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-  .master-row-date {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .master-timeline-row > .button { justify-self: start; }
-  .prenatal-info-grid,
-  .prenatal-callout-grid,
-  .prenatal-docs-grid,
-  .prenatal-local-grid,
-  .prenatal-exam-grid,
-  .prenatal-date-inputs { grid-template-columns: 1fr; }
-  .prenatal-step-timing { margin-left: 0; }
-  .prenatal-subtabs { flex-wrap: wrap; overflow-x: visible; }
-  .prenatal-subtabs .subtab-btn { flex: 1 1 auto; padding: 8px 11px; font-size: 12.5px; }
-  .benefit-calc-box { padding: 14px 13px; }
-  .benefit-calc-inputs input[type="date"] { width: 100%; }
-}
 @media (max-width: 440px) {
-  .prenatal-kpi-card { padding: 12px 13px; }
-  .prenatal-kpi-val { font-size: 15.5px; }
-  .prenatal-hours-grid { grid-template-columns: 1fr; }
   .button.mobile-menu-btn { padding: 6px 9px; font-size: 11.5px; }
   body.is-guest-mode[data-route="invitation"] .header-inner { flex-wrap: wrap; }
   body.is-guest-mode[data-route="invitation"] .main-nav-wrap { order: 3; flex-basis: 100%; width: 100%; }
 }
 @media (max-width: 360px) {
   .mobile-menu-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 350px) {
-  .prenatal-kpi-strip { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2957,7 +2740,7 @@ body.is-mobile-menu-open { overflow: hidden; }
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .trip-controls, .directory-controls, .trip-quick-filters, .travel-tools, .trip-video-links, .yt-inline-play, .yt-thumb-banner, .lachma-official-links, .lachma-loc-actions, .map-preview-open, .ceremony-doc-toolbar, .invitation-actions, .invitation-readiness-card, .invitation-topbar-tools, .invitation-text-btn, .invitation-bgm-btn, .invitation-share-foot, .invitation-rsvp-card, .invitation-gallery-foot, .calendar-update-note, .inapp-browser-note, .dashboard-backup-strip, .master-timeline-row > .button, .contact-row-actions, .checklist-item-actions, .vendor-schedule-actions, .checklist-note-btn, .scroll-top-btn, .guest-board-toolbar, .gift-ledger-toolbar, .ledger-row-controls, .guest-quick-dock, .subtab-bar, .list-pager-bar, .studio-photo-zoom, .nav-scroll-cue, .filter-reset-chip, .prenatal-quick-actions, .prenatal-link-row, .prenatal-note-actions, .prenatal-date-actions, .benefit-calc-inputs, .mobile-menu-btn, .mobile-menu-sheet, .mobile-menu-backdrop, .toast, dialog {
+  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .invitation-actions, .invitation-readiness-card, .invitation-topbar-tools, .invitation-text-btn, .invitation-bgm-btn, .invitation-share-foot, .invitation-rsvp-card, .invitation-gallery-foot, .calendar-update-note, .inapp-browser-note, .contact-row-actions, .scroll-top-btn, .guest-quick-dock, .nav-scroll-cue, .mobile-menu-btn, .mobile-menu-sheet, .mobile-menu-backdrop, .toast, dialog {
     display: none !important;
   }
   .reveal-section, .reveal-section.will-reveal {
@@ -2966,185 +2749,15 @@ body.is-mobile-menu-open { overflow: hidden; }
   }
   .main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
   .invitation-topbar { padding: 0 !important; }
-  .home-dashboard, .home-timeline, .home-checklist, .wedding-budget-calc, .ceremony-planner, .private-ledger-section, .invitation, .travel-card, .selected-trip, .travel-comparison, .honeymoon-packing, .selected-studio-card, .vendor-schedule-board, .lachma-deep-guide, .journey-ribbon, .prenatal-card, .prenatal-kpi-card, .benefit-calc-box {
+  .invitation {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border-color: #cccccc !important;
   }
   .table-scroll { overflow: visible !important; }
-  .ceremony-paper-card, .ceremony-box, .lachma-location-card, .lachma-prep-card, .lachma-scene-card, .timetable-row, .checklist-stage-card, .dashboard-card, .master-timeline-row, .venue-sim-box, .sdm-sim-box, .amor-cue-card, .mc-step-card, .vendor-schedule-item, .ledger-row, .ledger-kpi-card, .prenatal-step-card, .prenatal-callout-box, .prenatal-local-card {
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid #cccccc !important;
-    break-inside: avoid;
-  }
   .invitation-section, .invitation-couple-plaque, .invitation-calendar, .invitation .place, .invitation-guide-box, .invitation-account-group, .invitation-closing {
     break-inside: avoid;
-  }
-  body.print-honeymoon-summary .travel-grid,
-  body.print-honeymoon-summary .travel-overview:not(:has(.overview-disclosure[open])),
-  body.print-honeymoon-summary .travel-overview-compact:not([open]),
-  body.print-honeymoon-summary .no-results-box {
-    display: none !important;
-  }
-  body.print-honeymoon-summary .travel-comparison {
-    min-width: 0 !important;
-    width: 100% !important;
-    font-size: 12px !important;
-  }
-  body.print-ceremony-papers .main > *:not(.ceremony-planner),
-  body.print-ceremony-papers .ceremony-planner > *:not(.ceremony-docs-stack),
-  body.print-ceremony-papers .ceremony-doc-details {
-    display: none !important;
-  }
-  body.print-ceremony-papers .ceremony-planner {
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-  }
-  body.print-ceremony-papers .ceremony-docs-stack,
-  body.print-ceremony-papers .ceremony-papers-grid {
-    display: block !important;
-    margin: 0 !important;
-  }
-  body.print-ceremony-papers .ceremony-paper-card {
-    padding: 28px 32px !important;
-    margin: 0 0 24px !important;
-    border: 1.5px solid #a8beb0 !important;
-    border-radius: 18px !important;
-    background: #ffffff !important;
-  }
-  body.print-ceremony-papers .ceremony-paper-card:first-child {
-    break-after: page;
-    page-break-after: always;
-  }
-  body.print-ceremony-papers .ceremony-paper-text {
-    font-size: 16px !important;
-    line-height: 2.15 !important;
-    border: none !important;
-    background: transparent !important;
-    padding: 12px 0 !important;
-  }
-
-  /* Dedicated Reception Guest Sheet, Gift Settlement Sheet & Day Operations Sheet */
-  body.print-guest-sheet > *:not(.print-only-sheet),
-  body.print-gift-sheet > *:not(.print-only-sheet),
-  body.print-dayops-sheet > *:not(.print-only-sheet) {
-    display: none !important;
-  }
-  body.print-guest-sheet .print-only-sheet,
-  body.print-gift-sheet .print-only-sheet,
-  body.print-dayops-sheet .print-only-sheet {
-    display: block !important;
-    width: 100% !important;
-    padding: 4px 0 !important;
-    color: #1c1a18 !important;
-  }
-  .print-sheet-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 16px;
-    padding-bottom: 12px;
-    margin-bottom: 12px;
-    border-bottom: 2px solid #3b5944;
-  }
-  .print-sheet-eyebrow {
-    margin: 0 0 4px;
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: #3b5944;
-  }
-  .print-sheet-header h1 {
-    margin: 0;
-    font-family: var(--display);
-    font-size: 20px;
-    line-height: 1.25;
-    color: #1c1a18;
-  }
-  .print-sheet-meta {
-    margin: 4px 0 0;
-    font-size: 11.5px;
-    color: #4f554f;
-  }
-  .print-sheet-kpis {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-  }
-  .print-sheet-kpis span {
-    padding: 4px 9px;
-    border: 1px solid #bfd1c4;
-    border-radius: 6px;
-    background: #f4f8f5;
-    font-size: 11px;
-    font-weight: 700;
-    color: #283f2f;
-    white-space: nowrap;
-  }
-  .print-sheet-subsummary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 18px;
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    border: 1px solid #d7e2da;
-    border-radius: 8px;
-    background: #fafbf9;
-    font-size: 11px;
-    color: #3a3f3a;
-  }
-  .print-sheet-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-  .print-sheet-table thead {
-    display: table-header-group;
-  }
-  .print-sheet-table tr {
-    break-inside: avoid;
-  }
-  .print-sheet-table th,
-  .print-sheet-table td {
-    border: 1px solid #bfc6c0;
-    padding: 6px 7px;
-    text-align: left;
-    vertical-align: middle;
-  }
-  .print-sheet-table thead th {
-    background: #eef3ef;
-    color: #283f2f;
-    font-weight: 700;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .print-sheet-table td.num {
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  .print-sheet-table td.strong {
-    font-weight: 700;
-  }
-  .print-sheet-table tfoot th,
-  .print-sheet-table tfoot td {
-    background: #f4f8f5;
-    border-top: 2px solid #3b5944;
-    font-weight: 700;
-  }
-  .print-blank-row td {
-    height: 28px;
-  }
-  .print-sheet-foot {
-    margin: 12px 0 0;
-    font-size: 10px;
-    color: #555555;
   }
 }
 

@@ -1,7 +1,7 @@
-import { E, button } from './dom.js?v=wedding-features-56';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-56';
-import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-56';
-import { weddingDaySummary } from './planning.js?v=wedding-features-56';
+import { E, button } from './dom.js?v=wedding-features-57';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-57';
+import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-57';
+import { weddingDaySummary } from './planning.js?v=wedding-features-57';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 
@@ -336,8 +336,28 @@ export function renderWeddingDayOpsBoard(ctx) {
               phoneObj ? E('a', { href: `tel:${phoneObj.digits}`, class: 'button quiet small-copy-btn' }, '📞 전화') : null,
               button('수정', () => openRoleEditor(ctx, r), 'button quiet small-copy-btn'),
               button('삭제', () => {
-                if (!confirm(`‘${r.role}’ 역할을 삭제할까요?`)) return;
-                ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), weddingDayRoles: roles.filter(x => x.id !== r.id) }).then(ok => { if (ok) ctx.render(); return ok; }));
+                ctx.queuePreference(async () => {
+                  const latest = ctx.getPrefs().weddingDayRoles || [];
+                  const removedIndex = latest.findIndex(x => x.id === r.id);
+                  if (removedIndex < 0) return true;
+                  const snapshot = structuredClone(latest[removedIndex]);
+                  const ok = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayRoles: latest.filter(x => x.id !== r.id) });
+                  if (ok) {
+                    ctx.render();
+                    ctx.toast(`‘${r.role}’ 역할을 삭제했습니다.`, {
+                      undoLabel: '되돌리기',
+                      onUndo: () => ctx.queuePreference(async () => {
+                        const cur = [...(ctx.getPrefs().weddingDayRoles || [])];
+                        if (cur.some(x => x.id === snapshot.id)) return true;
+                        cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
+                        const restored = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayRoles: cur });
+                        if (restored) { ctx.render(); ctx.toast(`‘${snapshot.role}’ 역할을 복구했습니다.`); }
+                        return restored;
+                      })
+                    });
+                  }
+                  return ok;
+                });
               }, 'text-button small')));
         }))
         : E('div', { class: 'no-results-box' },
@@ -368,8 +388,28 @@ export function renderWeddingDayOpsBoard(ctx) {
             }, env.ready ? '✅ 준비 완료' : '☐ 미준비'),
             button('수정', () => openEnvelopeEditor(ctx, env), 'button quiet small-copy-btn'),
             button('삭제', () => {
-              if (!confirm('이 현금 봉투 항목을 삭제할까요?')) return;
-              ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: envelopes.filter(x => x.id !== env.id) }).then(ok => { if (ok) ctx.render(); return ok; }));
+              ctx.queuePreference(async () => {
+                const latest = ctx.getPrefs().weddingDayEnvelopes || [];
+                const removedIndex = latest.findIndex(x => x.id === env.id);
+                if (removedIndex < 0) return true;
+                const snapshot = structuredClone(latest[removedIndex]);
+                const ok = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: latest.filter(x => x.id !== env.id) });
+                if (ok) {
+                  ctx.render();
+                  ctx.toast(`‘${env.recipient || env.payee}’ 봉투 항목을 삭제했습니다.`, {
+                    undoLabel: '되돌리기',
+                    onUndo: () => ctx.queuePreference(async () => {
+                      const cur = [...(ctx.getPrefs().weddingDayEnvelopes || [])];
+                      if (cur.some(x => x.id === snapshot.id)) return true;
+                      cur.splice(Math.min(removedIndex, cur.length), 0, snapshot);
+                      const restored = await ctx.savePrefs({ ...ctx.getPrefs(), weddingDayEnvelopes: cur });
+                      if (restored) { ctx.render(); ctx.toast(`‘${snapshot.recipient || snapshot.payee}’ 봉투 항목을 복구했습니다.`); }
+                      return restored;
+                    })
+                  });
+                }
+                return ok;
+              });
             }, 'text-button small')))))
         : E('div', { class: 'no-results-box' },
           E('p', { class: 'no-results' }, '아직 등록된 현금 봉투 항목이 없습니다. ‘✨ 기본 봉투 5종 채우기’로 시작해 보세요.'))),
