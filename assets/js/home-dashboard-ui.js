@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-64';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-64';
-import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-64';
-import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-64';
-import { multiScheduleCalendar } from './calendar.js?v=wedding-features-64';
+import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-65';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-65';
+import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-65';
+import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-65';
+import { multiScheduleCalendar } from './calendar.js?v=wedding-features-65';
 import {
   weddingBudgetSummary,
   guestListSummary,
@@ -15,7 +15,7 @@ import {
   activeVendorSchedules,
   collectMasterTimeline,
   weddingPhaseInfo
-} from './planning.js?v=wedding-features-64';
+} from './planning.js?v=wedding-features-65';
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 let checklistIncompleteOnly = false;
@@ -52,7 +52,7 @@ const WEDDING_CHECKLIST = [
   ]],
   ['D-60 ~ D-30', '청첩장 · 하객 명단 · 본식 식순', [
     ['d60-card', '종이·모바일 청첩장 문구 확정 및 모임 일정 잡기'],
-    ['d60-mc', '순천아모르 주례 없는 식순(12단계) · 사회자 대본 · 혼인서약서 · 성혼선언문 · 축가 확정'],
+    ['d60-mc', '순천아모르 12단계 식순 · 사회자(김희엽 친구) 대본 · 혼인서약서 · 성혼선언문·축사(교장선생님) · 축가(아카펠라) 확정'],
     ['d60-bouquet', '본식 드레스 셀렉 및 부케·부토니에·코사지 지정'],
     ['d60-living', '신혼집 가전·가구 배치 및 입주·이사 일정 조율']
   ]],

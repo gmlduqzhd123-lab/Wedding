@@ -12,7 +12,7 @@ import {
   computeCashDenominations,
   estimateBanquetTables,
   crossCheckGuestsAndGifts
-} from './ledger.js?v=wedding-features-64';
+} from './ledger.js?v=wedding-features-65';
 
 export {
   guestListSummary,
@@ -318,11 +318,11 @@ export function weddingDaySummary(roles = [], envelopes = []) {
 }
 
 export const CEREMONY_PREP_ITEMS = [
-  ['cchk-mc', '사회자 섭외 확정 및 아모르 12단계 진행 대본·박수 유도 큐 공유'],
+  ['cchk-mc', '사회자(김희엽 친구) 확정 및 아모르 12단계 진행 대본·박수 유도 큐 공유'],
   ['cchk-vows', '신랑·신부 혼인서약서(4가지 약속) 문구 확정 및 낭독 파트 분담·연습'],
-  ['cchk-decl', '사회자용 성혼선언문 성함·예식일 확인 및 단상 비치용 인쇄 준비'],
+  ['cchk-decl', '교장선생님 성혼선언문 낭독 및 축사 사전 협의·단상 비치용 인쇄 준비'],
   ['cchk-cue', '양가 어머님 화촉점화 동선 및 혼주 인사 순서(신부측→신랑측→중앙) 사전 공유'],
-  ['cchk-song', '축가자·곡명 확정 및 진행 타이밍(혼주·내빈 인사 직후)·MR 음원 점검'],
+  ['cchk-song', '축가(아카펠라) 곡명·타이밍(혼주·내빈 인사 직후) 및 마이크 인원수·음향 점검'],
   ['cchk-floor', '순천아모르웨딩컨벤션 피로연 연회홀 층수 확인 및 폐회식 안내 멘트 반영']
 ];
 

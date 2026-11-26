@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-64';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-64';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-64';
-import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-64';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-65';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-65';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-65';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-65';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-64';
+} from './invitation-card.js?v=wedding-features-65';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();
@@ -482,15 +482,16 @@ export function renderInvitationView(ctx) {
           renderBotanicalLeaf(56, 12, 62, 0.52, '#8daa94'),
           S('circle', { cx: '42', cy: '11', r: '2.4', fill: '#c97a70' })),
         E('span', { class: 'invitation-closing-note' }, '귀한 걸음으로 축복해 주시는 모든 분께 진심으로 감사드립니다.'),
-        E('div', { class: 'invitation-actions invitation-share-foot' },
-          !guestMode ? button('💬 초대 문구', () => openInvitationMessageModal(ctx), 'button quiet') : null,
-          button('📋 예식 요약 복사', () => ctx.copyTextToClipboard(
-            buildGuestInvitationSummaryText(info, new URL('./?view=guest#/invitation', location.href).href),
-            '예식 일시·장소·모바일 청첩장 링크 요약을 복사했습니다.',
-            '예식 안내 요약 복사'
-          ), 'button quiet'),
+        E('div', { class: 'invitation-actions invitation-share-foot' + (guestMode ? ' is-guest-foot' : '') },
           button('💌 초대장 공유', ctx.shareInvitationLink, 'button quiet'),
           button('🔗 링크 복사', ctx.copyInvitationLink, 'button quiet'),
+          button('📋 예식 요약 복사', ev => ctx.copyTextToClipboard(
+            buildGuestInvitationSummaryText(info, new URL('./?view=guest#/invitation', location.href).href),
+            '예식 일시·장소·모바일 청첩장 링크 요약을 복사했습니다.',
+            '예식 안내 요약 복사',
+            ev.currentTarget
+          ), 'button quiet'),
+          !guestMode ? button('💬 초대 문구', () => openInvitationMessageModal(ctx), 'button quiet') : null,
           button('🖼️ 이미지 저장', () => downloadInvitationCardPng(info, content.albums, ctx.toast, { onPreview }), 'button quiet'),
           button('🖨️ 청첩장 인쇄', () => window.print(), 'button quiet')))) :
       ctx.empty('우리의 첫 초대장을 준비해요.', '두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.', '예식 정보 입력', () => ctx.openEditor('invitation')),

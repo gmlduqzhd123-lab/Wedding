@@ -1,6 +1,6 @@
-import { E, button, externalLink } from './dom.js?v=wedding-features-64';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-64';
-import { computeCashDenominations } from './planning.js?v=wedding-features-64';
+import { E, button, externalLink } from './dom.js?v=wedding-features-65';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-65';
+import { computeCashDenominations } from './planning.js?v=wedding-features-65';
 
 const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
 const DEFAULT_PHOTO_LINES = [

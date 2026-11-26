@@ -338,9 +338,13 @@ try {
   await cdp.waitFor(`() => document.querySelectorAll('.vendor-schedule-item').length === ${vendorAllCount}`);
   console.log('E2E PASS 4/8: Budget donut + CSV/summary export + Vendor schedule filter & bulk .ics OK');
 
-  // 5. Ceremony Live MC Cue Sheet (Wake Lock + font zoom + staging cue) + Custom Confirm + Guest->Quick Gift RSVP Auto-Sync + Batch Thank-You + Undo
+  // 5. Ceremony Live MC Cue Sheet (Wake Lock + font zoom + staging cue) + Confirmed Lineup + Custom Confirm + Guest->Quick Gift RSVP Auto-Sync + Batch Thank-You + Undo
   await cdp.eval(`location.hash = '#/ceremony/rundown'`);
   await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent.includes('라이브 큐시트 모드'))`);
+  const ceremonyText = await cdp.eval(`document.querySelector('#main').innerText`);
+  assert(ceremonyText.includes('사회자: 김희엽 친구'), 'Ceremony rundown must reflect confirmed MC 김희엽 친구');
+  assert(ceremonyText.includes('축가: 아카펠라'), 'Ceremony rundown must reflect confirmed song 아카펠라');
+  assert(ceremonyText.includes('성혼선언문 낭독 및 축사 (교장선생님 진행)'), 'Ceremony rundown must reflect 교장선생님 declaration & speech');
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('라이브 큐시트 모드')).click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('.live-cue-stage')?.innerText.includes('STEP 01') && Boolean(document.querySelector('.live-cue-wake-btn')) && Boolean(document.querySelector('.live-cue-stage-badge'))`);
   await cdp.eval(`[...document.querySelectorAll('.live-cue-font-group button')].find(b => b.textContent === 'A+').click()`);
@@ -498,6 +502,18 @@ try {
   const kickerBg = await cdp.eval(`getComputedStyle(document.querySelector('.place-kicker')).backgroundColor`);
   assert.equal(kickerBg, 'rgb(36, 52, 41)', `Dark-mode .place-kicker must have dark surface, got: ${kickerBg}`);
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.invitation-share-foot button')].some(b => b.textContent.includes('청첩장 인쇄'))`), true, 'Invitation share footer must include print button');
+  const shareGridCheck = await cdp.eval(`(() => {
+    const foot = document.querySelector('.invitation-share-foot');
+    const btns = [...foot.querySelectorAll('button')];
+    const rects = btns.map(b => b.getBoundingClientRect());
+    const rows = [...new Set(rects.map(r => Math.round(r.top)))];
+    const widths = rects.map(r => Math.round(r.width));
+    return { display: getComputedStyle(foot).display, count: btns.length, rowCount: rows.length, maxWidthDiff: Math.max(...widths) - Math.min(...widths) };
+  })()`);
+  assert.equal(shareGridCheck.display, 'grid', `Invitation share footer must use grid, got: ${shareGridCheck.display}`);
+  assert.equal(shareGridCheck.count, 6, 'Planner invitation share footer should have 6 buttons');
+  assert.equal(shareGridCheck.rowCount, 2, `Planner 6 share buttons must align cleanly in 2 rows (3x2), got: ${shareGridCheck.rowCount}`);
+  assert(shareGridCheck.maxWidthDiff <= 2, `Share buttons must have uniform width, diff=${shareGridCheck.maxWidthDiff}px`);
 
   // Verify dark mode automatically resets to crisp light paper under @media print
   await cdp.send('Emulation.setEmulatedMedia', { media: 'print' });

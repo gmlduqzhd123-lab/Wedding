@@ -1568,8 +1568,49 @@ body.is-large-text .invitation .invitation-actions .button {
   color: var(--ink-soft);
   line-height: 1.65;
 }
-.invitation-share-foot {
-  margin-top: 4px;
+.invitation-actions.invitation-share-foot {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+  margin: 8px auto 0;
+}
+.invitation-actions.invitation-share-foot .button {
+  grid-column: span 2;
+  width: 100%;
+  justify-content: center;
+  padding: 10px 10px;
+  border-radius: 14px;
+  font-size: 12.8px;
+  min-height: 42px;
+  white-space: nowrap;
+}
+.invitation-actions.invitation-share-foot.is-guest-foot .button:nth-child(1),
+.invitation-actions.invitation-share-foot.is-guest-foot .button:nth-child(2) {
+  grid-column: span 3;
+}
+body.is-large-text .invitation .invitation-actions.invitation-share-foot .button {
+  padding: 10px 8px;
+  font-size: 14px;
+  white-space: normal;
+  line-height: 1.3;
+}
+@media (max-width: 480px) {
+  .invitation-actions.invitation-share-foot {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .invitation-actions.invitation-share-foot .button,
+  .invitation-actions.invitation-share-foot.is-guest-foot .button:nth-child(1),
+  .invitation-actions.invitation-share-foot.is-guest-foot .button:nth-child(2) {
+    grid-column: span 1;
+    padding: 10px 8px;
+    font-size: 12.5px;
+  }
+  .invitation-actions.invitation-share-foot.is-guest-foot .button:nth-child(1) {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Stories & Photo Albums */

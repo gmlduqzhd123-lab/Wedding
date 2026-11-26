@@ -10,6 +10,12 @@ import {
 } from '../assets/js/sync-code.js';
 import { validatePreferences, mergePreferences, summarizePreferencesMerge } from '../assets/js/preferences.js';
 import { searchWeddingWorkspace } from '../assets/js/search-ui.js';
+import {
+  DEFAULT_CEREMONY_PLAN,
+  resolveCeremonyPlan,
+  defaultAmorDeclarationText,
+  buildAmorMcSteps
+} from '../assets/js/ceremony-ui.js';
 
 const appCss = readFileSync(new URL('../assets/css/app.css', import.meta.url), 'utf8');
 const plannerCss = readFileSync(new URL('../assets/css/planner.css', import.meta.url), 'utf8');
@@ -122,3 +128,34 @@ test('CSS font budget diet trims unused mobile font weights and defines semantic
     assert.ok(plannerCss.includes(`${token}:`), `planner.css must define dark semantic token ${token}`);
   }
 });
+
+test('ceremony defaults reflect confirmed MC, principal declaration & speech, and a cappella song while honoring custom overrides', () => {
+  assert.equal(DEFAULT_CEREMONY_PLAN.mc, '김희엽 친구');
+  assert.equal(DEFAULT_CEREMONY_PLAN.song, '아카펠라');
+  assert.equal(DEFAULT_CEREMONY_PLAN.speech, '교장선생님');
+
+  const resolved = resolveCeremonyPlan({ banquetFloor: '2층' });
+  assert.equal(resolved.mc, '김희엽 친구');
+  assert.equal(resolved.song, '아카펠라');
+  assert.equal(resolved.speech, '교장선생님');
+  assert.equal(resolved.banquetFloor, '2층');
+
+  const inv = { partner1: '신랑 김희엽', partner2: '신부 유미혜', date: '2027-06-05' };
+  const decl = defaultAmorDeclarationText(inv, resolved);
+  assert.ok(decl.includes('성혼선언 낭독 : 교장선생님'));
+
+  const steps = buildAmorMcSteps(inv, resolved);
+  const step02 = steps.find(([no]) => no === '02');
+  const step08 = steps.find(([no]) => no === '08');
+  const step10 = steps.find(([no]) => no === '10');
+  assert.ok(step02[3][0].includes('김희엽 친구'));
+  assert.equal(step08[1], '성혼선언문 낭독 및 축사');
+  assert.ok(step08[3].join(' ').includes('교장선생님'));
+  assert.ok(step10[3].join(' ').includes('아카펠라'));
+
+  const custom = resolveCeremonyPlan({ mc: '김희엽 친구 박민수', song: '아카펠라 5중창', speech: '김○○ 교장선생님' });
+  assert.equal(custom.mc, '김희엽 친구 박민수');
+  assert.equal(custom.song, '아카펠라 5중창');
+  assert.equal(custom.speech, '김○○ 교장선생님');
+});
+
