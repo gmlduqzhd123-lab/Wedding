@@ -1,4 +1,4 @@
-import { E, button, image } from './dom.js?v=wedding-features-62';
+import { E, button, image } from './dom.js?v=wedding-features-63';
 
 export function openPhotoViewer(ctx, title, photos, startIndex = 0) {
   if (!photos?.length) return null;
@@ -177,6 +177,49 @@ export function openPhotoViewer(ctx, title, photos, startIndex = 0) {
     }
   }, { passive: true });
 
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+
+  body.addEventListener('wheel', event => {
+    if (!event.target?.closest?.('.photo-stage')) return;
+    event.preventDefault();
+    const delta = event.deltaY < 0 ? 0.35 : -0.35;
+    setZoom(scale + delta);
+  }, { passive: false });
+
+  body.addEventListener('mousedown', event => {
+    if (event.button !== 0 || scale <= 1 || !event.target?.closest?.('.photo-stage')) return;
+    event.preventDefault();
+    dragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    panStartX = panX;
+    panStartY = panY;
+    stageRef?.classList.add('is-dragging');
+  });
+
+  const onWindowMouseMove = event => {
+    if (!dragging) return;
+    panX = panStartX + (event.clientX - dragStartX);
+    panY = panStartY + (event.clientY - dragStartY);
+    applyTransform();
+  };
+  const onWindowMouseUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    stageRef?.classList.remove('is-dragging');
+  };
+  window.addEventListener('mousemove', onWindowMouseMove);
+  window.addEventListener('mouseup', onWindowMouseUp);
+
+  const cleanupAll = () => {
+    stopSlideshow();
+    dragging = false;
+    window.removeEventListener('mousemove', onWindowMouseMove);
+    window.removeEventListener('mouseup', onWindowMouseUp);
+  };
+
   const draw = () => {
     const previous = button('이전 사진', () => goDelta(-1, '.viewer-controls button:first-child'), 'button quiet');
     const next = button('다음 사진', () => goDelta(1, '.viewer-controls button:last-child'), 'button quiet');
@@ -194,7 +237,7 @@ export function openPhotoViewer(ctx, title, photos, startIndex = 0) {
     zoomLabelRef = zoomLabel;
     zoomInBtnRef = zoomInBtn;
 
-    const imgEl = image(photos[index], `${title} 사진 ${index + 1}`, { loading: 'eager', class: 'photo-stage-img' });
+    const imgEl = image(photos[index], `${title} 사진 ${index + 1}`, { loading: 'eager', class: 'photo-stage-img', draggable: 'false' });
     imgEl.addEventListener('dblclick', () => setZoom(scale > 1.1 ? 1 : 2.2));
     imgRef = imgEl;
 
@@ -219,8 +262,8 @@ export function openPhotoViewer(ctx, title, photos, startIndex = 0) {
 
     const hint = E('p', { class: 'small muted photo-swipe-hint' },
       photos.length > 1
-        ? '← 좌우 스와이프·방향키로 넘기기 · 더블탭/두 손가락으로 확대 · 아래로 밀어 닫기 →'
-        : '더블탭·두 손가락 또는 +/− 버튼으로 확대할 수 있어요.');
+        ? '← 좌우 스와이프·방향키로 넘기기 · 휠/더블클릭/두 손가락 확대(드래그 이동) · 아래로 밀어 닫기 →'
+        : '마우스 휠·더블클릭·두 손가락 또는 +/− 버튼으로 확대하고 드래그해 살펴볼 수 있어요.');
 
     body.replaceChildren(...[
       stage,
@@ -251,8 +294,8 @@ export function openPhotoViewer(ctx, title, photos, startIndex = 0) {
   };
 
   if (ctx.showDialog(title, body)) {
-    return { navigate, cleanup: stopSlideshow };
+    return { navigate, cleanup: cleanupAll };
   }
-  stopSlideshow();
+  cleanupAll();
   return null;
 }

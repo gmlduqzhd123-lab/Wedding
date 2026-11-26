@@ -186,7 +186,8 @@ try {
   assert(requestedUrls.some(u => u.includes('/data/guest-site.json')), 'Guest mode must load guest-site.json');
   assert(!requestedUrls.some(u => u.includes('/data/site.json')), 'Guest mode must NOT load full site.json');
   assert(!requestedUrls.some(u => u.includes('planner.css')), 'Guest mode must NOT load planner.css');
-  assert(!requestedUrls.some(u => u.includes('charts.js') || u.includes('search-ui.js') || u.includes('planning.js') || u.includes('preferences.js') || u.includes('home-dashboard-ui.js') || u.includes('manager-ui.js') || u.includes('studios.json')), 'Guest mode must NOT load planner JS or studios.json');
+  assert(!requestedUrls.some(u => u.includes('charts.js') || u.includes('search-ui.js') || u.includes('planning.js') || u.includes('ledger.js') || u.includes('preferences.js') || u.includes('home-dashboard-ui.js') || u.includes('manager-ui.js') || u.includes('studios.json')), 'Guest mode must NOT load planner JS or studios.json');
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.invitation-share-foot button')].some(b => b.textContent.includes('예식 요약 복사'))`), true, 'Guest invitation must include wedding summary copy button');
   const petalsBtnText = await cdp.eval(`document.querySelector('.invitation-petals-btn')?.textContent?.trim()`);
   const textBtnText = await cdp.eval(`document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)')?.textContent?.trim()`);
   assert(petalsBtnText && petalsBtnText.includes('🌸'), `Petals button must show flower label, got: ${petalsBtnText}`);
@@ -412,14 +413,54 @@ try {
   await cdp.waitFor(`() => document.querySelector('.photo-call-head')?.innerText.includes('촬영 완료 1 /')`);
 
   await cdp.eval(`location.hash = '#/studios'`);
-  await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer'))`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer')) && Boolean(document.querySelector('#shoot-prep-pending-only'))`);
+  // Lachma shoot prep pending filter & copy button
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.shoot-prep-filter-row button')].some(b => b.textContent.includes('남은 준비물 카톡 복사'))`), true, 'Lachma shoot prep must include remaining copy button');
+  const shootTotal = await cdp.eval(`document.querySelectorAll('.lachma-prep-check-item').length`);
+  await cdp.eval(`document.querySelector('.lachma-prep-check-item input[type="checkbox"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.lachma-prep-check-item.done').length === 1`);
+  await cdp.eval(`document.querySelector('#shoot-prep-pending-only').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.lachma-prep-check-item').length === ${shootTotal - 1}`);
+  await cdp.eval(`document.querySelector('#shoot-prep-pending-only').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.lachma-prep-check-item').length === ${shootTotal}`);
+
+  // 30-studio archive: 2-way compare, favorite toggle, memo modal, search
   await cdp.eval(`document.querySelector('.studio-archive-drawer summary').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 30`);
-  await cdp.eval(`document.querySelector('.studio-archive-card button[aria-pressed]').click()`);
-  await cdp.waitFor(`() => document.querySelector('.studio-archive-drawer')?.open === true && document.querySelector('.studio-archive-card button[aria-pressed]')?.getAttribute('aria-pressed') === 'true'`);
+  await cdp.eval(`document.querySelectorAll('.studio-archive-card')[0].querySelector('button[aria-pressed]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.studio-archive-drawer')?.open === true && Boolean(document.querySelector('.studio-archive-compare'))`);
+  await cdp.eval(`document.querySelectorAll('.studio-archive-card')[1].querySelector('button[aria-pressed]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.studio-archive-compare')?.innerText.includes('(2/2)')`);
+  await cdp.eval(`[...document.querySelectorAll('.studio-archive-card')[0].querySelectorAll('button')].find(b => b.textContent.includes('메모')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#studio-archive-memo-input'))`);
+  await cdp.eval(`(() => { document.querySelector('#studio-archive-memo-input').value = '자연광 샘플 참고'; document.querySelector('#dialog-actions [type="submit"]').click(); })()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('.studio-archive-card')?.innerText.includes('자연광 샘플 참고')`);
   await cdp.eval(`(() => { const inp = document.querySelector('#studio-archive-search'); inp.value = '포에버마인'; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 2`);
-  console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call mode, 30-studio archive persistence & search OK');
+
+  // Verify Round 8 prenatal-badges flex-wrap layout fix + Home items bulk .ics & filter reset
+  await cdp.eval(`location.hash = '#/prenatal/hospital'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.prenatal-badges'))`);
+  const badgeLayout = await cdp.eval(`(() => { const cs = getComputedStyle(document.querySelector('.prenatal-badges')); return { display: cs.display, wrap: cs.flexWrap, gap: cs.gap }; })()`);
+  assert.equal(badgeLayout.display, 'flex', `.prenatal-badges must be flex, got: ${badgeLayout.display}`);
+  assert.equal(badgeLayout.wrap, 'wrap', `.prenatal-badges must wrap, got: ${badgeLayout.wrap}`);
+  assert.notEqual(badgeLayout.gap, '0px', `.prenatal-badges must have positive gap, got: ${badgeLayout.gap}`);
+
+  await cdp.eval(`location.hash = '#/tips/home'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#home-items-title'))`);
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ 품목 추가').click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#home-item-name'))`);
+  await cdp.eval(`(() => {
+    document.querySelector('#home-item-name').value = '로봇청소기';
+    document.querySelector('#home-item-date').value = '2027-05-10';
+    document.querySelector('#dialog-actions [type="submit"]').click();
+  })()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && [...document.querySelectorAll('.home-items-board button')].some(b => b.textContent.includes('배송 일정 일괄 .ics'))`);
+  await cdp.eval(`(() => { const inp = document.querySelector('#home-item-search'); inp.value = '없는품목'; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.home-items-board .filter-reset-chip'))`);
+  await cdp.eval(`document.querySelector('.home-items-board .filter-reset-chip').click()`);
+  await cdp.waitFor(`() => !document.querySelector('.home-items-board .filter-reset-chip') && document.querySelector('.home-items-list')?.innerText.includes('로봇청소기')`);
+  console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call, Studio prep/30-archive compare & memo, Prenatal badges, Home bulk .ics OK');
 
   // 7. Dark-mode invitation contrast + dark-mode @media print guard + BGM + live KakaoTalk OG preview + Draft save/reload/revert (botanical confirm)
   await cdp.eval(`location.hash = '#/invitation'`);

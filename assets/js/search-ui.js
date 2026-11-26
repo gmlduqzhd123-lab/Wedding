@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-62';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-62';
+import { E, button } from './dom.js?v=wedding-features-63';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-63';
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },
@@ -74,7 +74,41 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
         title: tip.title,
         subtitle: [tip.category, tip.channel].filter(Boolean).join(' · '),
         route: 'tips',
-        subTab: 'tips'
+        subTab: 'tips',
+        focusTipQuery: tip.title
+      });
+    }
+  }
+
+  // Stories
+  for (const story of content?.stories || []) {
+    const hay = `${story.title || ''} ${story.body || ''} ${story.date || ''}`;
+    if (matches(hay)) {
+      push({
+        id: `story-${story.id}`,
+        category: '우리의 일대기',
+        icon: '📖',
+        title: story.title,
+        subtitle: story.date || '날짜 없는 기록',
+        route: 'story',
+        focusStoryQuery: story.title
+      });
+    }
+  }
+
+  // Albums
+  for (const album of content?.albums || []) {
+    const hay = `${album.title || ''} ${album.body || ''} ${album.date || ''}`;
+    if (matches(hay)) {
+      push({
+        id: `album-${album.id}`,
+        category: '포토 앨범',
+        icon: '📷',
+        title: album.title,
+        subtitle: [album.date || '', `사진 ${(album.images || []).length}장`].filter(Boolean).join(' · '),
+        route: 'albums',
+        focusRecordType: 'albums',
+        focusRecordId: album.id
       });
     }
   }
@@ -89,7 +123,8 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
         title: `${g.name} (${g.side} · ${g.partySize}명)`,
         subtitle: `${g.group} · ${g.rsvp}${g.note ? ` · ${g.note}` : ''}`,
         route: 'ceremony',
-        subTab: 'guests'
+        subTab: 'guests',
+        focusGuestQuery: g.name
       });
     }
   }
@@ -104,7 +139,36 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
         title: `${gift.name} · ${Number(gift.amount || 0).toLocaleString('ko-KR')}원`,
         subtitle: `${gift.side} · ${gift.channel} · 식권 ${gift.mealTickets}매`,
         route: 'ceremony',
-        subTab: 'gifts'
+        subTab: 'gifts',
+        focusGiftQuery: gift.name
+      });
+    }
+  }
+
+  // Private wedding-day roles & envelopes
+  for (const role of prefs?.weddingDayRoles || []) {
+    if (matches(`${role.group || ''} ${role.role || ''} ${role.assignee || ''} ${role.phone || ''} ${role.note || ''}`)) {
+      push({
+        id: `dayrole-${role.id}`,
+        category: '본식 당일 역할',
+        icon: '💼',
+        title: `${role.role}${role.assignee ? ` · ${role.assignee}` : ''}`,
+        subtitle: [role.group, role.note].filter(Boolean).join(' · '),
+        route: 'ceremony',
+        subTab: 'dayops'
+      });
+    }
+  }
+  for (const env of prefs?.weddingDayEnvelopes || []) {
+    if (matches(`${env.payee || ''} ${env.recipient || ''} ${env.note || ''}`)) {
+      push({
+        id: `dayenv-${env.id}`,
+        category: '본식 현금 봉투',
+        icon: '✉️',
+        title: `${env.payee}${env.recipient ? ` (${env.recipient})` : ''}`,
+        subtitle: env.amount ? `${Number(env.amount).toLocaleString('ko-KR')}원 · ${env.ready ? '준비 완료' : '미준비'}` : (env.ready ? '준비 완료' : '금액 미입력'),
+        route: 'ceremony',
+        subTab: 'dayops'
       });
     }
   }
@@ -119,7 +183,24 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
         title: `${item.name}${item.brand ? ` (${item.brand})` : ''}`,
         subtitle: `${item.status || ''}${item.deliveryDate ? ` · 배송 ${item.deliveryDate}` : ''}`,
         route: 'tips',
-        subTab: 'home'
+        subTab: 'home',
+        focusHomeQuery: item.name
+      });
+    }
+  }
+
+  // Custom home checklist items
+  for (const chk of prefs?.customChecklist || []) {
+    const note = prefs?.checklistNotes?.[chk.id] || '';
+    if (matches(`${chk.stage || ''} ${chk.title || ''} ${note}`)) {
+      push({
+        id: `chk-${chk.id}`,
+        category: '홈 체크리스트',
+        icon: '✅',
+        title: chk.title,
+        subtitle: [chk.stage, note].filter(Boolean).join(' · '),
+        route: 'home',
+        focusElementId: 'home-checklist-title'
       });
     }
   }
@@ -213,6 +294,20 @@ export function openGlobalSearchModal(ctx) {
       setTimeout(() => ctx.focusTrip(item.focusTripId), 160);
     } else if (item.focusStudioQuery && ctx.focusStudioArchive) {
       setTimeout(() => ctx.focusStudioArchive(item.focusStudioQuery), 160);
+    } else if (item.focusTipQuery && ctx.focusTipSearch) {
+      setTimeout(() => ctx.focusTipSearch(item.focusTipQuery), 160);
+    } else if (item.focusGuestQuery && ctx.focusGuestSearch) {
+      setTimeout(() => ctx.focusGuestSearch(item.focusGuestQuery), 160);
+    } else if (item.focusGiftQuery && ctx.focusGiftSearch) {
+      setTimeout(() => ctx.focusGiftSearch(item.focusGiftQuery), 160);
+    } else if (item.focusHomeQuery && ctx.focusHomeSearch) {
+      setTimeout(() => ctx.focusHomeSearch(item.focusHomeQuery), 160);
+    } else if (item.focusStoryQuery && ctx.focusStorySearch) {
+      setTimeout(() => ctx.focusStorySearch(item.focusStoryQuery), 160);
+    } else if (item.focusRecordType && item.focusRecordId) {
+      setTimeout(() => ctx.focusRecord(item.focusRecordType, item.focusRecordId), 160);
+    } else if (item.focusElementId) {
+      setTimeout(() => document.getElementById(item.focusElementId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 160);
     }
   };
 

@@ -1709,7 +1709,12 @@
   white-space: normal;
   text-align: center;
 }
-.prenatal-badges { margin: 0; }
+.prenatal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
 .prenatal-badges .spec-chip,
 .prenatal-hc-meta .spec-chip {
   white-space: normal;
@@ -4075,6 +4080,31 @@ body.has-compare-tray .scroll-top-btn {
   body.is-dark-theme:not(.is-guest-mode) .region-bar-track {
     background: #252f29;
   }
+  html.is-dark-theme:not(.is-guest-mode) .studio-archive-compare,
+  body.is-dark-theme:not(.is-guest-mode) .studio-archive-compare {
+    background: #18201b;
+    border-color: #2c3830;
+  }
+}
+
+/* Round 8: Studio prep filter row & 30-studio archive memo/compare */
+.shoot-prep-filter-row {
+  margin-bottom: 10px;
+}
+.studio-archive-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.studio-archive-compare {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--olive-line);
+  display: grid;
+  gap: 10px;
 }
 
 

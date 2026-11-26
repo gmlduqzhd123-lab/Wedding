@@ -1,24 +1,33 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-62';
-import { formatDate } from './content.js?v=wedding-features-62';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-62';
-import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-62';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-62';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-63';
+import { formatDate } from './content.js?v=wedding-features-63';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-63';
+import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-63';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-63';
 import {
   printDedicatedSheet,
   openThankYouModal,
   openBatchThankYouModal,
   openGiftEditor,
   openQuickGiftEntryModal,
-  renderGiftLedgerBoard
-} from './gift-ledger-ui.js?v=wedding-features-62';
+  renderGiftLedgerBoard,
+  focusGiftSearch
+} from './gift-ledger-ui.js?v=wedding-features-63';
 
-export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard };
+export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard, focusGiftSearch };
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
 let guestInviteFilter = 'all';
 let guestNoGiftOnly = false;
 let guestQuery = '';
+
+export function focusGuestSearch(query = '') {
+  guestSideFilter = 'all';
+  guestRsvpFilter = 'all';
+  guestInviteFilter = 'all';
+  guestNoGiftOnly = false;
+  guestQuery = String(query || '');
+}
 
 function buildGuestPrintSheet(ctx, list) {
   const info = ctx.getContent()?.invitation || {};

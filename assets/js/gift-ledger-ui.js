@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-62';
-import { formatDate } from './content.js?v=wedding-features-62';
-import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-62';
-import { giftLedgerSummary, giftsToCsv, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-62';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-62';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-63';
+import { formatDate } from './content.js?v=wedding-features-63';
+import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-63';
+import { giftLedgerSummary, giftsToCsv, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-63';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-63';
 
 let giftSideFilter = 'all';
 let giftChannelFilter = 'all';
@@ -12,6 +12,15 @@ let giftUnmatchedOnly = false;
 let giftQuery = '';
 let quickEntrySide = '신랑 측';
 let quickEntryChannel = '축의대(현금)';
+
+export function focusGiftSearch(query = '') {
+  giftSideFilter = 'all';
+  giftChannelFilter = 'all';
+  giftPendingOnly = false;
+  giftUnthankedOnly = false;
+  giftUnmatchedOnly = false;
+  giftQuery = String(query || '');
+}
 
 const won = value => `${Number(value || 0).toLocaleString('ko-KR')}원`;
 

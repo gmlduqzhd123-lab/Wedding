@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-62';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-62';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-62';
-import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-62';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-63';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-63';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-63';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-63';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-62';
+} from './invitation-card.js?v=wedding-features-63';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();
@@ -145,30 +145,43 @@ function downloadInvitationIcs(ctx) {
   } catch (error) { ctx.toast(error.message, true); }
 }
 
-function openInvitationCardPreviewModal(ctx, { blob, dataUrl, filename }) {
+export function buildGuestInvitationSummaryText(info = {}, publicUrl = '') {
+  const p1 = (info.partner1 || '').replace(/^신랑\s*/, '').trim();
+  const p2 = (info.partner2 || '').replace(/^신부\s*/, '').trim();
+  const couple = (p1 && p2) ? `${p1} ♥ ${p2}` : (p1 || p2 || '우리의 결혼식');
+  return [
+    `💌 [${couple} 결혼식 안내]`,
+    info.date ? `• 일시: ${formatDate(info.date)}${info.time ? ` ${formatKoreanTimeLabel(info.time)}` : ''}` : '',
+    info.venue ? `• 장소: ${info.venue}` : '',
+    info.address ? `• 주소: ${info.address}` : '',
+    publicUrl ? `• 모바일 청첩장: ${publicUrl}` : ''
+  ].filter(Boolean).join('\n');
+}
+
+function openInvitationCardPreviewModal(ctx, { blob, dataUrl, filename, title = '🖼️ 모바일 청첩장 이미지 저장', alt = '모바일 청첩장 카드 이미지', shareTitle = '모바일 청첩장 이미지' }) {
   const shareImgBtn = ctx.canShareBackupFiles() ? button('📤 이미지 공유', async () => {
     try {
       const file = new File([blob], filename, { type: 'image/png' });
       if (!navigator.canShare({ files: [file] })) {
         triggerBlobDownload(blob, filename);
-        ctx.toast(`청첩장 이미지(${filename})를 저장했습니다.`);
+        ctx.toast(`이미지(${filename})를 저장했습니다.`);
         return;
       }
-      await navigator.share({ files: [file], title: '모바일 청첩장 이미지' });
+      await navigator.share({ files: [file], title: shareTitle });
     } catch (err) {
       if (err?.name !== 'AbortError') ctx.toast('공유 창을 열지 못했습니다. 위 이미지를 길게 눌러 사진 저장을 이용해 주세요.', true);
     }
   }, 'button quiet') : null;
   const body = E('div', { class: 'card-preview-modal' },
     E('p', { class: 'small muted' }, '📱 스마트폰(카카오톡·아이폰 사파리 포함)에서는 아래 이미지를 길게 눌러 ‘사진 저장’을 선택하시면 가장 확실하게 저장됩니다.'),
-    E('img', { src: dataUrl, alt: '모바일 청첩장 카드 이미지', class: 'card-preview-img' }),
+    E('img', { src: dataUrl, alt, class: 'card-preview-img' }),
     E('div', { class: 'page-actions card-preview-actions' },
       button('📥 파일로 바로 저장', () => {
         triggerBlobDownload(blob, filename);
-        ctx.toast(`청첩장 이미지(${filename})를 저장했습니다.`);
+        ctx.toast(`이미지(${filename})를 저장했습니다.`);
       }, 'button'),
       shareImgBtn));
-  ctx.showDialog('🖼️ 모바일 청첩장 이미지 저장', body);
+  ctx.showDialog(title, body);
 }
 
 async function openInvitationQrModal(ctx) {
@@ -186,11 +199,7 @@ async function openInvitationQrModal(ctx) {
   const svgMarkup = renderQrSvgString(url, { margin: 4, label: `${names} 모바일 청첩장 QR 코드` });
   const qrWrap = E('div', { class: 'qr-preview-box' });
   qrWrap.innerHTML = svgMarkup;
-  const downloadSvgBtn = button('📥 QR 코드(SVG) 저장', () => {
-    downloadText(svgMarkup, 'wedding-invitation-qr.svg', 'image/svg+xml;charset=utf-8');
-    ctx.toast('모바일 청첩장 QR 코드(SVG)를 저장했습니다.');
-  }, 'button quiet');
-  const downloadPngBtn = button('🖼️ QR 이미지(PNG) 저장', () => {
+  const exportQrPng = (preferPreview = false) => {
     const svgBlob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
     const blobUrl = URL.createObjectURL(svgBlob);
     const img = new Image();
@@ -202,14 +211,32 @@ async function openInvitationQrModal(ctx) {
       ctx2d.fillRect(0, 0, 720, 720);
       ctx2d.drawImage(img, 0, 0, 720, 720);
       URL.revokeObjectURL(blobUrl);
+      const dataUrl = canvas.toDataURL('image/png');
       canvas.toBlob(pngBlob => {
         if (!pngBlob) return;
+        if (preferPreview || isKakaoInApp()) {
+          openInvitationCardPreviewModal(ctx, {
+            blob: pngBlob,
+            dataUrl,
+            filename: 'wedding-invitation-qr.png',
+            title: '📱 모바일 청첩장 QR 이미지 저장',
+            alt: `${names} 모바일 청첩장 QR 코드 이미지`,
+            shareTitle: `${names} 모바일 청첩장 QR`
+          });
+          return;
+        }
         triggerBlobDownload(pngBlob, 'wedding-invitation-qr.png');
         ctx.toast('모바일 청첩장 QR 이미지(PNG)를 저장했습니다.');
       }, 'image/png');
     };
     img.src = blobUrl;
-  }, 'button');
+  };
+  const downloadSvgBtn = button('📥 QR 코드(SVG) 저장', () => {
+    downloadText(svgMarkup, 'wedding-invitation-qr.svg', 'image/svg+xml;charset=utf-8');
+    ctx.toast('모바일 청첩장 QR 코드(SVG)를 저장했습니다.');
+  }, 'button quiet');
+  const downloadPngBtn = button('🖼️ QR 이미지(PNG) 저장', () => exportQrPng(false), 'button');
+  const previewPngBtn = button('📱 QR 미리보기·사진저장', () => exportQrPng(true), 'button quiet');
   const onPreview = payload => openInvitationCardPreviewModal(ctx, payload);
   const body = E('div', { class: 'qr-modal-body' },
     E('p', { class: 'small muted' }, '스마트폰 카메라로 스캔하면 방문자용 모바일 청첩장 화면(?view=guest#/invitation)이 바로 열립니다. 종이 청첩장 인쇄나 메신저 안내 이미지로 활용할 수 있습니다.'),
@@ -217,6 +244,7 @@ async function openInvitationQrModal(ctx) {
     E('p', { class: 'small qr-url-text' }, url),
     E('div', { class: 'page-actions qr-modal-actions' },
       downloadPngBtn,
+      previewPngBtn,
       downloadSvgBtn,
       button('🖼️ QR 포함 청첩장 카드(PNG)', () => downloadInvitationCardPng(content.invitation, content.albums, ctx.toast, { includeQr: true, shareUrl: url, onPreview }), 'button quiet'),
       button('🖼️ 청첩장 카드(PNG) 미리보기·저장', () => downloadInvitationCardPng(content.invitation, content.albums, ctx.toast, { preferModal: true, onPreview }), 'button quiet'),
@@ -456,6 +484,11 @@ export function renderInvitationView(ctx) {
         E('span', { class: 'invitation-closing-note' }, '귀한 걸음으로 축복해 주시는 모든 분께 진심으로 감사드립니다.'),
         E('div', { class: 'invitation-actions invitation-share-foot' },
           !guestMode ? button('💬 초대 문구', () => openInvitationMessageModal(ctx), 'button quiet') : null,
+          button('📋 예식 요약 복사', () => ctx.copyTextToClipboard(
+            buildGuestInvitationSummaryText(info, new URL('./?view=guest#/invitation', location.href).href),
+            '예식 일시·장소·모바일 청첩장 링크 요약을 복사했습니다.',
+            '예식 안내 요약 복사'
+          ), 'button quiet'),
           button('💌 초대장 공유', ctx.shareInvitationLink, 'button quiet'),
           button('🔗 링크 복사', ctx.copyInvitationLink, 'button quiet'),
           button('🖼️ 이미지 저장', () => downloadInvitationCardPng(info, content.albums, ctx.toast, { onPreview }), 'button quiet'),

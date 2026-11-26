@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-62';
-import { weddingDday } from './content.js?v=wedding-features-62';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-62';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-62';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-63';
+import { weddingDday } from './content.js?v=wedding-features-63';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-63';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-63';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -76,6 +76,71 @@ function lachmaCalendarSpec(studio) {
   };
 }
 
+let shootPrepPendingOnly = false;
+
+export function buildRemainingShootPrepText(studio, checkedIds = []) {
+  const g = studio?.deepGuide;
+  if (!g?.prepChecklist?.length) return '';
+  const checked = new Set(Array.isArray(checkedIds) ? checkedIds : []);
+  const groups = [];
+  let remaining = 0;
+  g.prepChecklist.forEach((grp, gi) => {
+    const pending = (grp.items || []).filter((_, ii) => !checked.has(`shoot-${gi}-${ii}`));
+    if (pending.length) {
+      remaining += pending.length;
+      groups.push([grp.category, pending]);
+    }
+  });
+  if (!remaining) return '';
+  const lines = [`[📸 ${studio.name} 스튜디오 남은 촬영 준비물 · ${remaining}개 미챙김]`, ''];
+  for (const [cat, items] of groups) {
+    lines.push(`■ ${cat} (${items.length})`);
+    for (const item of items) lines.push(`- ${item}`);
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+function openStudioMemoModal(ctx, studio) {
+  if (ctx.isGuestMode()) return;
+  const form = E('form', { class: 'editor-form' });
+  const currentNote = ctx.getPrefs().notes?.[studio.id] || '';
+  const input = E('textarea', { rows: '4', id: 'studio-archive-memo-input', maxlength: '1000', placeholder: '예: 자연광 인물 중심 톤 참고 / 원본·수정본 조건 확인' });
+  input.value = currentNote;
+  form.append(
+    E('p', { class: 'form-note' }, `‘${studio.name}’ 스튜디오에 대한 개인 상담 메모를 이 기기에만 저장합니다. 방문자용 화면이나 공개 저장소에는 노출되지 않습니다.`),
+    E('label', { class: 'field', for: input.id }, `${studio.name} 개인 메모`, input));
+  const submit = E('button', { class: 'button', type: 'submit' }, '메모 저장');
+  form.append(E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit));
+  let saving = false;
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (saving) return;
+    saving = true;
+    submit.disabled = true;
+    try {
+      const nextNotes = { ...(ctx.getPrefs().notes || {}) };
+      if (input.value.trim()) nextNotes[studio.id] = input.value.trim();
+      else delete nextNotes[studio.id];
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), notes: nextNotes }));
+      if (saved) {
+        archiveDrawerOpen = true;
+        ctx.closeDialog();
+        ctx.render();
+        ctx.toast(`‘${studio.name}’ 개인 메모를 저장했습니다.`);
+      }
+    } catch (error) {
+      ctx.toast(error.message, true);
+    } finally {
+      saving = false;
+      submit.disabled = false;
+    }
+  });
+  if (ctx.showDialog(`${studio.name} · 개인 메모`, form)) {
+    ctx.setEditorState({ isDirty: () => saving || input.value !== currentNote, isSaving: () => saving });
+  }
+}
+
 function renderLachmaDeepGuide(ctx, studio, compact = false) {
   const g = studio?.deepGuide;
   if (!g) return null;
@@ -107,7 +172,22 @@ function renderLachmaDeepGuide(ctx, studio, compact = false) {
   const allPrepIds = (g.prepChecklist || []).flatMap((grp, gi) => (grp.items || []).map((_, ii) => `shoot-${gi}-${ii}`));
   const donePrepCount = allPrepIds.filter(k => checkedSet.has(k)).length;
   const totalPrepCount = allPrepIds.length;
+  const remainingPrepCount = totalPrepCount - donePrepCount;
   const prepPct = totalPrepCount ? Math.round((donePrepCount / totalPrepCount) * 100) : 0;
+  const prepPendingBox = !guestMode ? E('input', { type: 'checkbox', id: 'shoot-prep-pending-only' }) : null;
+  if (prepPendingBox) {
+    prepPendingBox.checked = shootPrepPendingOnly;
+    prepPendingBox.addEventListener('change', () => {
+      shootPrepPendingOnly = prepPendingBox.checked;
+      ctx.render();
+      $('#shoot-prep-pending-only')?.focus({ preventScroll: true });
+    });
+  }
+  const prepDisplayGroups = (g.prepChecklist || []).map((group, gi) => {
+    const entries = (group.items || []).map((item, ii) => ({ id: `shoot-${gi}-${ii}`, label: item }));
+    const visible = (!guestMode && shootPrepPendingOnly) ? entries.filter(e => !checkedSet.has(e.id)) : entries;
+    return { category: group.category, entries: visible };
+  }).filter(grp => grp.entries.length > 0);
   const togglePrepItem = (itemId, box) => {
     const next = new Set(ctx.getPrefs().shootChecklist || []);
     if (box.checked) next.add(itemId); else next.delete(itemId);
@@ -176,17 +256,26 @@ function renderLachmaDeepGuide(ctx, studio, compact = false) {
               return saved;
             });
           }, 'button quiet small-copy-btn') : null) : null),
-      E('div', { class: 'lachma-prep-grid' }, g.prepChecklist.map((group, gi) => E('article', { class: 'lachma-prep-card' },
-        E('strong', {}, group.category),
-        guestMode ? E('ul', { class: 'lachma-prep-list' }, (group.items || []).map(item => E('li', { class: 'small' }, item))) :
-          E('ul', { class: 'lachma-prep-check-list' }, (group.items || []).map((item, ii) => {
-            const itemId = `shoot-${gi}-${ii}`;
-            const box = E('input', { type: 'checkbox', 'aria-label': `${group.category} - ${item}` });
-            box.checked = checkedSet.has(itemId);
-            box.addEventListener('change', () => togglePrepItem(itemId, box));
-            return E('li', { class: 'lachma-prep-check-item' + (box.checked ? ' done' : '') },
-              E('label', { class: 'checklist-label' }, box, E('span', { class: 'small' }, item)));
-          })))))) : null,
+      !guestMode ? E('div', { class: 'packing-filter-row shoot-prep-filter-row' },
+        E('label', { class: 'check-label', for: 'shoot-prep-pending-only' }, prepPendingBox, `미챙긴 항목만 보기 (${remainingPrepCount}개 남음)`),
+        remainingPrepCount > 0
+          ? button('📋 남은 준비물 카톡 복사', () => {
+            const payload = buildRemainingShootPrepText(studio, prefs.shootChecklist || []);
+            if (payload) ctx.copyTextToClipboard(payload, `남은 촬영 준비물 ${remainingPrepCount}개를 복사했습니다.`, '남은 촬영 준비물 복사');
+          }, 'button quiet small-copy-btn')
+          : E('span', { class: 'badge' }, '🎉 촬영 준비물 완료!')) : null,
+      prepDisplayGroups.length
+        ? E('div', { class: 'lachma-prep-grid' }, prepDisplayGroups.map(group => E('article', { class: 'lachma-prep-card' },
+          E('strong', {}, group.category),
+          guestMode ? E('ul', { class: 'lachma-prep-list' }, group.entries.map(e => E('li', { class: 'small' }, e.label))) :
+            E('ul', { class: 'lachma-prep-check-list' }, group.entries.map(e => {
+              const box = E('input', { type: 'checkbox', 'aria-label': `${group.category} - ${e.label}` });
+              box.checked = checkedSet.has(e.id);
+              box.addEventListener('change', () => togglePrepItem(e.id, box));
+              return E('li', { class: 'lachma-prep-check-item' + (box.checked ? ' done' : '') },
+                E('label', { class: 'checklist-label' }, box, E('span', { class: 'small' }, e.label)));
+            })))))
+        : E('p', { class: 'small muted' }, '🎉 모든 촬영 준비물을 챙겼습니다! ‘미챙긴 항목만 보기’를 해제하면 전체 목록을 볼 수 있어요.')) : null,
     (g.timetable || []).length ? E('div', { class: 'lachma-section' },
       E('h3', { class: 'lachma-subtitle' }, '⏰ 2월 3일 (수) 12:00 촬영 당일 동선 타임테이블'),
       E('ol', { class: 'timetable-list lachma-timetable' }, g.timetable.map(row => E('li', { class: 'timetable-row' + (row.time.includes('12:00') ? ' highlight' : '') },
@@ -301,11 +390,46 @@ export function openStudioArchiveSearch(query = '') {
   archiveQuery = String(query || '');
 }
 
+function renderStudioArchiveCompare(ctx, allStudios) {
+  const prefs = ctx.getPrefs();
+  const pair = [prefs.left, prefs.right]
+    .filter(Boolean)
+    .map(id => allStudios.find(s => s.id === id))
+    .filter(Boolean);
+  if (!pair.length) return null;
+  const rows = [
+    ['스타일', s => s.style || '미기재'],
+    ['장점', s => s.pros || '미기재'],
+    ['아쉬움', s => s.cons || '미기재'],
+    ['추천 취향', s => s.fit || '미기재'],
+    ['추가금', s => s.fee || '미기재'],
+    ['연락처', s => s.contact?.phone ? `${s.contact.phone}${s.contact.note ? ` (${s.contact.note})` : ''}` : (s.contact?.note || '목록 미기재')],
+    ['개인 메모', s => prefs.notes?.[s.id]?.trim() || '미입력']
+  ];
+  return E('div', { class: 'studio-archive-compare' },
+    E('div', { class: 'trip-comparison-head' },
+      E('strong', {}, `⚖️ 스튜디오 나란히 비교 (${pair.length}/2)`),
+      button('비교 비우기', () => {
+        ctx.queuePreference(async () => {
+          const next = { ...ctx.getPrefs(), left: '', right: '' };
+          const ok = await ctx.savePrefs(next);
+          if (ok) { archiveDrawerOpen = true; ctx.render(); ctx.toast('스튜디오 비교함을 비웠습니다.'); }
+          return ok;
+        });
+      }, 'button quiet small-copy-btn')),
+    E('div', { class: 'table-scroll' },
+      E('table', { class: 'travel-comparison' },
+        E('thead', {}, E('tr', {}, E('th', { scope: 'col' }, '비교 항목'), pair.map(s => E('th', { scope: 'col' }, s.name)))),
+        E('tbody', {}, rows.map(([label, val]) => E('tr', {}, E('th', { scope: 'row' }, label), pair.map(s => E('td', {}, val(s)))))))));
+}
+
 function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
   if (!Array.isArray(allStudios) || allStudios.length <= 1) return null;
   const withPhoneCount = allStudios.filter(s => Boolean(s.contact?.phone)).length;
+  const withKnownFeeCount = allStudios.filter(s => !studioFeeInfo(s).unknown).length;
 
   const listWrap = E('div', { class: 'studio-archive-grid' });
+  const compareSlot = E('div', { class: 'studio-compare-slot' });
   const countEl = E('span', { class: 'small muted', 'aria-live': 'polite' });
   const chipBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '보관 스튜디오 필터' });
   const search = searchBox({
@@ -331,12 +455,43 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
     });
   };
 
+  const toggleCompare = studio => {
+    ctx.queuePreference(async () => {
+      const cur = ctx.getPrefs();
+      let left = cur.left || '';
+      let right = cur.right || '';
+      if (left === studio.id) { left = right; right = ''; }
+      else if (right === studio.id) { right = ''; }
+      else if (!left) { left = studio.id; }
+      else if (!right) { right = studio.id; }
+      else {
+        ctx.toast('비교할 스튜디오는 두 곳까지 선택할 수 있어요. 먼저 기존 항목을 해제해 주세요.', true);
+        return true;
+      }
+      const saved = await ctx.savePrefs({ ...cur, left, right });
+      if (saved) {
+        archiveDrawerOpen = true;
+        ctx.render();
+      }
+      return saved;
+    });
+  };
+
   const draw = () => {
-    const latestFavs = new Set(ctx.getPrefs().favorites || []);
+    const latestPrefs = ctx.getPrefs();
+    const latestFavs = new Set(latestPrefs.favorites || []);
+    const compareIds = new Set([latestPrefs.left, latestPrefs.right].filter(Boolean));
+    const withNoteCount = allStudios.filter(s => Boolean(latestPrefs.notes?.[s.id]?.trim())).length;
+
+    const compNode = renderStudioArchiveCompare(ctx, allStudios);
+    compareSlot.replaceChildren(...(compNode ? [compNode] : []));
+
     chipBar.replaceChildren(...[
       ['all', `전체 (${allStudios.length})`],
       ['phone', `연락처 기재 (${withPhoneCount})`],
-      ['fav', `관심 (${latestFavs.size})`]
+      ['fee', `추가금 명시 (${withKnownFeeCount})`],
+      ['fav', `관심 (${latestFavs.size})`],
+      ['note', `메모 있음 (${withNoteCount})`]
     ].map(([key, label]) => {
       const btn = button(label, () => { archiveFilter = key; draw(); }, 'button quiet trip-filter-chip');
       btn.setAttribute('aria-pressed', String(archiveFilter === key));
@@ -345,8 +500,12 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
 
     const q = archiveQuery.trim().toLocaleLowerCase();
     const filtered = allStudios.filter(s =>
-      (archiveFilter === 'all' || (archiveFilter === 'phone' ? Boolean(s.contact?.phone) : latestFavs.has(s.id))) &&
-      (!q || `${s.name} ${s.style} ${s.pros} ${s.cons} ${s.fit} ${s.fee} ${s.contact?.phone || ''} ${s.contact?.note || ''}`.toLocaleLowerCase().includes(q))
+      (archiveFilter === 'all'
+        || (archiveFilter === 'phone' ? Boolean(s.contact?.phone)
+          : archiveFilter === 'fee' ? !studioFeeInfo(s).unknown
+            : archiveFilter === 'note' ? Boolean(latestPrefs.notes?.[s.id]?.trim())
+              : latestFavs.has(s.id))) &&
+      (!q || `${s.name} ${s.style} ${s.pros} ${s.cons} ${s.fit} ${s.fee} ${s.contact?.phone || ''} ${s.contact?.note || ''} ${latestPrefs.notes?.[s.id] || ''}`.toLocaleLowerCase().includes(q))
     );
     countEl.textContent = `${filtered.length}곳 표시 중 (전체 ${allStudios.length}곳)`;
 
@@ -359,13 +518,14 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
 
     listWrap.replaceChildren(...filtered.map(studio => {
       const isFav = latestFavs.has(studio.id);
+      const isCompared = compareIds.has(studio.id);
       const isConfirmed = studio.id === activeId;
       const phone = studio.contact?.phone || '';
       const phoneDigits = phone.replace(/\D/g, '');
       const contactText = phone
         ? `${phone}${studio.contact?.note ? ` (${studio.contact.note})` : ''}`
         : (studio.contact?.note || '제공된 목록에 연락처 미기재');
-      const noteText = ctx.getPrefs().notes?.[studio.id]?.trim() || '';
+      const noteText = latestPrefs.notes?.[studio.id]?.trim() || '';
       return E('article', { class: 'studio-archive-card' + (isConfirmed ? ' is-confirmed' : ''), 'data-archive-studio-id': studio.id },
         E('div', { class: 'studio-archive-card-head' },
           E('div', {},
@@ -373,12 +533,20 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
               E('strong', {}, studio.name),
               isConfirmed ? E('span', { class: 'badge' }, '확정 스튜디오') : null),
             E('p', { class: 'small muted' }, studio.style)),
-          E('button', {
-            type: 'button',
-            class: 'button quiet small-copy-btn' + (isFav ? ' is-fav' : ''),
-            'aria-pressed': String(isFav),
-            onclick: () => toggleFav(studio)
-          }, isFav ? '★ 관심' : '☆ 관심')),
+          E('div', { class: 'studio-archive-card-actions' },
+            E('button', {
+              type: 'button',
+              class: 'button quiet small-copy-btn',
+              'aria-pressed': String(isCompared),
+              onclick: () => toggleCompare(studio)
+            }, isCompared ? '✓ 비교 중' : '⚖️ 비교'),
+            E('button', {
+              type: 'button',
+              class: 'button quiet small-copy-btn' + (isFav ? ' is-fav' : ''),
+              'aria-pressed': String(isFav),
+              onclick: () => toggleFav(studio)
+            }, isFav ? '★ 관심' : '☆ 관심'),
+            button(noteText ? '📝 메모 수정' : '📝 메모', () => openStudioMemoModal(ctx, studio), 'button quiet small-copy-btn'))),
         E('div', { class: 'studio-archive-thumbs' }, studio.images.map((im, idx) => E('button', {
           type: 'button',
           class: 'photo-open studio-archive-thumb-btn',
@@ -407,6 +575,7 @@ function renderStudioArchiveDrawer(ctx, allStudios, activeId) {
         search.wrap,
         chipBar,
         countEl),
+      compareSlot,
       listWrap));
   drawer.open = archiveDrawerOpen;
   drawer.addEventListener('toggle', () => { archiveDrawerOpen = drawer.open; });

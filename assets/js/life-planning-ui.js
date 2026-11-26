@@ -1,14 +1,20 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-62';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-62';
-import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-62';
-import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-62';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-62';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-63';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-63';
+import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-63';
+import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-63';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-63';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 
 let homeCatFilter = 'all';
 let homeStatusFilter = 'all';
 let homeSearch = '';
+
+export function focusHomeSearch(query = '') {
+  homeCatFilter = 'all';
+  homeStatusFilter = 'all';
+  homeSearch = String(query || '');
+}
 
 const STARTER_HOME_ITEMS = [
   ['📺 가전', 'TV (거실)'],
@@ -251,6 +257,7 @@ export function renderHomeItemsBoard(ctx) {
 
   const listWrap = E('div', { class: 'ledger-list home-items-list' });
   const countEl = E('span', { class: 'small muted', 'aria-live': 'polite' });
+  const resetWrap = E('span', { class: 'filter-reset-slot' });
   const search = searchBox({
     id: 'home-item-search',
     value: homeSearch,
@@ -267,6 +274,35 @@ export function renderHomeItemsBoard(ctx) {
 
   const catBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '혼수 분류 필터' });
 
+  const resetHomeFilters = () => {
+    homeCatFilter = 'all';
+    homeStatusFilter = 'all';
+    homeSearch = '';
+    search.input.value = '';
+    search.syncClear();
+    statusSel.value = 'all';
+    drawList();
+    search.input.focus({ preventScroll: true });
+  };
+
+  const datedItems = items.filter(i => Boolean(i.deliveryDate));
+  const exportAllDeliveriesIcs = () => {
+    if (!datedItems.length) return;
+    try {
+      const ics = multiScheduleCalendar(datedItems.map(item => ({
+        uid: `home-delivery-${item.id}`,
+        summary: `[혼수 배송·설치] ${item.name}${item.brand ? ` (${item.brand})` : ''}`,
+        date: item.deliveryDate,
+        location: '신혼집',
+        description: item.note || `${item.category} · ${item.status}`
+      })));
+      downloadText(ics, 'wedding-home-deliveries.ics', 'text/calendar;charset=utf-8');
+      ctx.toast(`혼수 배송·설치 일정 ${datedItems.length}건을 .ics 파일 1개로 저장했습니다.`);
+    } catch (error) {
+      ctx.toast(error.message || '배송 일정 파일을 생성하지 못했습니다.', true);
+    }
+  };
+
   const drawList = () => {
     catBar.replaceChildren(...['all', ...HOME_ITEM_CATEGORIES].map(cat => {
       const cnt = cat === 'all' ? items.length : items.filter(i => i.category === cat).length;
@@ -279,6 +315,8 @@ export function renderHomeItemsBoard(ctx) {
       return btn;
     }));
     const q = homeSearch.trim().toLocaleLowerCase();
+    const activeCount = [homeCatFilter !== 'all', homeStatusFilter !== 'all', Boolean(q)].filter(Boolean).length;
+    resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetHomeFilters, 'filter-reset-chip')] : []));
     const filtered = items.filter(item =>
       (homeCatFilter === 'all' || item.category === homeCatFilter) &&
       (homeStatusFilter === 'all' || item.status === homeStatusFilter) &&
@@ -288,7 +326,8 @@ export function renderHomeItemsBoard(ctx) {
 
     if (!filtered.length) {
       listWrap.replaceChildren(E('div', { class: 'no-results-box' },
-        E('p', { class: 'no-results' }, items.length ? '선택한 조건에 맞는 혼수 품목이 없습니다.' : '등록된 혼수·가전·가구 품목이 아직 없습니다. ‘기본 혼수 품목 10종 채우기’ 또는 ‘+ 품목 추가’로 시작해 보세요.')));
+        E('p', { class: 'no-results' }, items.length ? '선택한 조건에 맞는 혼수 품목이 없습니다.' : '등록된 혼수·가전·가구 품목이 아직 없습니다. ‘기본 혼수 품목 10종 채우기’ 또는 ‘+ 품목 추가’로 시작해 보세요.'),
+        activeCount ? button('모든 필터 초기화', resetHomeFilters, 'button quiet') : null));
       return;
     }
 
@@ -350,6 +389,7 @@ export function renderHomeItemsBoard(ctx) {
         button('+ 품목 추가', () => openHomeItemEditor(ctx), 'button'),
         button('✨ 기본 혼수 10종 채우기', addStarterItems, 'button quiet'),
         items.length ? button('💰 통합 예산에 합계 반영', syncToBudget, 'button quiet') : null,
+        datedItems.length ? button(`📥 배송 일정 일괄 .ics (${datedItems.length}건)`, exportAllDeliveriesIcs, 'button quiet') : null,
         items.length ? button('📋 요약 복사', () => ctx.copyTextToClipboard(buildHomeItemsSummaryText(items, sum), '혼수·가전·가구 요약을 복사했습니다.', '혼수 요약 복사'), 'button quiet') : null,
         items.length ? button('📥 CSV 내보내기', () => {
           downloadText(homeItemsToCsv(items), 'wedding-home-items.csv', 'text/csv;charset=utf-8');
@@ -363,7 +403,7 @@ export function renderHomeItemsBoard(ctx) {
       E('div', { class: 'ledger-kpi-card' }, E('span', { class: 'small muted' }, '계약금 차감 잔금'), E('strong', {}, won(sum.balanceTotal)))),
     E('div', { class: 'ledger-filter-controls' },
       catBar,
-      E('div', { class: 'directory-controls' }, search.wrap, statusSel, countEl)),
+      E('div', { class: 'directory-controls' }, search.wrap, statusSel, resetWrap, countEl)),
     listWrap);
 }
 

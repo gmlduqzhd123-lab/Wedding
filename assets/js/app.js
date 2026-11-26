@@ -1,5 +1,5 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-62';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-62';
+import { parseContent, validateContent, formatDate, weddingDday, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-63';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-63';
 import {
   readBackupMeta,
   writeBackupMeta,
@@ -11,15 +11,16 @@ import {
   flashCopiedButton,
   copyText,
   initPwaInstall
-} from './ui-shell.js?v=wedding-features-62';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-62';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-62';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-62';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-62';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-62';
+} from './ui-shell.js?v=wedding-features-63';
+import { createShellEffects } from './shell-effects.js?v=wedding-features-63';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-63';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-63';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-63';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView, focusStorySearch } from './story-album-ui.js?v=wedding-features-63';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-63';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
-const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
+const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences';
 const routes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
 const SUBTAB_MAP = {
   ceremony: ['rundown', 'guests', 'gifts', 'dayops'],
@@ -43,18 +44,18 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-62'),
-  storage: () => import('./storage.js?v=wedding-features-62'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-62'),
-  manager: () => import('./manager-ui.js?v=wedding-features-62'),
-  studios: () => import('./studio-ui.js?v=wedding-features-62'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-62'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-62'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-62'),
-  tips: () => import('./planning-ui.js?v=wedding-features-62'),
-  editor: () => import('./editor-ui.js?v=wedding-features-62'),
-  search: () => import('./search-ui.js?v=wedding-features-62'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-62')
+  preferences: () => import('./preferences.js?v=wedding-features-63'),
+  storage: () => import('./storage.js?v=wedding-features-63'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-63'),
+  manager: () => import('./manager-ui.js?v=wedding-features-63'),
+  studios: () => import('./studio-ui.js?v=wedding-features-63'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-63'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-63'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-63'),
+  tips: () => import('./planning-ui.js?v=wedding-features-63'),
+  editor: () => import('./editor-ui.js?v=wedding-features-63'),
+  search: () => import('./search-ui.js?v=wedding-features-63'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-63')
 };
 
 function loadModule(key) {
@@ -89,24 +90,6 @@ function applySubTabSelection(route, tab) {
 let baseContent, content, studios = [], prefs = {}, isDraft = false;
 const DEFAULT_STUDIO_ID = 'studio-09';
 const activeLachmaStudio = () => studios.find(s => s.id === DEFAULT_STUDIO_ID) || studios.find(s => s.name === '라크마');
-let largeTextMode = (() => { try { return sessionStorage.getItem(LARGE_TEXT_KEY) === '1'; } catch { return false; } })();
-let darkTheme = (() => {
-  try {
-    const saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'dark') return true;
-    if (saved === 'light') return false;
-  } catch {}
-  return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)')?.matches);
-})();
-let petalsEnabled = (() => {
-  try {
-    const saved = sessionStorage.getItem(PETALS_KEY);
-    if (saved === '0') return false;
-    if (saved === '1') return true;
-  } catch {}
-  return !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-})();
-let countdownTimer = null, activeCountdownSlot = null;
 const urlGuestMode = new URLSearchParams(location.search).get('view') === 'guest';
 let guestMode = urlGuestMode;
 let baseRevision = '', draftRevision = null, editorState = null, studiosStatus = 'loading', studiosError = '';
@@ -119,6 +102,27 @@ let lastWriteFailed = false;
 let waitingSw = null;
 let dockSpyObserver = null;
 const toast = createToastController({ dialog, getConflictReview: () => conflictReview });
+const shellEffects = createShellEffects({
+  main,
+  getGuestMode: () => guestMode,
+  currentRoute,
+  toast,
+  getPwaInstall: () => pwaInstall
+});
+const {
+  isLargeTextMode,
+  syncLargeTextUi,
+  toggleLargeTextMode,
+  renderLargeTextButton,
+  syncThemeUi,
+  toggleThemeMode,
+  renderPetalsButton,
+  renderInvitationPetalsLayer,
+  startInvitationCountdown,
+  stopInvitationCountdown,
+  clearCountdownSlot,
+  resumeCountdownIfVisible
+} = shellEffects;
 
 function trackWrite(task) {
   const completion = Promise.resolve(task).then(value => ({ ok: value !== false }), error => ({ ok: false, error }));
@@ -143,139 +147,6 @@ async function finishPendingWrites() {
 const editButton = (...args) => (guestMode ? null : button(...args));
 const readStorage = key => { try { return localStorage.getItem(key); } catch { return null; } };
 const backupReminderInfo = (p = prefs, opts = {}) => computeBackupReminder(p, { ...opts, guestMode });
-function syncLargeTextUi() {
-  document.body.classList.toggle('is-large-text', largeTextMode);
-  const btn = document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)');
-  if (btn) {
-    btn.textContent = largeTextMode ? '가- 보통' : '가+ 크게';
-    btn.setAttribute('aria-pressed', String(largeTextMode));
-    btn.classList.toggle('is-active', largeTextMode);
-  }
-  const dockBtn = document.querySelector('.guest-dock-text-btn');
-  if (dockBtn) {
-    dockBtn.textContent = largeTextMode ? '가- 보통' : '🔍 크게';
-    dockBtn.setAttribute('aria-pressed', String(largeTextMode));
-    dockBtn.classList.toggle('is-active', largeTextMode);
-  }
-}
-function toggleLargeTextMode() {
-  largeTextMode = !largeTextMode;
-  try { sessionStorage.setItem(LARGE_TEXT_KEY, largeTextMode ? '1' : '0'); } catch {}
-  syncLargeTextUi();
-  toast(largeTextMode ? '청첩장 글씨를 크게 표시합니다.' : '청첩장 글씨를 기본 크기로 돌렸습니다.');
-}
-function renderLargeTextButton() {
-  return E('button', {
-    type: 'button',
-    class: 'invitation-text-btn' + (largeTextMode ? ' is-active' : ''),
-    'aria-pressed': String(largeTextMode),
-    'aria-label': '청첩장 글씨 크기 크게 보기 전환',
-    onclick: toggleLargeTextMode
-  }, largeTextMode ? '가- 보통' : '가+ 크게');
-}
-function syncThemeUi() {
-  const isDarkActive = !guestMode && darkTheme;
-  document.documentElement.classList.toggle('is-dark-theme', isDarkActive);
-  document.body.classList.toggle('is-dark-theme', isDarkActive);
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-  if (metaTheme) metaTheme.setAttribute('content', isDarkActive ? '#141916' : '#faf9f5');
-  const themeBtn = $('#theme-toggle-btn');
-  if (themeBtn) {
-    themeBtn.hidden = Boolean(guestMode);
-    themeBtn.setAttribute('aria-pressed', String(isDarkActive));
-    themeBtn.textContent = isDarkActive ? '☀️' : '🌙';
-    themeBtn.setAttribute('aria-label', isDarkActive ? '주간 라이트 테마로 전환' : '야간 다크 테마 전환');
-    themeBtn.title = isDarkActive ? '주간 라이트 테마로 전환' : '야간 다크 테마 전환';
-  }
-  const searchBtn = $('#global-search-btn');
-  if (searchBtn) searchBtn.hidden = Boolean(guestMode);
-  pwaInstall?.sync();
-}
-function toggleThemeMode() {
-  if (guestMode) return;
-  darkTheme = !darkTheme;
-  try { localStorage.setItem(THEME_KEY, darkTheme ? 'dark' : 'light'); } catch {}
-  syncThemeUi();
-  toast(darkTheme ? '🌙 야간 다크 보태니컬 테마로 전환했습니다. (하객 청첩장은 항상 밝은 화지 톤 유지)' : '☀️ 주간 라이트 보태니컬 테마로 전환했습니다.');
-}
-window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change', event => {
-  try { if (localStorage.getItem(THEME_KEY)) return; } catch {}
-  darkTheme = Boolean(event.matches);
-  syncThemeUi();
-});
-function syncPetalsUi() {
-  const layer = main.querySelector('.invitation-petals-layer');
-  if (layer) layer.hidden = !petalsEnabled;
-  const btn = main.querySelector('.invitation-petals-btn');
-  if (btn) {
-    btn.textContent = petalsEnabled ? '🌸 끄기' : '🌸 꽃잎';
-    btn.setAttribute('aria-pressed', String(petalsEnabled));
-    btn.classList.toggle('is-active', petalsEnabled);
-  }
-}
-function togglePetalsMode() {
-  petalsEnabled = !petalsEnabled;
-  try { sessionStorage.setItem(PETALS_KEY, petalsEnabled ? '1' : '0'); } catch {}
-  syncPetalsUi();
-  toast(petalsEnabled ? '🌸 청첩장 꽃잎 효과를 켰습니다.' : '꽃잎 효과를 잠시 껐습니다.');
-}
-function renderPetalsButton() {
-  return E('button', {
-    type: 'button',
-    class: 'invitation-text-btn invitation-petals-btn' + (petalsEnabled ? ' is-active' : ''),
-    'aria-pressed': String(petalsEnabled),
-    'aria-label': '청첩장 떨어지는 꽃잎 효과 전환',
-    onclick: togglePetalsMode
-  }, petalsEnabled ? '🌸 끄기' : '🌸 꽃잎');
-}
-function renderInvitationPetalsLayer() {
-  const configs = [
-    [6, 0.0, 9.6, 12], [15, 2.2, 11.2, 10], [24, 4.1, 10.4, 14], [34, 1.3, 12.1, 11],
-    [43, 5.4, 9.8, 13], [52, 0.7, 11.6, 10], [61, 3.3, 10.7, 12], [70, 6.2, 12.4, 11],
-    [79, 1.9, 9.9, 14], [87, 4.7, 11.1, 10], [93, 2.8, 10.6, 12], [29, 7.1, 11.8, 11]
-  ];
-  const layer = E('div', { class: 'invitation-petals-layer', 'aria-hidden': 'true' },
-    configs.map(([left, delay, dur, size], i) => E('span', {
-      class: 'inv-petal' + (i % 3 === 0 ? ' is-leaf' : i % 3 === 1 ? ' is-blush' : ' is-cream'),
-      style: `--p-left:${left}%;--p-delay:-${delay}s;--p-dur:${dur}s;--p-size:${size}px`
-    })));
-  layer.hidden = !petalsEnabled;
-  return layer;
-}
-function stopInvitationCountdown() {
-  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-}
-function paintLiveCountdown(info, slot) {
-  if (!slot || !slot.isConnected) return false;
-  const cd = invitationLiveCountdown(info.date, info.time);
-  if (!cd) { slot.replaceChildren(); return false; }
-  const pad = n => String(n).padStart(2, '0');
-  if (cd.status === 'future') {
-    slot.replaceChildren(
-      E('div', { class: 'countdown-unit' }, E('strong', { class: 'countdown-num' }, String(cd.days)), E('span', { class: 'countdown-unit-label' }, 'DAYS')),
-      E('span', { class: 'countdown-sep', 'aria-hidden': 'true' }, ':'),
-      E('div', { class: 'countdown-unit' }, E('strong', { class: 'countdown-num' }, pad(cd.hours)), E('span', { class: 'countdown-unit-label' }, 'HOURS')),
-      E('span', { class: 'countdown-sep', 'aria-hidden': 'true' }, ':'),
-      E('div', { class: 'countdown-unit' }, E('strong', { class: 'countdown-num' }, pad(cd.minutes)), E('span', { class: 'countdown-unit-label' }, 'MIN')),
-      E('span', { class: 'countdown-sep', 'aria-hidden': 'true' }, ':'),
-      E('div', { class: 'countdown-unit' }, E('strong', { class: 'countdown-num' }, pad(cd.seconds)), E('span', { class: 'countdown-unit-label' }, 'SEC')));
-    return true;
-  }
-  const msg = cd.status === 'ongoing' ? '✨ 오늘 예식이 진행 중입니다. 귀한 걸음 감사드립니다.' : '✨ 소중한 축복 속에 예식을 마쳤습니다. 감사합니다.';
-  slot.replaceChildren(E('p', { class: 'countdown-status-banner' }, msg));
-  return false;
-}
-function startInvitationCountdown(info, slot) {
-  stopInvitationCountdown();
-  activeCountdownSlot = slot;
-  if (!slot || !info?.date) return;
-  const keepTicking = paintLiveCountdown(info, slot);
-  if (!keepTicking || document.hidden) return;
-  countdownTimer = setInterval(() => {
-    if (document.hidden || currentRoute() !== 'invitation' || !slot.isConnected) { stopInvitationCountdown(); return; }
-    if (!paintLiveCountdown(info, slot)) stopInvitationCountdown();
-  }, 1000);
-}
 
 function hashSegments() {
   return location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -339,7 +210,7 @@ function moduleCtx() {
     DRAFT_KEY,
     PREF_KEY,
     isGuestMode: () => guestMode,
-    isLargeTextMode: () => largeTextMode,
+    isLargeTextMode,
     toggleLargeTextMode,
     renderLargeTextButton,
     renderPetalsButton,
@@ -403,6 +274,40 @@ function moduleCtx() {
           }, 40);
         }
       }).catch(() => {});
+    },
+    focusTipSearch: query => {
+      if (guestMode || currentRoute() !== 'tips') return;
+      loadModule('tips').then(mod => {
+        mod.focusTipSearch?.(query);
+        if (currentRoute() === 'tips') { render(); $('#tip-search')?.focus({ preventScroll: true }); }
+      }).catch(() => {});
+    },
+    focusHomeSearch: query => {
+      if (guestMode || currentRoute() !== 'tips') return;
+      loadModule('tips').then(mod => {
+        mod.focusHomeSearch?.(query);
+        if (currentRoute() === 'tips') { render(); $('#home-item-search')?.focus({ preventScroll: true }); }
+      }).catch(() => {});
+    },
+    focusGuestSearch: query => {
+      if (guestMode || currentRoute() !== 'ceremony') return;
+      loadModule('ceremony').then(mod => {
+        mod.focusGuestSearch?.(query);
+        if (currentRoute() === 'ceremony') { render(); $('#guest-search')?.focus({ preventScroll: true }); }
+      }).catch(() => {});
+    },
+    focusGiftSearch: query => {
+      if (guestMode || currentRoute() !== 'ceremony') return;
+      loadModule('ceremony').then(mod => {
+        mod.focusGiftSearch?.(query);
+        if (currentRoute() === 'ceremony') { render(); $('#gift-search')?.focus({ preventScroll: true }); }
+      }).catch(() => {});
+    },
+    focusStorySearch: query => {
+      if (currentRoute() !== 'story') return;
+      focusStorySearch(query);
+      render();
+      $('#story-search')?.focus({ preventScroll: true });
     },
     recordActions,
     copyTextToClipboard,
@@ -926,7 +831,7 @@ function render() {
   const route = currentRoute();
   document.body.dataset.route = route;
   if (route !== 'honeymoon') document.body.classList.remove('has-compare-tray');
-  if (route !== 'invitation') { stopInvitationBgm(); stopInvitationCountdown(); activeCountdownSlot = null; revealObserver?.disconnect(); revealObserver = null; dockSpyObserver?.disconnect(); dockSpyObserver = null; }
+  if (route !== 'invitation') { stopInvitationBgm(); clearCountdownSlot(); revealObserver?.disconnect(); revealObserver = null; dockSpyObserver?.disconnect(); dockSpyObserver = null; }
   const renderers = { home: renderHome, invitation: renderInvitation, story: renderStories, albums: renderAlbums, studios: renderStudios, honeymoon: renderHoneymoon, ceremony: renderCeremony, prenatal: renderPrenatal, tips: renderTips };
   const keepView = route === 'honeymoon' && main.dataset.renderedRoute === route;
   const keepTabFocus = Boolean(document.activeElement?.closest?.('#main [role="tablist"]') && document.activeElement.getAttribute('role') === 'tab');
@@ -946,7 +851,7 @@ function render() {
   if (route === 'invitation') {
     const cdSlot = main.querySelector('.invitation-live-countdown');
     if (cdSlot) startInvitationCountdown(content.invitation, cdSlot);
-    else { stopInvitationCountdown(); activeCountdownSlot = null; }
+    else clearCountdownSlot();
     observeInvitationReveal();
     observeGuestDockSpy();
   }
@@ -1147,8 +1052,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     stopInvitationBgm();
     stopInvitationCountdown();
-  } else if (content && currentRoute() === 'invitation' && activeCountdownSlot?.isConnected) {
-    startInvitationCountdown(content.invitation, activeCountdownSlot);
+  } else if (content) {
+    resumeCountdownIfVisible(content.invitation);
   }
 });
 window.addEventListener('pagehide', () => { stopInvitationBgm(); stopInvitationCountdown(); });
@@ -1201,7 +1106,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-62')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-63')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {

@@ -1,10 +1,10 @@
-import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-62';
-import { formatDate } from './content.js?v=wedding-features-62';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-62';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-62';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-62';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-63';
+import { formatDate } from './content.js?v=wedding-features-63';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-63';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-63';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-63';
 
-export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
+export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
 
 let ceremonySubTab = 'rundown';
 export function setCeremonySubTab(tab) {

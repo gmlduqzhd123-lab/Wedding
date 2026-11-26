@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-62';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-62';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-62';
-import { quoteReview } from './travel.js?v=wedding-features-62';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-62';
+import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-63';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-63';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-63';
+import { quoteReview } from './travel.js?v=wedding-features-63';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-63';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -14,12 +14,12 @@ import {
   netWeddingCostSummary,
   budgetPlanToCsv,
   buildBudgetSummaryText
-} from './planning.js?v=wedding-features-62';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-62';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-62';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-62';
+} from './planning.js?v=wedding-features-63';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-63';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-63';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-63';
 
-export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
+export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, focusHomeSearch };
 
 let tipsSubTab = 'tips';
 export function setTipsSubTab(tab) {
@@ -33,6 +33,14 @@ let withTipNoteOnly = false;
 let vendorCatFilter = 'all';
 let vendorPendingOnly = false;
 let redrawTips = () => {};
+
+export function focusTipSearch(query = '') {
+  tipsSubTab = 'tips';
+  tipCategory = 'all';
+  tipFavoritesOnly = false;
+  withTipNoteOnly = false;
+  tipFilter = String(query || '');
+}
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 
