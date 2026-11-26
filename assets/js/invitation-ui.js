@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-63';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-63';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-63';
-import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-63';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-64';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-64';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-64';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-64';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-63';
+} from './invitation-card.js?v=wedding-features-64';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();
@@ -79,9 +79,9 @@ function renderAccountGroup(ctx, title, rawText) {
       return E('li', { class: 'invitation-contact-row invitation-account-card' },
         infoBlock,
         E('div', { class: 'contact-row-actions' },
-          button(hasParsedAcct ? '계좌 복사' : '복사', () => ctx.copyTextToClipboard(copyTarget, copyNotice, '계좌번호 복사'), 'button quiet small-copy-btn'),
+          button(hasParsedAcct ? '계좌 복사' : '복사', ev => ctx.copyTextToClipboard(copyTarget, copyNotice, '계좌번호 복사', ev.currentTarget), 'button quiet small-copy-btn'),
           hasParsedAcct && (parsed.bank || parsed.holder)
-            ? button('전체 복사', () => ctx.copyTextToClipboard(line, '은행·예금주·계좌 안내를 복사했습니다.', '계좌 전체 복사'), 'button quiet small-copy-btn')
+            ? button('전체 복사', ev => ctx.copyTextToClipboard(line, '은행·예금주·계좌 안내를 복사했습니다.', '계좌 전체 복사', ev.currentTarget), 'button quiet small-copy-btn')
             : null));
     })));
 }

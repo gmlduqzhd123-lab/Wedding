@@ -182,11 +182,13 @@ try {
   assert.equal(await cdp.eval(`document.querySelector('#manage-content').hidden`), true, 'Guest mode hides manage button');
   assert.equal(await cdp.eval(`document.querySelector('#global-search-btn').hidden`), true, 'Guest mode hides global search button');
   assert.equal(await cdp.eval(`document.querySelector('#theme-toggle-btn').hidden`), true, 'Guest mode hides theme toggle button');
+  assert.equal(await cdp.eval(`document.querySelector('#planner-bottom-dock').hidden`), true, 'Guest mode hides planner mobile bottom dock');
   assert.equal(await cdp.eval(`document.documentElement.classList.contains('is-dark-theme') || document.body.classList.contains('is-dark-theme')`), false, 'Guest mode must NEVER activate dark theme');
   assert(requestedUrls.some(u => u.includes('/data/guest-site.json')), 'Guest mode must load guest-site.json');
   assert(!requestedUrls.some(u => u.includes('/data/site.json')), 'Guest mode must NOT load full site.json');
   assert(!requestedUrls.some(u => u.includes('planner.css')), 'Guest mode must NOT load planner.css');
-  assert(!requestedUrls.some(u => u.includes('charts.js') || u.includes('search-ui.js') || u.includes('planning.js') || u.includes('ledger.js') || u.includes('preferences.js') || u.includes('home-dashboard-ui.js') || u.includes('manager-ui.js') || u.includes('studios.json')), 'Guest mode must NOT load planner JS or studios.json');
+  assert(!requestedUrls.some(u => u.includes('Paperlogy-6SemiBold.woff2') || u.includes('SUITE-Medium.woff2')), 'Guest mode must NOT download trimmed mobile font weights');
+  assert(!requestedUrls.some(u => u.includes('charts.js') || u.includes('search-ui.js') || u.includes('planning.js') || u.includes('ledger.js') || u.includes('preferences.js') || u.includes('home-dashboard-ui.js') || u.includes('manager-ui.js') || u.includes('sync-code.js') || u.includes('couple-sync-ui.js') || u.includes('field-ops-ui.js') || u.includes('studios.json')), 'Guest mode must NOT load planner JS or studios.json');
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.invitation-share-foot button')].some(b => b.textContent.includes('예식 요약 복사'))`), true, 'Guest invitation must include wedding summary copy button');
   const petalsBtnText = await cdp.eval(`document.querySelector('.invitation-petals-btn')?.textContent?.trim()`);
   const textBtnText = await cdp.eval(`document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)')?.textContent?.trim()`);
@@ -205,16 +207,27 @@ try {
   assert(dockTargets.includes('inv-sec-schedule') && dockTargets.includes('inv-sec-location'), 'Guest quick dock must include Scroll-Spy targets');
   assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, 'Guest mobile zero overflow');
   await cdp.eval(`localStorage.removeItem('wedding:v1:theme')`);
-  console.log('E2E PASS 1/8: Guest lightweight boot, dark-theme immunity, petals/text isolation, clean topbar, 390px OK');
+  console.log('E2E PASS 1/8: Guest lightweight boot, font diet, dark-theme immunity, petals/text isolation, clean topbar, 390px OK');
 
-  // 2. Desktop planner: Home scroll diet, Dark Theme + FOUC root class persistence, Global Search navigation
+  // 2. Desktop planner: Home scroll diet, 2-group nav separator, Couple Sync modal, Action Overflow menu, Dark Theme persistence, Global Search
   await setViewport(1280, 900);
   requestedUrls.length = 0;
   await goto(BASE + '#/home');
   assert(requestedUrls.some(u => u.includes('planner.css')), 'Planner mode must load planner.css');
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('.main-nav .nav-group-sep')) && !document.querySelector('.main-nav .nav-group-sep').hidden`), true, 'Planner desktop nav shows group separator');
   assert.equal(await cdp.eval(`document.querySelectorAll('.home-section-nav .home-jump-chip').length`), 5, 'Home quick-jump nav renders 5 chips');
   assert(await cdp.eval(`Boolean(document.querySelector('#home-phase-focus.phase-focus-card'))`), 'Phase focus card renders');
   assert.equal(await cdp.eval(`document.querySelectorAll('.checklist-stage-details[open]').length`), 1, 'Only focus checklist stage open by default');
+  // Test Round 9 actionOverflowMenu open + Escape close
+  await cdp.eval(`document.querySelector('.action-more-menu summary').click()`);
+  await cdp.waitFor(`() => document.querySelector('.action-more-menu')?.open === true`);
+  await cdp.eval(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  await cdp.waitFor(`() => document.querySelector('.action-more-menu')?.open === false`);
+  // Test Round 9 Couple Sync modal opens cleanly
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('2인 동기화')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#couple-sync-paste'))`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '전체 4단계 펼치기').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.checklist-stage-details[open]').length === 4`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '현재 시기만 펼치기').click()`);
@@ -238,10 +251,11 @@ try {
   await cdp.waitFor(`() => document.querySelectorAll('.global-search-item').length >= 1`);
   await cdp.eval(`[...document.querySelectorAll('.global-search-item')].find(b => b.textContent.includes('신혼여행')).click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main')?.dataset.renderedRoute === 'honeymoon' && !document.querySelector('.loading-state')`);
-  console.log('E2E PASS 2/8: Home scroll diet, Dark Botanical Theme persistence, Modal focus return, Global Search OK');
+  console.log('E2E PASS 2/8: Home scroll diet, 2-group nav, Overflow menu, Couple Sync modal, Dark Theme persistence, Global Search OK');
 
-  // 3. Honeymoon Round 7: 3-way compare + diff toggle + best budget + matrix + recommender + compact video + selected actions + local calc + regional packing
+  // 3. Honeymoon Round 7+9: 3-tool compact strip + 3-way compare + diff toggle + best budget + matrix + recommender + compact video + selected actions + local calc + regional packing
   await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 3`);
+  assert.equal(await cdp.eval(`document.querySelectorAll('.honeymoon-tools-strip > details').length`), 3, 'Honeymoon tools strip must group 3 top collapsible panels');
   // Smart quick filters hide redundant 100%-matching chips (direct, longstay) and expose budget/semi brackets
   assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="direct"]'))`), false, 'Redundant 100%-matching direct chip should be hidden');
   assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="mid6to8m"]')) && Boolean(document.querySelector('[data-trip-filter="over8m"]')) && Boolean(document.querySelector('[data-trip-filter="semi"]'))`), true, 'Smart budget and semi-package chips must render');
@@ -407,6 +421,15 @@ try {
   await cdp.waitFor(`() => Boolean(document.querySelector('#dayops-title'))`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('기본 봉투 5종')).click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.ledger-row').length >= 5`);
+  // Round 9: Wedding Day Field Ops Hub (3 switcher tabs)
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('본식 당일 현장 모드')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelectorAll('.wedding-day-hub [role="tab"]').length === 3`);
+  await cdp.eval(`document.querySelectorAll('.wedding-day-hub [role="tab"]')[1].click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.wedding-day-hub .field-ops-checklist li').length >= 5`);
+  await cdp.eval(`document.querySelectorAll('.wedding-day-hub [role="tab"]')[2].click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.wedding-day-hub .photo-call-btn').length >= 6`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('현장 호명 체크 모드')).click()`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.photo-call-board'))`);
   await cdp.eval(`document.querySelector('.photo-call-btn').click()`);
@@ -414,6 +437,11 @@ try {
 
   await cdp.eval(`location.hash = '#/studios'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer')) && Boolean(document.querySelector('#shoot-prep-pending-only'))`);
+  // Round 9: Shoot Day Field Ops Briefing Mode
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('촬영 당일 현장 모드')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.field-ops-shell .field-ops-loc-row'))`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
   // Lachma shoot prep pending filter & copy button
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.shoot-prep-filter-row button')].some(b => b.textContent.includes('남은 준비물 카톡 복사'))`), true, 'Lachma shoot prep must include remaining copy button');
   const shootTotal = await cdp.eval(`document.querySelectorAll('.lachma-prep-check-item').length`);
@@ -602,6 +630,19 @@ try {
     const overflow = await cdp.eval(`document.documentElement.scrollWidth - window.innerWidth`);
     assert(overflow <= 0, `Mobile 390px horizontal overflow on ${r}: +${overflow}px`);
   }
+  // Round 9: Planner mobile bottom dock visibility + 2-group mobile menu sheet with live status chips
+  const dockInfo = await cdp.eval(`(() => {
+    const dock = document.querySelector('#planner-bottom-dock');
+    return { hidden: dock?.hidden, display: dock ? getComputedStyle(dock).display : '', items: dock ? dock.querySelectorAll('.planner-dock-item').length : 0 };
+  })()`);
+  assert.equal(dockInfo.hidden, false, 'Planner mobile bottom dock must not be hidden in planner mode');
+  assert.equal(dockInfo.display, 'grid', `Planner mobile bottom dock must render as grid on 390px, got: ${dockInfo.display}`);
+  assert.equal(dockInfo.items, 5, 'Planner mobile bottom dock must have 5 slots');
+  await cdp.eval(`document.querySelector('#planner-dock-more').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#mobile-menu-sheet').hidden && document.querySelectorAll('.mobile-menu-group-title').length === 2`);
+  assert.equal(await cdp.eval(`document.querySelectorAll('.mobile-menu-status').length >= 5`), true, '2-group mobile sheet must render live status badges');
+  await cdp.eval(`document.querySelector('#mobile-menu-close').click()`);
+  await cdp.waitFor(`() => document.querySelector('#mobile-menu-sheet').hidden`);
   // Verify light-mode invitation rose labels pass WCAG AA (>=4.5:1)
   await cdp.eval(`location.hash = '#/invitation'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.invitation-sub'))`);

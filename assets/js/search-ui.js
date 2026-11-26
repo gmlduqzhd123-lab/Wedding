@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-63';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-63';
+import { E, button } from './dom.js?v=wedding-features-64';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-64';
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },
@@ -20,7 +20,10 @@ const STATIC_COMMANDS = [
   { id: 'nav-tips-schedule', category: '결혼 정보', icon: '🗓️', title: '주요 업체 일정 · 피팅 · 잔금 보드', subtitle: '촬영·가봉·시식·계약금/잔금 날짜 관리', keywords: '업체 일정 피팅 가봉 시식 잔금 계약금 보드', route: 'tips', subTab: 'schedule' },
   { id: 'nav-tips-home', category: '결혼 정보', icon: '🏠', title: '신혼집 · 혼수(가전·가구) 품목 관리', subtitle: '품목별 견적·계약금·잔금·배송일 캘린더', keywords: '신혼집 혼수 가전 가구 냉장고 세탁기 침대 tv 배송일', route: 'tips', subTab: 'home' },
   { id: 'nav-tips-benefits', category: '결혼 정보', icon: '🏛️', title: '혼인신고 · 순천/전남/정부 신혼부부 혜택', subtitle: '순천시청 장명로 30 · 청년부부 결혼축하금 200만 원 · 세액공제', keywords: '혼인신고 순천시청 장명로 30 결혼축하금 200만원 신혼부부 혜택 보금자리 세액공제 증여공제 전남아이톡', route: 'tips', subTab: 'benefits' },
-  { id: 'act-quick-gift', category: '빠른 실행', icon: '⚡', title: '축의대 현장 빠른 연속 입력 바로 열기', subtitle: '양가·방식 고정, 1-tap 금액·식권 연속 접수', keywords: '축의대 빠른 입력 연속 접수 현장 당일', route: 'ceremony', subTab: 'gifts', action: 'quick-gift' }
+  { id: 'act-quick-gift', category: '빠른 실행', icon: '⚡', title: '축의대 현장 빠른 연속 입력 바로 열기', subtitle: '양가·방식 고정, 1-tap 금액·식권 연속 접수', keywords: '축의대 빠른 입력 연속 접수 현장 당일', route: 'ceremony', subTab: 'gifts', action: 'quick-gift' },
+  { id: 'act-couple-sync', category: '빠른 실행', icon: '💑', title: '신랑·신부 3초 기록 동기화 (카톡 복붙 코드)', subtitle: '하객·축의금·예산·혼수·메모를 두 기기 간 즉시 병합', keywords: '동기화 신랑 신부 카톡 백업 합치기 코드 공유 sync', route: 'home', action: 'couple-sync' },
+  { id: 'act-shoot-day', category: '빠른 실행', icon: '📸', title: '라크마 촬영 당일 현장 브리핑 모드', subtitle: '루나메이크업→중앙로 117 동선·현금 25만·미챙김 준비물·타임테이블', keywords: '촬영 당일 현장 브리핑 라크마 루나메이크업 타임테이블', route: 'studios', action: 'shoot-day' },
+  { id: 'act-wedding-day', category: '빠른 실행', icon: '💍', title: '본식 당일 현장 통합 모드 (큐시트·축의대·봉투·원판)', subtitle: '화면 켜짐 유지 + 본식 핵심 현장 도구 1-tap 전환', keywords: '본식 당일 현장 통합 스위처 큐시트 봉투 원판', route: 'ceremony', action: 'wedding-day' }
 ];
 
 export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio = null, studios = [] } = {}) {

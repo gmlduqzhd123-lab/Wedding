@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadText } from './dom.js?v=wedding-features-63';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-63';
-import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-63';
-import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-63';
-import { multiScheduleCalendar } from './calendar.js?v=wedding-features-63';
+import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-64';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-64';
+import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-64';
+import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-64';
+import { multiScheduleCalendar } from './calendar.js?v=wedding-features-64';
 import {
   weddingBudgetSummary,
   guestListSummary,
@@ -15,7 +15,7 @@ import {
   activeVendorSchedules,
   collectMasterTimeline,
   weddingPhaseInfo
-} from './planning.js?v=wedding-features-63';
+} from './planning.js?v=wedding-features-64';
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 let checklistIncompleteOnly = false;
@@ -197,15 +197,22 @@ export function renderPhaseFocusCard(ctx) {
     prefs: ctx.getPrefs(),
     studio: ctx.getStudiosState().activeLachma
   });
+  const fieldOpsBtn = phase.phase === 'shoot'
+    ? button('⚡ 촬영 당일 현장 모드', () => ctx.openShootDayMode?.(), 'button quiet')
+    : (phase.phase === 'ceremony' || phase.phase === 'final')
+      ? button('⚡ 본식 당일 현장 모드', () => ctx.openWeddingDayHub?.(), 'button quiet')
+      : null;
   return E('section', { class: `phase-focus-card is-phase-${phase.phase}`, id: 'home-phase-focus', 'aria-label': '현재 시기 집중 웨딩 가이드' },
     E('div', { class: 'phase-focus-head' },
       E('div', {},
         E('span', { class: 'phase-focus-badge' }, phase.badge),
         E('h2', { class: 'phase-focus-title' }, phase.title),
         E('p', { class: 'small muted phase-focus-sub' }, phase.subtitle)),
-      E('div', { class: 'phase-focus-actions' }, phase.actions.map(act => button(act.label, () => {
-        ctx.navigateToRoute(act.route, act.subTab || '', act.action || '');
-      }, act.primary ? 'button' : 'button quiet')))),
+      E('div', { class: 'phase-focus-actions' },
+        ...phase.actions.map(act => button(act.label, () => {
+          ctx.navigateToRoute(act.route, act.subTab || '', act.action || '');
+        }, act.primary ? 'button' : 'button quiet')),
+        fieldOpsBtn)),
     phase.metrics?.length ? E('div', { class: 'phase-focus-metrics' }, phase.metrics.map(m => E('span', { class: 'spec-chip' }, m))) : null);
 }
 
@@ -305,11 +312,12 @@ export function renderHomeDashboard(ctx) {
   const backupRem = ctx.backupReminderInfo(prefs);
   const backupStrip = backupRem ? E('div', { class: 'dashboard-backup-strip', role: 'region', 'aria-label': '개인 백업 알림' },
     E('div', { class: 'dashboard-prenatal-info' },
-      E('strong', {}, '💾 개인 기록 백업 권장'),
+      E('strong', {}, '💾 개인 기록 백업 · 2인 동기화 권장'),
       E('span', { class: 'small muted' }, backupRem.message)),
     E('div', { class: 'page-actions' },
-      button('📥 지금 백업 저장', () => ctx.downloadPrivate(), 'button quiet small-copy-btn'),
-      ctx.canShareBackupFiles() ? button('📤 백업 공유', () => ctx.sharePrivateBackup(), 'button quiet small-copy-btn') : null,
+      button('💑 3초 동기화 코드', () => ctx.openCoupleSync?.(), 'button small-copy-btn'),
+      button('📥 파일 백업', () => ctx.downloadPrivate(), 'button quiet small-copy-btn'),
+      ctx.canShareBackupFiles() ? button('📤 파일 공유', () => ctx.sharePrivateBackup(), 'button quiet small-copy-btn') : null,
       button('일주일 숨기기', () => { ctx.writeBackupMeta({ snoozeUntil: Date.now() + 7 * 86400000 }); ctx.render(); ctx.toast('백업 알림을 일주일간 숨겼습니다. 내용 관리에서 언제든 백업할 수 있어요.'); }, 'text-button small'))) : null;
   return E('section', { class: 'home-dashboard', 'aria-labelledby': 'home-dashboard-title' },
     E('div', { class: 'section-heading' },
@@ -318,8 +326,14 @@ export function renderHomeDashboard(ctx) {
         E('h2', { id: 'home-dashboard-title' }, '우리의 선택 & 예산 한눈에 보기'),
         E('p', {}, '스튜디오·신혼여행·통합 예산·산전검사·하객·체크리스트 현황을 이 기기에서 바로 확인하세요.')),
       E('div', { class: 'page-actions' },
+        button('💑 2인 동기화', () => ctx.openCoupleSync?.(), 'button quiet'),
         button('📋 준비 현황 요약 복사', () => copyPreparationSummary(ctx), 'button quiet'),
-        button('🖨️ 요약 인쇄 / PDF', () => window.print(), 'button quiet'))),
+        actionOverflowMenu([
+          ['📸 촬영 당일 현장 브리핑 모드', () => ctx.openShootDayMode?.()],
+          ['💍 본식 당일 현장 통합 모드', () => ctx.openWeddingDayHub?.()],
+          ['🖨️ 요약 인쇄 / PDF', () => window.print()],
+          ['📥 개인 백업 JSON 저장', () => ctx.downloadPrivate()]
+        ], { ariaLabel: '홈 대시보드 추가 도구' }))),
     backupStrip,
     prenatalStrip,
     E('div', { class: 'dashboard-grid' },

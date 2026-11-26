@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, searchBox, downloadText } from './dom.js?v=wedding-features-63';
-import { safeUrl, validDate } from './content.js?v=wedding-features-63';
-import { pruneContentPreferences } from './preferences.js?v=wedding-features-63';
-import { scheduleCalendar } from './calendar.js?v=wedding-features-63';
+import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-64';
+import { safeUrl, validDate } from './content.js?v=wedding-features-64';
+import { pruneContentPreferences } from './preferences.js?v=wedding-features-64';
+import { scheduleCalendar } from './calendar.js?v=wedding-features-64';
 import {
   COST_LABELS,
   budgetSummary,
@@ -21,7 +21,7 @@ import {
   isSemiPackageTrip,
   buildTripComparisonText,
   buildSelectedTripSummaryText
-} from './travel.js?v=wedding-features-63';
+} from './travel.js?v=wedding-features-64';
 import {
   isPackingExpanded,
   setPackingExpanded,
@@ -30,7 +30,7 @@ import {
   renderTripRecommenderSection,
   renderLocalSpendingSimulator,
   renderHoneymoonPackingList
-} from './travel-tools-ui.js?v=wedding-features-63';
+} from './travel-tools-ui.js?v=wedding-features-64';
 
 export { tripFlightBadge };
 
@@ -1016,12 +1016,23 @@ export function renderHoneymoon(ctx) {
       E('div', { class: 'page-actions' },
         ctx.editButton('여행지 추가', () => ctx.openEditor('honeymoon')),
         button('💬 상담 질문집', () => openAgencyQuestionsModal(ctx, selectedTrip), 'button quiet'),
-        button('🖨️ 선택·비교 요약 인쇄', printHoneymoonSummary, 'button quiet')),
+        actionOverflowMenu([
+          ['💱 2인 현지 경비·환율 계산기 ↓', () => {
+            const det = $('.honeymoon-local-calc');
+            if (det) { det.open = true; det.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+          }],
+          ['🧳 출국·짐 싸기 체크리스트 ↓', () => {
+            const det = $('.honeymoon-packing');
+            if (det) { det.open = true; det.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+          }],
+          ['🖨️ 선택·비교 요약 인쇄', printHoneymoonSummary]
+        ], { ariaLabel: '신혼여행 추가 도구' })),
       'HONEYMOON'),
     tripSortControl(ctx),
-    renderRegionMatrixSection(ctx, { onSelectRegion: selectRegionFromMatrix, onCompareTrips: setCompareTrips, onFocusTrip: focusTripFromTool }),
-    renderTripRecommenderSection(ctx, { onFocusTrip: focusTripFromTool, onCompareTrips: setCompareTrips }),
-    travelOverview(ctx),
+    E('div', { class: 'honeymoon-tools-strip', 'aria-label': '신혼여행 비교·추천·요약 도구' },
+      renderRegionMatrixSection(ctx, { onSelectRegion: selectRegionFromMatrix, onCompareTrips: setCompareTrips, onFocusTrip: focusTripFromTool }),
+      renderTripRecommenderSection(ctx, { onFocusTrip: focusTripFromTool, onCompareTrips: setCompareTrips }),
+      travelOverview(ctx)),
     E('div', { id: 'selected-trip-region', class: prefs.tripSelected ? '' : 'is-unselected' }, selectedTripSummary(ctx)),
     E('div', { id: 'trip-comparison-region' }, tripComparison(ctx)),
     content.honeymoon.length

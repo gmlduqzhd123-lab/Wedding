@@ -1,4 +1,4 @@
-import { safeUrl } from './content.js?v=wedding-features-63';
+import { safeUrl } from './content.js?v=wedding-features-64';
 
 export const $ = selector => document.querySelector(selector);
 
@@ -124,5 +124,47 @@ export function enhanceTablistKeyboard(tablistEl) {
     tabs[nextIdx].click();
   });
   return tablistEl;
+}
+
+let overflowMenusBound = false;
+function ensureOverflowMenuListeners() {
+  if (overflowMenusBound || typeof document === 'undefined') return;
+  overflowMenusBound = true;
+  document.addEventListener('click', event => {
+    for (const openMenu of document.querySelectorAll('details.action-more-menu[open]')) {
+      if (!openMenu.contains(event.target)) openMenu.open = false;
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    for (const openMenu of document.querySelectorAll('details.action-more-menu[open]')) {
+      openMenu.open = false;
+      openMenu.querySelector('summary')?.focus({ preventScroll: true });
+    }
+  });
+}
+
+export function actionOverflowMenu(items = [], { label = '⋯ 더보기', ariaLabel = '추가 작업 메뉴', summaryClass = 'button quiet action-more-summary' } = {}) {
+  const valid = (Array.isArray(items) ? items : []).filter(Boolean);
+  if (!valid.length) return null;
+  ensureOverflowMenuListeners();
+  const details = E('details', { class: 'action-more-menu' });
+  const summary = E('summary', { class: summaryClass, 'aria-label': ariaLabel }, label);
+  const panel = E('div', { class: 'action-more-panel', role: 'menu' },
+    valid.map(([itemLabel, action, opts = {}]) => {
+      const btn = E('button', {
+        type: 'button',
+        role: 'menuitem',
+        class: 'action-more-item' + (opts.danger ? ' is-danger' : ''),
+        disabled: Boolean(opts.disabled)
+      }, itemLabel);
+      btn.addEventListener('click', event => {
+        details.open = false;
+        action?.(event);
+      });
+      return btn;
+    }));
+  details.append(summary, panel);
+  return details;
 }
 

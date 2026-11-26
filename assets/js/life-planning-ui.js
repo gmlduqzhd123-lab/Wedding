@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-63';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-63';
-import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-63';
-import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-63';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-63';
+import { E, button, externalLink, downloadText, searchBox, actionOverflowMenu } from './dom.js?v=wedding-features-64';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-64';
+import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-64';
+import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-64';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-64';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 
@@ -388,14 +388,16 @@ export function renderHomeItemsBoard(ctx) {
       E('div', { class: 'page-actions guest-board-toolbar' },
         button('+ 품목 추가', () => openHomeItemEditor(ctx), 'button'),
         button('✨ 기본 혼수 10종 채우기', addStarterItems, 'button quiet'),
-        items.length ? button('💰 통합 예산에 합계 반영', syncToBudget, 'button quiet') : null,
         datedItems.length ? button(`📥 배송 일정 일괄 .ics (${datedItems.length}건)`, exportAllDeliveriesIcs, 'button quiet') : null,
-        items.length ? button('📋 요약 복사', () => ctx.copyTextToClipboard(buildHomeItemsSummaryText(items, sum), '혼수·가전·가구 요약을 복사했습니다.', '혼수 요약 복사'), 'button quiet') : null,
-        items.length ? button('📥 CSV 내보내기', () => {
-          downloadText(homeItemsToCsv(items), 'wedding-home-items.csv', 'text/csv;charset=utf-8');
-          ctx.toast('혼수·가전·가구 목록을 CSV로 저장했습니다.');
-        }, 'button quiet') : null,
-        items.length ? button('🖨️ 인쇄 / PDF', () => window.print(), 'button quiet') : null)),
+        items.length ? actionOverflowMenu([
+          ['💰 통합 예산에 합계 반영', syncToBudget],
+          ['📋 요약 복사', () => ctx.copyTextToClipboard(buildHomeItemsSummaryText(items, sum), '혼수·가전·가구 요약을 복사했습니다.', '혼수 요약 복사')],
+          ['📥 CSV 내보내기', () => {
+            downloadText(homeItemsToCsv(items), 'wedding-home-items.csv', 'text/csv;charset=utf-8');
+            ctx.toast('혼수·가전·가구 목록을 CSV로 저장했습니다.');
+          }],
+          ['🖨️ 인쇄 / PDF', () => window.print()]
+        ], { ariaLabel: '혼수 보드 추가 작업' }) : null)),
     E('div', { class: 'ledger-kpi-grid' },
       E('div', { class: 'ledger-kpi-card' }, E('span', { class: 'small muted' }, '등록 · 설치 완료'), E('strong', {}, `${sum.totalCount}건 (완료 ${sum.doneCount}건)`)),
       E('div', { class: 'ledger-kpi-card' }, E('span', { class: 'small muted' }, '목표 예산 소계'), E('strong', {}, won(sum.plannedTotal))),

@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-63';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-63';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-63';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-63';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-63';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-64';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-64';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-64';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-64';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-64';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';
@@ -416,6 +416,7 @@ export function openManager(ctx) {
       E('p', {}, '라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·혼수 가전 목록·혼인신고 및 신혼부부 혜택 체크·주요 업체 일정 보드·본식 식순·당일 역할/현금 봉투/원판 순서·산전검사 일정/체크/메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
       E('p', { class: 'small muted' }, `마지막 개인 백업: ${ctx.formatBackupTime(ctx.readBackupMeta().lastPrivateBackupAt)}`),
       E('div', { class: 'manager-actions' },
+        button('💑 카톡 3초 동기화 코드', () => ctx.openCoupleSync?.(), 'button'),
         button('개인 백업 저장', () => downloadSaved(ctx, ctx.PREF_KEY), 'button quiet'),
         button('📤 개인 백업 바로 공유(카톡·에어드롭)', () => sharePrivateBackup(ctx), 'button quiet')),
       E('div', { class: 'pref-restore-modes', role: 'radiogroup', 'aria-label': '개인 백업 불러오기 방식' },

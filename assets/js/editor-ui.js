@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-63';
-import { safeUrl, formatDate } from './content.js?v=wedding-features-63';
-import { StorageConflict } from './storage.js?v=wedding-features-63';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-63';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-63';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-64';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-64';
+import { StorageConflict } from './storage.js?v=wedding-features-64';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-64';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-64';
 
 const fieldSpecs = {
   invitation: [

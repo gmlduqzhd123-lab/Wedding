@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-63';
-import { weddingDday } from './content.js?v=wedding-features-63';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-63';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-63';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-64';
+import { weddingDday } from './content.js?v=wedding-features-64';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-64';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-64';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -595,7 +595,10 @@ export function renderStudios(ctx) {
     ctx.empty('라크마 스튜디오 정보를 찾을 수 없어요.', '스튜디오 자료를 다시 불러와 주세요.', '스튜디오 다시 불러오기', ctx.loadStudios, true)
   ];
   return [
-    ctx.pageHeader('라크마 스튜디오 촬영 안내', '확정된 촬영 일정과 당일 방문 동선, 필수 준비물, 대표 샘플을 한곳에 모았습니다.', null, 'OUR STUDIO · LACMA'),
+    ctx.pageHeader('라크마 스튜디오 촬영 안내', '확정된 촬영 일정과 당일 방문 동선, 필수 준비물, 대표 샘플을 한곳에 모았습니다.',
+      E('div', { class: 'page-actions' },
+        button('⚡ 촬영 당일 현장 모드', () => ctx.openShootDayMode?.(), 'button')),
+      'OUR STUDIO · LACMA'),
     renderLachmaStudioCard(ctx, activeLachma),
     renderStudioArchiveDrawer(ctx, allStudios, activeLachma.id)
   ];
