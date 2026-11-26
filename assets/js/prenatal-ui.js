@@ -1,6 +1,6 @@
-import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-60';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-60';
-import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-60';
+import { E, button, externalLink, downloadText, enhanceTablistKeyboard } from './dom.js?v=wedding-features-61';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-61';
+import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-61';
 
 export { PRENATAL_CHECK_ITEMS };
 
@@ -159,7 +159,7 @@ export function renderPrenatal(ctx) {
       E('strong', { class: 'prenatal-kpi-val' }, sched.status === 'empty' ? '남녀 각 최대 4만 원' : sched.statusLabel),
       E('span', { class: 'small muted' }, sched.status === 'empty' ? '신혼·예비부부 검진 + 엽산제 6갑' : (sched.claimDeadline ? `청구 마감 ${sched.claimDeadline}` : sched.examDeadline ? `검사 마감 ${sched.examDeadline}` : `예약일 ${sched.visitDate}`))));
 
-  const subTabBar = E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '산전검사 세부 메뉴' },
+  const subTabBar = enhanceTablistKeyboard(E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '산전검사 세부 메뉴' },
     [
       ['hospital', '🏥 순천 현대여성아동병원', '조례동'],
       ['subsidy', '💰 지원금 & 신청 절차', sched.status === 'empty' ? '5단계' : sched.statusLabel],
@@ -171,7 +171,7 @@ export function renderPrenatal(ctx) {
       'data-subtab': id,
       'aria-selected': String(prenatalSubTab === id),
       onclick: () => switchSubTab(id)
-    }, label, E('span', { class: 'subtab-badge' }, badgeText))));
+    }, label, E('span', { class: 'subtab-badge' }, badgeText)))));
 
   const hospitalPanel = E('section', { class: 'prenatal-panel', 'aria-label': '순천 현대여성아동병원 및 순천시 보건소 안내' },
     E('article', { class: 'prenatal-card prenatal-hospital-hero' },

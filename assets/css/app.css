@@ -52,6 +52,8 @@
   --muted: #5c5752;
   --green: #3b5944;
   --green-dark: #2c4433;
+  --green-solid: #3b5944;
+  --green-solid-hover: #2c4433;
   --terracotta: #3b5944;
   --terracotta-dark: #2c4433;
   --rose-accent: #c97a70;
@@ -136,7 +138,7 @@ small, .small { font-size: 12.5px; }
   left: 16px;
   top: -80px;
   padding: 8px 16px;
-  background: var(--green);
+  background: var(--green-solid);
   color: #ffffff;
   z-index: 100;
   border-radius: 12px;
@@ -191,7 +193,7 @@ small, .small { font-size: 12.5px; }
   border-radius: 11px;
   background: var(--olive-soft);
   border: 1px solid var(--olive-line);
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -270,7 +272,7 @@ body.is-scrolled .site-header {
   text-decoration: none;
   white-space: nowrap;
   flex-shrink: 0;
-  color: #57524e;
+  color: var(--ink-soft);
   font-size: 13.5px;
   font-weight: 600;
   padding: 7px 12px;
@@ -284,7 +286,7 @@ body.is-scrolled .site-header {
 .main-nav a[aria-current="page"] {
   color: #ffffff;
   font-weight: 700;
-  background: var(--green);
+  background: var(--green-solid);
 }
 .header-actions {
   display: flex;
@@ -309,9 +311,9 @@ body.is-scrolled .site-header {
   justify-content: center;
   gap: 6px;
   padding: 9px 16px;
-  border: 1px solid var(--green);
+  border: 1px solid var(--green-solid);
   border-radius: 12px;
-  background: var(--green);
+  background: var(--green-solid);
   color: #ffffff;
   text-decoration: none;
   font-size: 13px;
@@ -322,8 +324,8 @@ body.is-scrolled .site-header {
   transition: transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s;
 }
 .button:hover {
-  background: var(--green-dark);
-  border-color: var(--green-dark);
+  background: var(--green-solid-hover);
+  border-color: var(--green-solid-hover);
 }
 .button.quiet {
   background: var(--surface);
@@ -535,7 +537,7 @@ body.is-scrolled .site-header {
 .arch-heart {
   font-style: normal;
   font-size: 15px;
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
 }
 .arch-divider {
   width: 36px;
@@ -559,7 +561,7 @@ body.is-scrolled .site-header {
   padding: 7px 16px;
   width: 100%;
   border-radius: 12px;
-  background: var(--green);
+  background: var(--green-solid);
   color: #ffffff;
   font-size: 12.5px;
   font-weight: 600;
@@ -807,8 +809,8 @@ body.is-guest-mode #main:has(> .invitation) .page-header .page-actions {
   border-color: #b4cab9;
 }
 .invitation-text-btn.is-active {
-  background: var(--green);
-  border-color: var(--green-dark);
+  background: var(--green-solid);
+  border-color: var(--green-solid);
   color: #ffffff;
   box-shadow: 0 0 0 3px rgba(59, 89, 68, 0.16);
 }
@@ -852,7 +854,7 @@ body.is-guest-mode #main:has(> .invitation) .page-header .page-actions {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
   margin-bottom: 18px;
 }
 .invitation-sub::before,
@@ -931,7 +933,7 @@ body.is-guest-mode #main:has(> .invitation) .page-header .page-actions {
   background: var(--rose-soft);
   border: 1px solid var(--rose-line);
   font: 700 14px var(--sans);
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
   vertical-align: middle;
 }
 .couple-names .role-label {
@@ -1024,7 +1026,7 @@ body.is-guest-mode #main:has(> .invitation) .page-header .page-actions {
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.2em;
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
   text-transform: uppercase;
 }
 .invitation-sec-ko {
@@ -1087,7 +1089,7 @@ body.is-guest-mode #main:has(> .invitation) .page-header .page-actions {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.16em;
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
 }
 .cal-title-group strong {
   font-family: var(--display);
@@ -1246,7 +1248,7 @@ body.is-guest-mode #main:has(> .invitation) .page-header .page-actions {
   font-family: var(--display);
   font-size: 18px;
   font-weight: 700;
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
   line-height: 1;
   transform: translateY(-4px);
 }
@@ -1674,7 +1676,7 @@ select { min-height: 43px; }
 .favorite {
   border: 1px solid var(--rose-line);
   background: var(--surface);
-  color: var(--rose-accent);
+  color: var(--rose-accent-dark);
   border-radius: 50%;
   font-size: 19px;
   line-height: 1;
@@ -2743,6 +2745,10 @@ body.is-mobile-menu-open { overflow: hidden; }
 }
 
 @media print {
+  html {
+    background: #ffffff !important;
+    color-scheme: light !important;
+  }
   body {
     background: #ffffff !important;
     color: #111111 !important;
@@ -2879,8 +2885,8 @@ body.is-mobile-menu-open { overflow: hidden; }
 .button.is-copied,
 .text-button.is-copied,
 .small-copy-btn.is-copied {
-  background: var(--green) !important;
-  border-color: var(--green) !important;
+  background: var(--green-solid) !important;
+  border-color: var(--green-solid) !important;
   color: #ffffff !important;
 }
 .guest-dock-btn.is-current:not(.is-primary) {

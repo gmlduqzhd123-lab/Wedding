@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-60';
-import { safeUrl, formatDate } from './content.js?v=wedding-features-60';
-import { StorageConflict } from './storage.js?v=wedding-features-60';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-60';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-60';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-61';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-61';
+import { StorageConflict } from './storage.js?v=wedding-features-61';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-61';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-61';
 
 const fieldSpecs = {
   invitation: [
@@ -698,8 +698,8 @@ export function openEditor(ctx, type, item = null) {
           key: ctx.DRAFT_KEY,
           base: editingContent,
           next: attemptedNext,
-          keepSaved: () => {
-            if (!confirm('현재 입력을 버리고 다른 탭의 저장본을 불러올까요?')) return;
+          keepSaved: async () => {
+            if (!await ctx.confirmAction({ title: '다른 탭 저장본 불러오기', message: '현재 입력 내용을 버리고 다른 탭의 저장본을 불러올까요?', confirmLabel: '불러오기', danger: true })) return;
             try { ctx.syncDraftFromStorage(); ctx.closeDialog(); ctx.render(); } catch (cause) { ctx.toast(cause.message, true); }
           },
           saveLocal: raw => { approvedRaw = raw; form.requestSubmit(); }

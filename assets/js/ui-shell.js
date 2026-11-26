@@ -1,4 +1,4 @@
-import { $, E } from './dom.js?v=wedding-features-60';
+import { $, E } from './dom.js?v=wedding-features-61';
 
 export const BACKUP_META_KEY = 'wedding:v1:backupMeta';
 

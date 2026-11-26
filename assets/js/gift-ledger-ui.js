@@ -1,13 +1,14 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-60';
-import { formatDate } from './content.js?v=wedding-features-60';
-import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-60';
-import { giftLedgerSummary, giftsToCsv, buildThankYouMessage } from './planning.js?v=wedding-features-60';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-60';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-61';
+import { formatDate } from './content.js?v=wedding-features-61';
+import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-61';
+import { giftLedgerSummary, giftsToCsv, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-61';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-61';
 
 let giftSideFilter = 'all';
 let giftChannelFilter = 'all';
 let giftPendingOnly = false;
 let giftUnthankedOnly = false;
+let giftUnmatchedOnly = false;
 let giftQuery = '';
 let quickEntrySide = '신랑 측';
 let quickEntryChannel = '축의대(현금)';
@@ -565,6 +566,8 @@ export function renderGiftLedgerBoard(ctx) {
   const prefs = ctx.getPrefs();
   const list = prefs.giftLedger || [];
   const summary = giftLedgerSummary(list);
+  const cross = crossCheckGuestsAndGifts(prefs.guestList || [], list);
+  const unmatchedIds = new Set(cross.giftsNotInGuestList.map(g => g.id));
 
   const channelSelect = E('select', { id: 'gift-channel-filter', 'aria-label': '전달 방식 필터' },
     [['all', '방식 전체'], ...GIFT_CHANNELS.map(v => [v, v])].map(([v, label]) => E('option', { value: v }, label)));
@@ -578,6 +581,7 @@ export function renderGiftLedgerBoard(ctx) {
   const listWrap = E('div', { class: 'ledger-items-wrap' });
   const countNode = E('span', { class: 'small muted', 'aria-live': 'polite' });
   const resetWrap = E('span', { class: 'filter-reset-slot' });
+  const crossStripSlot = E('div', { class: 'gift-crosscheck-slot' });
 
   const search = searchBox({
     id: 'gift-search',
@@ -597,11 +601,40 @@ export function renderGiftLedgerBoard(ctx) {
     });
   };
 
+  const addGiftPersonToGuestList = item => {
+    ctx.queuePreference(async () => {
+      const curPrefs = ctx.getPrefs();
+      const curGuests = curPrefs.guestList || [];
+      if (curGuests.length >= 500) {
+        ctx.toast('하객 명단은 최대 500건까지 보관할 수 있습니다.', true);
+        return true;
+      }
+      const nextGuest = {
+        id: 'guest-' + crypto.randomUUID().slice(0, 8),
+        name: item.name,
+        side: GUEST_SIDES.includes(item.side) ? item.side : '공통',
+        group: GUEST_GROUPS.includes(item.group) ? item.group : '지인·기타',
+        partySize: Math.max(1, Math.min(20, Number(item.mealTickets) || 1)),
+        inviteStatus: '모바일 발송',
+        rsvp: '참석',
+        mealTicket: (item.mealTickets || 0) > 0,
+        ...(item.note ? { note: item.note } : {})
+      };
+      const saved = await ctx.savePrefs({ ...curPrefs, guestList: [...curGuests, nextGuest] });
+      if (saved) {
+        ctx.render();
+        ctx.toast(`‘${item.name}’님을 하객 명단(참석)에 추가했습니다.`);
+      }
+      return saved;
+    });
+  };
+
   const resetGiftFilters = () => {
     giftSideFilter = 'all';
     giftChannelFilter = 'all';
     giftPendingOnly = false;
     giftUnthankedOnly = false;
+    giftUnmatchedOnly = false;
     giftQuery = '';
     search.input.value = '';
     search.syncClear();
@@ -623,9 +656,31 @@ export function renderGiftLedgerBoard(ctx) {
       giftChannelFilter !== 'all',
       giftPendingOnly,
       giftUnthankedOnly,
+      giftUnmatchedOnly,
       Boolean(giftQuery.trim())
     ].filter(Boolean).length;
     resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetGiftFilters, 'filter-reset-chip')] : []));
+
+    if (list.length || (prefs.guestList || []).length) {
+      const unmatchedBtn = cross.giftsNotInGuestList.length > 0
+        ? button(giftUnmatchedOnly ? '명단 미등록 필터 해제' : `명단 미등록만 보기 (${cross.giftsNotInGuestList.length}건)`, () => {
+          giftUnmatchedOnly = !giftUnmatchedOnly;
+          draw();
+        }, 'button quiet small-copy-btn' + (giftUnmatchedOnly ? ' active' : ''))
+        : null;
+      if (unmatchedBtn) unmatchedBtn.setAttribute('aria-pressed', String(giftUnmatchedOnly));
+      crossStripSlot.replaceChildren(E('div', { class: 'ledger-crosscheck-strip', role: 'region', 'aria-label': '하객 명단 교차 정산' },
+        E('div', { class: 'ledger-crosscheck-metrics' },
+          E('span', { class: 'small' }, '🔗 하객 명단 교차 대조:'),
+          E('span', { class: 'spec-chip direct' }, `명단 일치 ${cross.matchedGiftCount}건`),
+          cross.giftsNotInGuestList.length > 0 ? E('span', { class: 'spec-chip highlight' }, `명단 미등록 ${cross.giftsNotInGuestList.length}건`) : null,
+          cross.attendingWithoutGift.length > 0 ? E('span', { class: 'spec-chip' }, `참석 하객 중 축의 미기록 ${cross.attendingWithoutGift.length}명`) : null),
+        E('div', { class: 'ledger-crosscheck-actions' },
+          unmatchedBtn,
+          cross.attendingWithoutGift.length > 0 ? button('하객 명단 확인 →', () => ctx.navigateToRoute('ceremony', 'guests'), 'text-button small') : null)));
+    } else {
+      crossStripSlot.replaceChildren();
+    }
 
     const q = giftQuery.trim().toLocaleLowerCase();
     const filtered = list.filter(item =>
@@ -633,6 +688,7 @@ export function renderGiftLedgerBoard(ctx) {
       (giftChannelFilter === 'all' || item.channel === giftChannelFilter) &&
       (!giftPendingOnly || !item.returnGiftDone || !item.thankYouDone) &&
       (!giftUnthankedOnly || !item.thankYouDone) &&
+      (!giftUnmatchedOnly || unmatchedIds.has(item.id)) &&
       (!q || `${item.name} ${item.side} ${item.group} ${item.note || ''}`.toLocaleLowerCase().includes(q))
     );
     const filteredTotal = filtered.reduce((acc, item) => acc + (item.amount || 0), 0);
@@ -657,6 +713,7 @@ export function renderGiftLedgerBoard(ctx) {
       thxBox.checked = Boolean(item.thankYouDone);
       thxBox.addEventListener('change', () => toggleGiftFlag(item.id, 'thankYouDone', thxBox.checked));
 
+      const isUnmatched = unmatchedIds.has(item.id);
       return E('li', { class: 'ledger-row', 'data-gift-id': item.id },
         E('div', { class: 'ledger-row-main' },
           E('div', { class: 'ledger-row-head' },
@@ -664,11 +721,13 @@ export function renderGiftLedgerBoard(ctx) {
             E('strong', { class: 'ledger-amount' }, won(item.amount)),
             E('span', { class: 'spec-chip' }, `${item.side} · ${item.group}`),
             E('span', { class: 'spec-chip' }, item.channel),
-            E('span', { class: 'spec-chip' }, `식권 ${item.mealTickets}매`)),
+            E('span', { class: 'spec-chip' }, `식권 ${item.mealTickets}매`),
+            isUnmatched ? E('span', { class: 'spec-chip highlight' }, '명단 미등록') : null),
           item.note ? E('p', { class: 'small muted ledger-row-note' }, item.note) : null),
         E('div', { class: 'ledger-row-controls' },
           E('label', { class: 'ledger-inline-check' }, retBox, '답례품'),
           E('label', { class: 'ledger-inline-check' }, thxBox, '감사인사'),
+          isUnmatched ? button('+ 하객 등록', () => addGiftPersonToGuestList(item), 'checklist-note-btn') : null,
           button('💬 감사문자', () => openThankYouModal(ctx, item), 'checklist-note-btn'),
           button('수정', () => openGiftEditor(ctx, item), 'checklist-note-btn'),
           button('삭제', () => {
@@ -758,6 +817,7 @@ export function renderGiftLedgerBoard(ctx) {
             : null)),
       E('div', { class: 'checklist-progress-track', 'aria-hidden': 'true' },
         E('span', { class: 'checklist-progress-fill', style: `width:${thankYouPct}%` }))) : null,
+    crossStripSlot,
     E('div', { class: 'ledger-filter-bar gift-ledger-toolbar' },
       sideBar,
       E('div', { class: 'ledger-filter-controls' },

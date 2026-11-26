@@ -1,4 +1,4 @@
-import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-60';
+import {upgradeLegacyTrip,COST_LABELS,dateSpan,emptyQuote,CLIMATE_CATEGORIES} from './travel.js?v=wedding-features-61';
 export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);

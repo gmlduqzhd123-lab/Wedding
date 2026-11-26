@@ -1,5 +1,5 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-60';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-60';
+import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-61';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-61';
 import {
   readBackupMeta,
   writeBackupMeta,
@@ -11,12 +11,12 @@ import {
   flashCopiedButton,
   copyText,
   initPwaInstall
-} from './ui-shell.js?v=wedding-features-60';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-60';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-60';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-60';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-60';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-60';
+} from './ui-shell.js?v=wedding-features-61';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-61';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-61';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-61';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-61';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-61';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
 const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
@@ -43,18 +43,18 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-60'),
-  storage: () => import('./storage.js?v=wedding-features-60'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-60'),
-  manager: () => import('./manager-ui.js?v=wedding-features-60'),
-  studios: () => import('./studio-ui.js?v=wedding-features-60'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-60'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-60'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-60'),
-  tips: () => import('./planning-ui.js?v=wedding-features-60'),
-  editor: () => import('./editor-ui.js?v=wedding-features-60'),
-  search: () => import('./search-ui.js?v=wedding-features-60'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-60')
+  preferences: () => import('./preferences.js?v=wedding-features-61'),
+  storage: () => import('./storage.js?v=wedding-features-61'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-61'),
+  manager: () => import('./manager-ui.js?v=wedding-features-61'),
+  studios: () => import('./studio-ui.js?v=wedding-features-61'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-61'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-61'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-61'),
+  tips: () => import('./planning-ui.js?v=wedding-features-61'),
+  editor: () => import('./editor-ui.js?v=wedding-features-61'),
+  search: () => import('./search-ui.js?v=wedding-features-61'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-61')
 };
 
 function loadModule(key) {
@@ -780,7 +780,7 @@ function recordActions(type, item) {
     reorder.push(prev, next);
   }
   return E('div', { class: 'record-actions' }, ...reorder, button('수정', () => openEditor(type, item), 'text-button'), button('삭제', async () => {
-    if (!confirm(`‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`)) return;
+    if (!await confirmAction({ title: '초안 기록 삭제', message: `‘${item.title}’ 기록을 이 기기의 초안에서 삭제할까요?`, confirmLabel: '삭제', danger: true })) return;
     try {
       const ids = displayedRecords(type).map(record => record.id), index = ids.indexOf(item.id);
       const neighbors = [...ids.slice(index + 1), ...ids.slice(0, index).reverse()];
@@ -929,6 +929,7 @@ function render() {
   if (route !== 'invitation') { stopInvitationBgm(); stopInvitationCountdown(); activeCountdownSlot = null; revealObserver?.disconnect(); revealObserver = null; dockSpyObserver?.disconnect(); dockSpyObserver = null; }
   const renderers = { home: renderHome, invitation: renderInvitation, story: renderStories, albums: renderAlbums, studios: renderStudios, honeymoon: renderHoneymoon, ceremony: renderCeremony, prenatal: renderPrenatal, tips: renderTips };
   const keepView = route === 'honeymoon' && main.dataset.renderedRoute === route;
+  const keepTabFocus = Boolean(document.activeElement?.closest?.('#main [role="tablist"]') && document.activeElement.getAttribute('role') === 'tab');
   const opened = keepView ? [...main.querySelectorAll('details[open][data-view-key]')].map(node => node.dataset.viewKey) : [];
   const active = keepView && main.contains(document.activeElement) ? document.activeElement : null;
   const anchor = active?.closest('[data-trip-id]') || (keepView ? [...main.querySelectorAll('[data-trip-id]')].find(node => node.getBoundingClientRect().bottom > 0) : null);
@@ -940,6 +941,7 @@ function render() {
       button('편집 화면으로 돌아가기', () => toggleGuestPreview(false), 'button quiet')));
   }
   main.replaceChildren(...nodes); main.setAttribute('aria-busy', 'false'); main.dataset.renderedRoute = route;
+  if (keepTabFocus) main.querySelector('[role="tablist"] [role="tab"][aria-selected="true"]')?.focus({ preventScroll: true });
   syncLargeTextUi();
   if (route === 'invitation') {
     const cdSlot = main.querySelector('.invitation-live-countdown');
@@ -1199,7 +1201,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-60')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-61')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {

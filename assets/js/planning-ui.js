@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-60';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-60';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-60';
-import { quoteReview } from './travel.js?v=wedding-features-60';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-60';
+import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-61';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-61';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-61';
+import { quoteReview } from './travel.js?v=wedding-features-61';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-61';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -14,10 +14,10 @@ import {
   netWeddingCostSummary,
   budgetPlanToCsv,
   buildBudgetSummaryText
-} from './planning.js?v=wedding-features-60';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-60';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-60';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-60';
+} from './planning.js?v=wedding-features-61';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-61';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-61';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-61';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
@@ -801,7 +801,7 @@ export function renderTips(ctx) {
     ['home', '🏠 혼수·가전', hList.length ? `${hDone}/${hList.length}` : '관리'],
     ['benefits', '🏛️ 혼인신고·혜택', `${bDone}/${BENEFIT_CHECK_ITEMS.length}`]
   ];
-  const subTabBar = E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '결혼 정보·예산·일정·혼수·혜택 화면 전환' },
+  const subTabBar = enhanceTablistKeyboard(E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '결혼 정보·예산·일정·혼수·혜택 화면 전환' },
     subTabs.map(([key, label, badge]) => {
       const selected = tipsSubTab === key;
       return E('button', {
@@ -817,7 +817,7 @@ export function renderTips(ctx) {
           document.querySelector(`[data-tips-tab="${key}"]`)?.focus({ preventScroll: true });
         }
       }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));
-    }));
+    })));
 
   if (tipsSubTab === 'budget') {
     return [

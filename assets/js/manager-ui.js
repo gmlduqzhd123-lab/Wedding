@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-60';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-60';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-60';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-60';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-60';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-61';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-61';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-61';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-61';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-61';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';
@@ -125,7 +125,14 @@ export async function readBackupSnapshot(ctx, key) {
   const pendingAtStart = ctx.hasPendingWrites();
   if (pendingAtStart) ctx.toast('변경 내용을 저장한 뒤 최신 저장본으로 백업합니다.');
   await ctx.finishPendingWrites();
-  if (!pendingAtStart && ctx.didLastWriteFail() && !confirm('최근 변경의 저장에 실패했습니다. 마지막으로 저장된 내용만 백업할까요?')) return null;
+  if (!pendingAtStart && ctx.didLastWriteFail()) {
+    const ok = await ctx.confirmAction({
+      title: '마지막 저장본으로 백업',
+      message: '최근 변경의 저장에 실패했습니다. 마지막으로 저장된 내용만 백업할까요?',
+      confirmLabel: '백업 진행'
+    });
+    if (!ok) return null;
+  }
   const value = await navigator.locks.request(`wedding-storage:${key}`, () => {
     const raw = localStorage.getItem(key);
     return key === ctx.PREF_KEY
@@ -302,7 +309,7 @@ export function openManager(ctx) {
     try {
       if (selected.size > MAX_IMPORT_BYTES) throw new Error('콘텐츠 파일은 8MB 이하로 선택해 주세요.');
       const next = parseContent(await selected.text());
-      if (!confirm('현재 기기의 초안을 선택한 파일의 내용으로 바꿀까요?')) return;
+      if (!await ctx.confirmAction({ title: '콘텐츠 파일 불러오기', message: '현재 기기의 초안을 선택한 파일의 내용으로 바꿀까요?', confirmLabel: '불러오기' })) return;
       const applyImport = async approvedRaw => {
         try {
           await ctx.setDraft(next, managerBase, approvedRaw);
@@ -443,7 +450,7 @@ export function openManager(ctx) {
       E('h3', {}, '초안을 지우고 공개본 보기'),
       E('p', {}, '이 기기의 콘텐츠 초안만 지웁니다. 라크마 촬영 메모와 여행·예산·체크리스트·혼수·당일 운영표·산전검사 일정·하객 명단·축의금 장부 등 개인 설정은 유지됩니다.'),
       button('공개본으로 돌아가기', async () => {
-        if (!confirm('이 기기의 콘텐츠 초안을 지울까요? 필요한 내용은 먼저 파일로 저장해 주세요.')) return;
+        if (!await ctx.confirmAction({ title: '공개본으로 돌아가기', message: '이 기기의 콘텐츠 초안을 지울까요? 필요한 내용은 먼저 파일로 저장해 주세요.', confirmLabel: '초안 지우기', danger: true })) return;
         try {
           await navigator.locks.request(`wedding-storage:${ctx.DRAFT_KEY}`, () => {
             if (localStorage.getItem(ctx.DRAFT_KEY) !== managerRaw) throw new Error('다른 탭에서 초안이 변경되었습니다. 창을 닫고 최신 내용을 확인한 뒤 다시 시도해 주세요.');
@@ -457,7 +464,7 @@ export function openManager(ctx) {
       E('h3', {}, '개인 설정·메모 초기화'),
       E('p', {}, '이 기기에 저장된 라크마 촬영 메모·준비물 체크, 여행·꿀팁 관심 및 메모, 결혼 준비 체크리스트, 통합 예산, 웨딩홀·스드메 시뮬레이터, 혼수·가전 목록, 신혼부부 혜택 체크, 업체 일정, 본식 식순·당일 역할·현금 봉투·원판 순서, 산전검사 일정·체크·메모, 하객 명단, 축의금 장부를 초기 상태로 되돌립니다. 필요한 경우 먼저 ‘개인 백업 저장’을 진행해 주세요.'),
       button('개인 설정·메모 초기화', async () => {
-        if (!confirm('이 기기의 모든 개인 메모·관심 선택·예산·혼수·신혼혜택·체크리스트·식순·당일 운영표·산전검사·하객 명단·축의금 장부 설정을 초기화할까요?')) return;
+        if (!await ctx.confirmAction({ title: '개인 설정·메모 초기화', message: '이 기기의 모든 개인 메모·관심 선택·예산·혼수·신혼혜택·체크리스트·식순·당일 운영표·산전검사·하객 명단·축의금 장부 설정을 초기화할까요?', confirmLabel: '모두 초기화', danger: true })) return;
         saveRollback('개인 설정 초기화 직전', ctx.readRawPrefs());
         if (await ctx.savePrefs(validatePreferences({}), validatePreferences({}), ctx.readStorage(ctx.PREF_KEY))) {
           ctx.closeDialog(); ctx.render(); ctx.toast('이 기기의 개인 설정과 메모를 초기화했습니다. (내용 관리에서 직전 상태로 복구 가능)');

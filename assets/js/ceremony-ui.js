@@ -1,8 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-60';
-import { formatDate } from './content.js?v=wedding-features-60';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-60';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-60';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-60';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-61';
+import { formatDate } from './content.js?v=wedding-features-61';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-61';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-61';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-61';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 
@@ -394,7 +394,7 @@ export function renderCeremony(ctx) {
     ['gifts', '💌 축의금·식권 장부', `${giftCount}건`],
     ['dayops', '💼 당일 역할·봉투·원판', dayOpsCount ? `${dayOpsCount}건` : '운영표']
   ];
-  const subTabBar = E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '본식·하객·축의금·당일운영 화면 전환' },
+  const subTabBar = enhanceTablistKeyboard(E('div', { class: 'subtab-bar prenatal-subtabs', role: 'tablist', 'aria-label': '본식·하객·축의금·당일운영 화면 전환' },
     subTabs.map(([key, label, badge]) => {
       const selected = ceremonySubTab === key;
       return E('button', {
@@ -410,7 +410,7 @@ export function renderCeremony(ctx) {
           document.querySelector(`[data-ceremony-tab="${key}"]`)?.focus({ preventScroll: true });
         }
       }, E('span', { class: 'subtab-label' }, label), E('span', { class: 'subtab-badge' }, badge));
-    }));
+    })));
 
   const openLiveCueSheetModal = () => {
     let stepIdx = 0;

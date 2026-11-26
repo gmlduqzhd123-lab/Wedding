@@ -306,9 +306,13 @@ try {
   await cdp.eval(`document.querySelector('#confirm-ok').click()`);
   await cdp.waitFor(`() => !document.querySelector('#confirm-dialog').open && ![...document.querySelectorAll('button')].some(b => b.textContent === '체크 초기화')`);
 
-  // Add a guest with 미확인 RSVP first, then log gift via Quick Entry and verify RSVP auto-syncs to 참석
-  await cdp.eval(`location.hash = '#/ceremony/guests'`);
-  await cdp.waitFor(`() => Boolean(document.querySelector('#guest-board-title'))`);
+  // Test WAI-ARIA tablist ArrowRight keyboard navigation & focus retention
+  await cdp.eval(`document.querySelector('[data-ceremony-tab="rundown"]').focus()`);
+  await cdp.eval(`document.querySelector('[data-ceremony-tab="rundown"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))`);
+  await cdp.waitFor(`() => document.querySelector('[data-ceremony-tab="guests"]')?.getAttribute('aria-selected') === 'true' && Boolean(document.querySelector('#guest-board-title'))`);
+  assert.equal(await cdp.eval(`document.activeElement?.dataset?.ceremonyTab`), 'guests', 'ArrowRight on tablist must move focus to newly selected tab');
+
+  // Add a guest with 미확인 RSVP first, verify unsent quick filter, then log gift via Quick Entry and verify RSVP auto-syncs to 참석
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ 하객 추가').click()`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#guest-name'))`);
   await cdp.eval(`(() => {
@@ -316,7 +320,7 @@ try {
     document.querySelector('#guest-rsvp').value = '미확인';
     document.querySelector('#dialog-actions [type="submit"]').click();
   })()`);
-  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main').innerText.includes('테스트하객')`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main').innerText.includes('테스트하객') && Boolean(document.querySelector('.ledger-crosscheck-strip'))`);
 
   await cdp.eval(`location.hash = '#/ceremony/gifts'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#gift-ledger-title'))`);
@@ -330,10 +334,15 @@ try {
   await cdp.waitFor(`() => document.querySelector('.quick-gift-status')?.textContent.includes('이번 접수 1건')`);
   await cdp.eval(`[...document.querySelectorAll('#dialog-actions button')].find(b => b.textContent === '완료 닫기').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.side-ratio-card')) && document.querySelector('#main').innerText.includes('테스트하객')`);
+  assert(await cdp.eval(`document.querySelector('.ledger-crosscheck-strip')?.innerText.includes('명단 일치 1건')`), 'Gift ledger cross-check strip must show matched guest count');
 
-  // Verify guest RSVP was auto-updated to 참석
+  // Verify guest RSVP was auto-updated to 참석 and banquet table estimate renders
   const syncedRsvp = await cdp.eval(`JSON.parse(localStorage.getItem('wedding:v1:preferences') || '{}').guestList?.find(g => g.name === '테스트하객')?.rsvp`);
   assert.equal(syncedRsvp, '참석', `Expected quick gift entry to auto-sync guest RSVP to 참석, got: ${syncedRsvp}`);
+  await cdp.eval(`location.hash = '#/ceremony/guests'`);
+  await cdp.waitFor(`() => document.querySelector('.ledger-crosscheck-strip')?.innerText.includes('8인석 1테이블')`);
+  await cdp.eval(`location.hash = '#/ceremony/gifts'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#gift-ledger-title'))`);
 
   // Verify batch thank-you queue completes pending thank-you
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('미감사 1명 연속 보내기')).click()`);
@@ -348,7 +357,7 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#toast').hidden && Boolean(document.querySelector('.toast-undo-btn')) && !document.querySelector('#main').innerText.includes('테스트하객')`);
   await cdp.eval(`document.querySelector('.toast-undo-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('#main').innerText.includes('테스트하객')`);
-  console.log('E2E PASS 5/8: Live MC cue sheet (Wake Lock + A+), RSVP auto-sync, Batch Thank-You, instant Undo OK');
+  console.log('E2E PASS 5/8: Live MC cue sheet, tablist keyboard nav, RSVP auto-sync, banquet tables & cross-check, Batch Thank-You, Undo OK');
 
   // 6. Round 4 cross-links: Budget Net Cost Settlement, Day Ops Cash Denominations & Photo Call Mode, 30-Studio Archive
   await cdp.eval(`location.hash = '#/tips/budget'`);
@@ -375,7 +384,7 @@ try {
   await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 2`);
   console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call mode, 30-studio archive persistence & search OK');
 
-  // 7. Dark-mode invitation contrast (.place-kicker & BGM) + print button + BGM play-reveal + live KakaoTalk OG preview + Draft save/reload/diff/revert
+  // 7. Dark-mode invitation contrast + dark-mode @media print guard + BGM + live KakaoTalk OG preview + Draft save/reload/revert (botanical confirm)
   await cdp.eval(`location.hash = '#/invitation'`);
   await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent === '예식 정보 편집') && Boolean(document.querySelector('.invitation-bgm-btn'))`);
   const darkBtnBg = await cdp.eval(`getComputedStyle(document.querySelector('.invitation-bgm-btn')).backgroundColor`);
@@ -383,6 +392,21 @@ try {
   const kickerBg = await cdp.eval(`getComputedStyle(document.querySelector('.place-kicker')).backgroundColor`);
   assert.equal(kickerBg, 'rgb(36, 52, 41)', `Dark-mode .place-kicker must have dark surface, got: ${kickerBg}`);
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.invitation-share-foot button')].some(b => b.textContent.includes('청첩장 인쇄'))`), true, 'Invitation share footer must include print button');
+
+  // Verify dark mode automatically resets to crisp light paper under @media print
+  await cdp.send('Emulation.setEmulatedMedia', { media: 'print' });
+  await new Promise(res => setTimeout(res, 120));
+  const printAudit = await cdp.eval(`({
+    htmlBg: getComputedStyle(document.documentElement).backgroundColor,
+    bodyBg: getComputedStyle(document.body).backgroundColor,
+    invBgImg: getComputedStyle(document.querySelector('.invitation')).backgroundImage,
+    msgColor: getComputedStyle(document.querySelector('.invitation .message')).color
+  })`);
+  await cdp.send('Emulation.setEmulatedMedia', { media: 'screen' });
+  assert.equal(printAudit.htmlBg, 'rgb(255, 255, 255)', `Print mode html must be white even in dark theme, got: ${printAudit.htmlBg}`);
+  assert(!printAudit.invBgImg.includes('31, 39, 34'), `Print mode invitation must not bleed dark gradient, got: ${printAudit.invBgImg}`);
+  assert.equal(printAudit.msgColor, 'rgb(68, 64, 60)', `Print mode invitation message text must use dark ink, got: ${printAudit.msgColor}`);
+
   assert.equal(await cdp.eval(`document.querySelector('.invitation-bgm-preset-btn')?.hidden`), true, 'BGM preset button hidden while paused');
   await cdp.eval(`document.querySelector('.invitation-bgm-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.hidden === false`);
@@ -406,11 +430,13 @@ try {
   await cdp.eval(`document.querySelector('#manage-content').click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('#editor-body').innerText.includes('초대 인사')`);
   await cdp.eval(`[...document.querySelectorAll('#editor-body button')].find(b => b.textContent === '공개본으로 돌아가기').click()`);
-  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#draft-banner').hidden`);
+  await cdp.waitFor(`() => document.querySelector('#confirm-dialog').open`);
+  await cdp.eval(`document.querySelector('#confirm-ok').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#confirm-dialog').open && !document.querySelector('#editor-dialog').open && document.querySelector('#draft-banner').hidden`);
   assert.equal(await cdp.eval(`localStorage.getItem('wedding:v1:draft')`), null, 'Draft cleared on revert to public');
-  console.log('E2E PASS 7/8: Invitation dark contrast + print + BGM + live OG preview + Draft save/reload/revert OK');
+  console.log('E2E PASS 7/8: Invitation dark contrast + dark-mode print guard + BGM + OG preview + Draft revert confirm OK');
 
-  // 8. 18-view Dark Mode bright-box regression guard + zero horizontal overflow in 1280px (Dark) & 390px (Light)
+  // 8. 18-view Dark Mode bright-box + WCAG AA contrast guard + Light Mode rose label guard + zero overflow in 1280px & 390px
   const darkAuditViews = [
     ['home', 'home'],
     ['invitation', 'invitation'],
@@ -432,17 +458,29 @@ try {
     ['tips/benefits', 'tips']
   ];
   const brightBoxFailures = [];
+  const darkContrastFailures = [];
   for (const [hashPath, expectedRoute] of darkAuditViews) {
     await cdp.eval(`location.hash = '#/${hashPath}'`);
     await cdp.waitFor(`() => document.querySelector('#main')?.dataset.renderedRoute === '${expectedRoute}' && !document.querySelector('.loading-state')`);
     await new Promise(res => setTimeout(res, 80));
     assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, `Desktop 1280px dark-mode overflow on ${hashPath}`);
-    const hits = await cdp.eval(`(() => {
+    const audit = await cdp.eval(`(() => {
       const parseRgb = str => {
         const m = String(str || '').match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)/);
         return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] } : null;
       };
-      const out = [];
+      const lum = c => [c.r, c.g, c.b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const cr = (c1, c2) => { const l1 = lum(c1), l2 = lum(c2); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); };
+      const effBg = el => {
+        let cur = el;
+        while (cur && cur !== document) {
+          const c = parseRgb(getComputedStyle(cur).backgroundColor);
+          if (c && c.a > 0.75) return c;
+          cur = cur.parentElement;
+        }
+        return parseRgb(getComputedStyle(document.body).backgroundColor);
+      };
+      const bright = [];
       for (const el of document.querySelectorAll('#main *')) {
         if (el.closest('svg, .kakao-og-bubble, .kakao-og-chat-bg') || el.matches('img, svg, canvas, input[type="checkbox"], input[type="radio"]')) continue;
         const rect = el.getBoundingClientRect();
@@ -451,14 +489,29 @@ try {
         if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.1) continue;
         const bg = parseRgb(cs.backgroundColor);
         if (bg && bg.a > 0.6 && bg.r > 200 && bg.g > 195 && bg.b > 185) {
-          out.push(el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).trim().replace(/\\s+/g, '.') : '') + ' (' + cs.backgroundColor + ')');
+          bright.push(el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).trim().replace(/\\s+/g, '.') : '') + ' (' + cs.backgroundColor + ')');
         }
       }
-      return [...new Set(out)];
+      const lowCr = [];
+      const keyTargets = document.querySelectorAll('.main-nav a, #main .button:not(.quiet):not(.danger):not(.is-danger), #main .subtab-btn.is-active .subtab-badge, #main .trip-filter-chip[aria-pressed="true"], #main .arch-date-chip, #main .density-btn.is-active');
+      for (const el of keyTargets) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 4 || rect.height < 4) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        const fg = parseRgb(cs.color), bg = effBg(el);
+        if (fg && bg) {
+          const ratio = cr(fg, bg);
+          if (ratio < 4.5) lowCr.push(el.tagName.toLowerCase() + '.' + String(el.className || 'nav').trim().split(/\\s+/)[0] + ':' + ratio.toFixed(2));
+        }
+      }
+      return { bright: [...new Set(bright)], lowCr: [...new Set(lowCr)] };
     })()`);
-    if (hits.length) brightBoxFailures.push(`${hashPath}: ${hits.join(', ')}`);
+    if (audit.bright.length) brightBoxFailures.push(`${hashPath}: ${audit.bright.join(', ')}`);
+    if (audit.lowCr.length) darkContrastFailures.push(`${hashPath}: ${audit.lowCr.join(', ')}`);
   }
   assert.deepEqual(brightBoxFailures, [], 'Dark-mode bright/cream surfaces detected:\n' + brightBoxFailures.join('\n'));
+  assert.deepEqual(darkContrastFailures, [], 'Dark-mode WCAG AA contrast failures (<4.5:1):\n' + darkContrastFailures.join('\n'));
 
   const allRoutes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
   await cdp.eval(`document.querySelector('#theme-toggle-btn').click()`);
@@ -471,7 +524,19 @@ try {
     const overflow = await cdp.eval(`document.documentElement.scrollWidth - window.innerWidth`);
     assert(overflow <= 0, `Mobile 390px horizontal overflow on ${r}: +${overflow}px`);
   }
-  console.log('E2E PASS 8/8: 18-view Dark Mode zero bright-box guard + 1280px/390px zero overflow OK');
+  // Verify light-mode invitation rose labels pass WCAG AA (>=4.5:1)
+  await cdp.eval(`location.hash = '#/invitation'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.invitation-sub'))`);
+  const roseCr = await cdp.eval(`(() => {
+    const parse = s => { const m = String(s||'').match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/); return m ? [+m[1],+m[2],+m[3]] : [0,0,0]; };
+    const lum = ([r,g,b]) => [r,g,b].map(v => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); }).reduce((a,v,i)=>a+v*[0.2126,0.7152,0.0722][i],0);
+    const fg = parse(getComputedStyle(document.querySelector('.invitation-sub')).color);
+    const bg = [250, 249, 245];
+    const l1 = lum(fg), l2 = lum(bg);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  })()`);
+  assert(roseCr >= 4.5, `Light-mode .invitation-sub contrast must be >= 4.5:1, got: ${roseCr.toFixed(2)}`);
+  console.log('E2E PASS 8/8: 18-view Dark Mode zero bright-box + WCAG AA contrast guard + 1280px/390px zero overflow OK');
 
   assert.deepEqual(consoleErrors, [], 'Browser console errors detected:\n' + consoleErrors.join('\n'));
   console.log('ALL E2E SMOKE TESTS PASSED WITH ZERO CONSOLE ERRORS!');

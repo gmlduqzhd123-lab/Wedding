@@ -65,6 +65,7 @@ export function shootDeadlineSummary(shootDateStr,now=new Date()){
   const kst=new Date(now.getTime()+9*3600*1000);
   const todayKst=Date.UTC(kst.getUTCFullYear(),kst.getUTCMonth(),kst.getUTCDate());
   const daysLeft=Math.round((targetDay-todayKst)/86400000);
+  const freeChangeUntil=shiftIsoDate(shootDateStr,-91);
   const nightDeadline=shiftIsoDate(shootDateStr,-7);
   const preHolidayDate=shiftIsoDate(shootDateStr,-3);
   let penaltyIndex=-1,penaltyLabel='촬영일 경과';
@@ -77,6 +78,7 @@ export function shootDeadlineSummary(shootDateStr,now=new Date()){
   else if(daysLeft===0){penaltyIndex=5;penaltyLabel='촬영 당일 구간 (취소 77만 / 변경 66만)';}
   return {
     daysLeft,
+    freeChangeUntil,
     nightDeadline,
     nightDaysLeft:daysLeft-7,
     preHolidayDate,
@@ -776,11 +778,23 @@ export function collectMasterTimeline({ content = {}, prefs = {}, studio = null,
       id: 'master-studio-free-change',
       date: shootDeadline.freeChangeUntil,
       category: '📸 스튜디오',
-      title: `${studioName} 스튜디오 무료 일정 변경 마감`,
-      detail: '촬영 60일 전까지 무료 변경 가능 · 이후 위약금 구간 적용',
+      title: `${studioName} 위약금 부과 전 무료 일정 변경 마감`,
+      detail: '촬영 90일 초과 전까지 무료 변경·취소 가능 · 이후 단계별 위약금 구간 적용',
       location: '광주광역시 남구 중앙로 117 (라크마 스튜디오)',
       route: 'studios',
       done: kstDayDiff(shootDeadline.freeChangeUntil, now) < 0
+    });
+  }
+  if (shootDeadline?.nightDeadline) {
+    push({
+      id: 'master-studio-night-deadline',
+      date: shootDeadline.nightDeadline,
+      category: '📸 스튜디오',
+      title: `${studioName} 야간촬영 신청 마감 (D-7)`,
+      detail: '야간 씬 추가(+17만 원) 희망 시 촬영 7일 전까지 스튜디오 확정 필수',
+      location: '광주광역시 남구 중앙로 117 (라크마 스튜디오)',
+      route: 'studios',
+      done: kstDayDiff(shootDeadline.nightDeadline, now) < 0
     });
   }
   const vList = activeVendorSchedules(prefs);
@@ -940,6 +954,20 @@ export function collectMasterTimeline({ content = {}, prefs = {}, studio = null,
         route: 'tips',
         subTab: 'benefits',
         done: (prefs.benefitChecks || []).includes('bchk-congrats')
+      });
+    }
+    if (timeline?.congratsEnd) {
+      push({
+        id: 'master-suncheon-grant-end',
+        date: timeline.congratsEnd,
+        category: '🏛️ 혼인·혜택',
+        title: '순천 청년부부 결혼축하금(200만 원) 신청 마감',
+        detail: `혼인신고 1년 6개월 이내 마감 · 신청 시작 ${timeline.congratsStart}`,
+        location: '주소지 읍·면·동 행정복지센터 / 전남 아이톡',
+        route: 'tips',
+        subTab: 'benefits',
+        done: (prefs.benefitChecks || []).includes('bchk-congrats'),
+        urgent: !(prefs.benefitChecks || []).includes('bchk-congrats') && kstDayDiff(timeline.congratsEnd, now) <= 30
       });
     }
   }
@@ -1216,6 +1244,47 @@ export function buildBudgetSummaryText(budgetPlan = {}, giftLedger = []) {
   }
   return lines.join('\n');
 }
+
+export function estimateBanquetTables(mealHeadcount = 0) {
+  const n = Number.isFinite(Number(mealHeadcount)) && Number(mealHeadcount) > 0 ? Math.floor(Number(mealHeadcount)) : 0;
+  return {
+    headcount: n,
+    tables8: n ? Math.ceil(n / 8) : 0,
+    tables10: n ? Math.ceil(n / 10) : 0
+  };
+}
+
+export function crossCheckGuestsAndGifts(guestList = [], giftLedger = []) {
+  const norm = name => String(name || '').trim().replace(/\s+/g, '').toLocaleLowerCase();
+  const guests = Array.isArray(guestList) ? guestList : [];
+  const gifts = Array.isArray(giftLedger) ? giftLedger : [];
+  const guestNameSet = new Set(guests.map(g => norm(g?.name)).filter(Boolean));
+  const giftNameSet = new Set(gifts.map(g => norm(g?.name)).filter(Boolean));
+  const attendingWithoutGift = [];
+  let matchedGuestCount = 0;
+  for (const guest of guests) {
+    if (guest?.rsvp !== '참석') continue;
+    const key = norm(guest?.name);
+    if (!key) continue;
+    if (giftNameSet.has(key)) matchedGuestCount++;
+    else attendingWithoutGift.push(guest);
+  }
+  const giftsNotInGuestList = [];
+  let matchedGiftCount = 0;
+  for (const gift of gifts) {
+    const key = norm(gift?.name);
+    if (!key) continue;
+    if (guestNameSet.has(key)) matchedGiftCount++;
+    else giftsNotInGuestList.push(gift);
+  }
+  return {
+    attendingWithoutGift,
+    giftsNotInGuestList,
+    matchedGuestCount,
+    matchedGiftCount
+  };
+}
+
 
 
 

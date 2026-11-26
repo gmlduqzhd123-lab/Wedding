@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-60';
-import { formatDate } from './content.js?v=wedding-features-60';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-60';
-import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT } from './planning.js?v=wedding-features-60';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-60';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-61';
+import { formatDate } from './content.js?v=wedding-features-61';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-61';
+import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-61';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-61';
 import {
   printDedicatedSheet,
   openThankYouModal,
@@ -10,13 +10,14 @@ import {
   openGiftEditor,
   openQuickGiftEntryModal,
   renderGiftLedgerBoard
-} from './gift-ledger-ui.js?v=wedding-features-60';
+} from './gift-ledger-ui.js?v=wedding-features-61';
 
 export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard };
 
 let guestSideFilter = 'all';
 let guestRsvpFilter = 'all';
 let guestInviteFilter = 'all';
+let guestNoGiftOnly = false;
 let guestQuery = '';
 
 function buildGuestPrintSheet(ctx, list) {
@@ -300,6 +301,9 @@ export function renderGuestListBoard(ctx) {
   const prefs = ctx.getPrefs();
   const list = prefs.guestList || [];
   const summary = guestListSummary(list);
+  const tables = estimateBanquetTables(summary.mealHeadcount);
+  const cross = crossCheckGuestsAndGifts(list, prefs.giftLedger || []);
+  const noGiftIds = new Set(cross.attendingWithoutGift.map(g => g.id));
   const syncTarget = summary.attendingHeadcount > 0 ? summary.attendingHeadcount : summary.possibleHeadcount;
   const syncModeLabel = summary.attendingHeadcount > 0 ? '참석 확정' : '불참 제외 예정';
 
@@ -314,6 +318,7 @@ export function renderGuestListBoard(ctx) {
   const listWrap = E('div', { class: 'ledger-items-wrap' });
   const countNode = E('span', { class: 'small muted', 'aria-live': 'polite' });
   const resetWrap = E('span', { class: 'filter-reset-slot' });
+  const crossStripSlot = E('div', { class: 'guest-crosscheck-slot' });
 
   const search = searchBox({
     id: 'guest-search',
@@ -340,6 +345,7 @@ export function renderGuestListBoard(ctx) {
     guestSideFilter = 'all';
     guestRsvpFilter = 'all';
     guestInviteFilter = 'all';
+    guestNoGiftOnly = false;
     guestQuery = '';
     search.input.value = '';
     search.syncClear();
@@ -359,15 +365,47 @@ export function renderGuestListBoard(ctx) {
       guestSideFilter !== 'all',
       guestRsvpFilter !== 'all',
       guestInviteFilter !== 'all',
+      guestNoGiftOnly,
       Boolean(guestQuery.trim())
     ].filter(Boolean).length;
     resetWrap.replaceChildren(...(activeCount ? [button(`✕ 필터 초기화 (${activeCount})`, resetGuestFilters, 'filter-reset-chip')] : []));
+
+    if (list.length) {
+      const unsentActive = guestInviteFilter === '미발송';
+      const unsentBtn = summary.unsentCount > 0
+        ? button(unsentActive ? '미발송 필터 해제' : `📨 미발송만 보기 (${summary.unsentCount}건)`, () => {
+          guestInviteFilter = unsentActive ? 'all' : '미발송';
+          inviteSelect.value = guestInviteFilter;
+          draw();
+        }, 'button quiet small-copy-btn' + (unsentActive ? ' active' : ''))
+        : null;
+      if (unsentBtn) unsentBtn.setAttribute('aria-pressed', String(unsentActive));
+      const noGiftBtn = cross.attendingWithoutGift.length > 0
+        ? button(guestNoGiftOnly ? '축의 미기록 필터 해제' : `💌 참석·축의 미기록 (${cross.attendingWithoutGift.length}명)`, () => {
+          guestNoGiftOnly = !guestNoGiftOnly;
+          draw();
+        }, 'button quiet small-copy-btn' + (guestNoGiftOnly ? ' active' : ''))
+        : null;
+      if (noGiftBtn) noGiftBtn.setAttribute('aria-pressed', String(guestNoGiftOnly));
+      crossStripSlot.replaceChildren(E('div', { class: 'ledger-crosscheck-strip', role: 'region', 'aria-label': '연회 테이블 환산 및 빠른 대조' },
+        E('div', { class: 'ledger-crosscheck-metrics' },
+          tables.headcount > 0
+            ? E('span', { class: 'small' }, `🍽️ 연회 테이블 환산: `, E('strong', {}, `8인석 ${tables.tables8}테이블`), ` · `, E('strong', {}, `10인석 ${tables.tables10}테이블`), ` (식사 ${tables.headcount}명)`)
+            : E('span', { class: 'small muted' }, '🍽️ 참석 확정 식사 인원이 입력되면 8인·10인 연회 테이블 수가 자동 계산됩니다.'),
+          (prefs.giftLedger || []).length > 0
+            ? E('span', { class: 'spec-chip' }, `축의금 일치 ${cross.matchedGuestCount}명`)
+            : null),
+        E('div', { class: 'ledger-crosscheck-actions' }, unsentBtn, noGiftBtn)));
+    } else {
+      crossStripSlot.replaceChildren();
+    }
 
     const q = guestQuery.trim().toLocaleLowerCase();
     const filtered = list.filter(item =>
       (guestSideFilter === 'all' || item.side === guestSideFilter) &&
       (guestRsvpFilter === 'all' || item.rsvp === guestRsvpFilter) &&
       (guestInviteFilter === 'all' || item.inviteStatus === guestInviteFilter) &&
+      (!guestNoGiftOnly || noGiftIds.has(item.id)) &&
       (!q || `${item.name} ${item.side} ${item.group} ${item.note || ''}`.toLocaleLowerCase().includes(q))
     );
     countNode.textContent = `${filtered.length}건 표시 중 (전체 ${list.length}건)`;
@@ -407,7 +445,8 @@ export function renderGuestListBoard(ctx) {
             E('strong', { class: 'ledger-row-name' }, item.name),
             E('span', { class: 'spec-chip' }, `${item.side} · ${item.group}`),
             E('span', { class: 'spec-chip' }, `${item.partySize}명`),
-            E('span', { class: 'spec-chip' }, item.mealTicket === false ? '🎁 미식사(답례품)' : '🍽️ 식사')),
+            E('span', { class: 'spec-chip' }, item.mealTicket === false ? '🎁 미식사(답례품)' : '🍽️ 식사'),
+            (prefs.giftLedger || []).length > 0 && noGiftIds.has(item.id) ? E('span', { class: 'spec-chip highlight' }, '축의 미기록') : null),
           item.note ? E('p', { class: 'small muted ledger-row-note' }, item.note) : null),
         E('div', { class: 'ledger-row-controls' },
           inviteCycleBtn,
@@ -479,7 +518,7 @@ export function renderGuestListBoard(ctx) {
       E('div', { class: 'ledger-kpi-card is-accent' },
         E('span', { class: 'small muted' }, '참석 확정 인원'),
         E('strong', {}, `${summary.attendingHeadcount}명`),
-        E('span', { class: 'small muted' }, `식사 예정 ${summary.mealHeadcount}명`)),
+        E('span', { class: 'small muted' }, `식사 예정 ${summary.mealHeadcount}명${tables.headcount > 0 ? ` · 8인 ${tables.tables8} / 10인 ${tables.tables10}테이블` : ''}`)),
       E('div', { class: 'ledger-kpi-card' },
         E('span', { class: 'small muted' }, '불참 제외 예상 인원'),
         E('strong', {}, `${summary.possibleHeadcount}명`),
@@ -501,6 +540,7 @@ export function renderGuestListBoard(ctx) {
         { label: '공통', value: summary.bySide['공통']?.possible || 0, cls: 'ratio-seg-common' }
       ]
     }),
+    crossStripSlot,
     E('div', { class: 'ledger-filter-bar guest-board-toolbar' },
       sideBar,
       E('div', { class: 'ledger-filter-controls' }, search.wrap, inviteSelect, rsvpSelect, resetWrap, countNode)),

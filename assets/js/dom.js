@@ -1,4 +1,4 @@
-import { safeUrl } from './content.js?v=wedding-features-60';
+import { safeUrl } from './content.js?v=wedding-features-61';
 
 export const $ = selector => document.querySelector(selector);
 
@@ -99,3 +99,30 @@ export function downloadText(raw, filename, type) {
 export function downloadJson(value, filename) {
   downloadText(JSON.stringify(value) + '\n', filename, 'application/json;charset=utf-8');
 }
+
+export function enhanceTablistKeyboard(tablistEl) {
+  if (!tablistEl) return tablistEl;
+  const syncRoving = () => {
+    const tabs = [...tablistEl.querySelectorAll('[role="tab"]')];
+    const activeIdx = Math.max(0, tabs.findIndex(t => t.getAttribute('aria-selected') === 'true'));
+    tabs.forEach((tab, idx) => { tab.tabIndex = idx === activeIdx ? 0 : -1; });
+  };
+  syncRoving();
+  tablistEl.addEventListener('keydown', event => {
+    const tabs = [...tablistEl.querySelectorAll('[role="tab"]')];
+    if (tabs.length < 2) return;
+    const current = event.target?.closest?.('[role="tab"]');
+    const idx = tabs.indexOf(current);
+    if (idx < 0) return;
+    let nextIdx = -1;
+    if (event.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') nextIdx = 0;
+    else if (event.key === 'End') nextIdx = tabs.length - 1;
+    if (nextIdx < 0 || nextIdx === idx) return;
+    event.preventDefault();
+    tabs[nextIdx].click();
+  });
+  return tablistEl;
+}
+
