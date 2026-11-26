@@ -224,25 +224,41 @@ try {
   await reload();
   assert.equal(await cdp.eval(`document.documentElement.classList.contains('is-dark-theme') && document.body.classList.contains('is-dark-theme')`), true, 'Dark theme persists across reload without FOUC');
 
+  // Verify modal focus return on close before navigating with Global Search
+  await cdp.eval(`document.querySelector('#global-search-btn').click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#global-search-input'))`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
+  assert.equal(await cdp.eval(`document.activeElement?.id`), 'global-search-btn', 'Closing modal must restore focus to triggering button');
+
   await cdp.eval(`document.querySelector('#global-search-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#global-search-input'))`);
   await cdp.eval(`(() => { const inp = document.querySelector('#global-search-input'); inp.value = '발리'; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await cdp.waitFor(`() => document.querySelectorAll('.global-search-item').length >= 1`);
   await cdp.eval(`[...document.querySelectorAll('.global-search-item')].find(b => b.textContent.includes('신혼여행')).click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main')?.dataset.renderedRoute === 'honeymoon' && !document.querySelector('.loading-state')`);
-  console.log('E2E PASS 2/8: Home scroll diet, Dark Botanical Theme FOUC-free persistence, Global Search OK');
+  console.log('E2E PASS 2/8: Home scroll diet, Dark Botanical Theme persistence, Modal focus return, Global Search OK');
 
-  // 3. Honeymoon compare floating tray
+  // 3. Honeymoon compare floating tray + body.has-compare-tray + packing pending-only filter & copy button
   await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 2`);
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[0].click()`);
-  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (1/2)')`);
+  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (1/2)') && document.body.classList.contains('has-compare-tray')`);
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[1].click()`);
   await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (2/2)')`);
   await cdp.eval(`[...document.querySelectorAll('.compare-floating-tray button')].find(b => b.textContent === '비우기').click()`);
-  await cdp.waitFor(`() => !document.querySelector('.compare-floating-tray')`);
-  console.log('E2E PASS 3/8: Honeymoon floating compare tray OK');
+  await cdp.waitFor(`() => !document.querySelector('.compare-floating-tray') && !document.body.classList.contains('has-compare-tray')`);
+  await cdp.eval(`document.querySelector('.honeymoon-packing summary').click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#packing-pending-only')) && [...document.querySelectorAll('.packing-filter-row button')].some(b => b.textContent.includes('남은 짐 카톡 복사'))`);
+  const packTotal = await cdp.eval(`document.querySelectorAll('.honeymoon-packing .checklist-item').length`);
+  await cdp.eval(`document.querySelector('.honeymoon-packing .checklist-item input[type="checkbox"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item.done').length === 1`);
+  await cdp.eval(`document.querySelector('#packing-pending-only').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item').length === ${packTotal - 1}`);
+  await cdp.eval(`document.querySelector('#packing-pending-only').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item').length === ${packTotal}`);
+  console.log('E2E PASS 3/8: Honeymoon compare tray offset class + packing pending filter & copy button OK');
 
-  // 4. Budget SVG donut chart
+  // 4. Budget SVG donut chart + CSV/summary export + Vendor schedule filters & bulk .ics
   await cdp.eval(`location.hash = '#/tips/budget'`);
   await cdp.waitFor(`() => document.querySelector('[data-tips-tab="budget"]')?.getAttribute('aria-selected') === 'true' && [...document.querySelectorAll('button')].some(b => b.textContent.includes('예산표 작성하기') || b.textContent.includes('예산 입력·수정'))`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('예산표 작성하기') || b.textContent.includes('예산 입력·수정')).click()`);
@@ -257,7 +273,18 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.budget-donut-card svg.budget-donut-svg'))`);
   const donutCenter = await cdp.eval(`document.querySelector('.donut-center-value')?.textContent`);
   assert(donutCenter && donutCenter.includes('2,000만'), `Expected donut center 2,000만, got: ${donutCenter}`);
-  console.log('E2E PASS 4/8: Inline SVG budget donut chart OK');
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.wedding-budget-calc button')].some(b => b.textContent.includes('예산 요약 복사'))`), true, 'Budget summary copy button must render');
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.wedding-budget-calc button')].some(b => b.textContent.includes('CSV 내보내기'))`), true, 'Budget CSV export button must render');
+
+  await cdp.eval(`location.hash = '#/tips/schedule'`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.vendor-filter-bar')) && document.querySelectorAll('.vendor-schedule-item').length >= 1`);
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.vendor-schedule-board button')].some(b => b.textContent.includes('.ics'))`), true, 'Vendor bulk .ics export button must render');
+  const vendorAllCount = await cdp.eval(`document.querySelectorAll('.vendor-schedule-item').length`);
+  await cdp.eval(`document.querySelectorAll('.vendor-filter-chips button')[1]?.click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.vendor-schedule-item').length <= ${vendorAllCount}`);
+  await cdp.eval(`[...document.querySelectorAll('.vendor-filter-meta button')].find(b => b.textContent === '필터 초기화')?.click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.vendor-schedule-item').length === ${vendorAllCount}`);
+  console.log('E2E PASS 4/8: Budget donut + CSV/summary export + Vendor schedule filter & bulk .ics OK');
 
   // 5. Ceremony Live MC Cue Sheet (Wake Lock + font zoom + staging cue) + Custom Confirm + Guest->Quick Gift RSVP Auto-Sync + Batch Thank-You + Undo
   await cdp.eval(`location.hash = '#/ceremony/rundown'`);
@@ -323,7 +350,7 @@ try {
   await cdp.waitFor(`() => document.querySelector('#main').innerText.includes('테스트하객')`);
   console.log('E2E PASS 5/8: Live MC cue sheet (Wake Lock + A+), RSVP auto-sync, Batch Thank-You, instant Undo OK');
 
-  // 6. Round 4 cross-links: Budget Net Cost Settlement, Day Ops Cash Denominations & Photo Call Mode, 30-Studio Archive, BGM preset cycle
+  // 6. Round 4 cross-links: Budget Net Cost Settlement, Day Ops Cash Denominations & Photo Call Mode, 30-Studio Archive
   await cdp.eval(`location.hash = '#/tips/budget'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.budget-net-settlement'))`);
   const netText = await cdp.eval(`document.querySelector('.budget-net-settlement')?.innerText || ''`);
@@ -348,11 +375,14 @@ try {
   await cdp.waitFor(`() => document.querySelectorAll('.studio-archive-card').length === 2`);
   console.log('E2E PASS 6/8: Budget net settlement, Day Ops photo-call mode, 30-studio archive persistence & search OK');
 
-  // 7. Dark-mode topbar contrast + BGM play-reveal preset cycling + live KakaoTalk OG preview + Draft save/reload/diff/revert
+  // 7. Dark-mode invitation contrast (.place-kicker & BGM) + print button + BGM play-reveal + live KakaoTalk OG preview + Draft save/reload/diff/revert
   await cdp.eval(`location.hash = '#/invitation'`);
   await cdp.waitFor(`() => [...document.querySelectorAll('button')].some(b => b.textContent === '예식 정보 편집') && Boolean(document.querySelector('.invitation-bgm-btn'))`);
   const darkBtnBg = await cdp.eval(`getComputedStyle(document.querySelector('.invitation-bgm-btn')).backgroundColor`);
   assert.equal(darkBtnBg, 'rgb(28, 36, 31)', `Dark-mode invitation BGM button must have dark surface, got: ${darkBtnBg}`);
+  const kickerBg = await cdp.eval(`getComputedStyle(document.querySelector('.place-kicker')).backgroundColor`);
+  assert.equal(kickerBg, 'rgb(36, 52, 41)', `Dark-mode .place-kicker must have dark surface, got: ${kickerBg}`);
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.invitation-share-foot button')].some(b => b.textContent.includes('청첩장 인쇄'))`), true, 'Invitation share footer must include print button');
   assert.equal(await cdp.eval(`document.querySelector('.invitation-bgm-preset-btn')?.hidden`), true, 'BGM preset button hidden while paused');
   await cdp.eval(`document.querySelector('.invitation-bgm-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.hidden === false`);
@@ -378,16 +408,59 @@ try {
   await cdp.eval(`[...document.querySelectorAll('#editor-body button')].find(b => b.textContent === '공개본으로 돌아가기').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#draft-banner').hidden`);
   assert.equal(await cdp.eval(`localStorage.getItem('wedding:v1:draft')`), null, 'Draft cleared on revert to public');
-  console.log('E2E PASS 7/8: BGM preset cycling + Invitation live OG preview + Draft save/reload/diff/revert OK');
+  console.log('E2E PASS 7/8: Invitation dark contrast + print + BGM + live OG preview + Draft save/reload/revert OK');
 
-  // 8. All 9 routes zero horizontal overflow in 1280px (Dark) & 390px (Light) + zero console errors
-  const allRoutes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
-  for (const r of allRoutes) {
-    await cdp.eval(`location.hash = '#/${r}'`);
-    await cdp.waitFor(`() => document.querySelector('#main')?.dataset.renderedRoute === '${r}' && !document.querySelector('.loading-state')`);
-    await new Promise(res => setTimeout(res, 100));
-    assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, `Desktop 1280px dark-mode overflow on ${r}`);
+  // 8. 18-view Dark Mode bright-box regression guard + zero horizontal overflow in 1280px (Dark) & 390px (Light)
+  const darkAuditViews = [
+    ['home', 'home'],
+    ['invitation', 'invitation'],
+    ['story', 'story'],
+    ['albums', 'albums'],
+    ['studios', 'studios'],
+    ['honeymoon', 'honeymoon'],
+    ['ceremony/rundown', 'ceremony'],
+    ['ceremony/guests', 'ceremony'],
+    ['ceremony/gifts', 'ceremony'],
+    ['ceremony/dayops', 'ceremony'],
+    ['prenatal/hospital', 'prenatal'],
+    ['prenatal/subsidy', 'prenatal'],
+    ['prenatal/guide', 'prenatal'],
+    ['tips/tips', 'tips'],
+    ['tips/budget', 'tips'],
+    ['tips/schedule', 'tips'],
+    ['tips/home', 'tips'],
+    ['tips/benefits', 'tips']
+  ];
+  const brightBoxFailures = [];
+  for (const [hashPath, expectedRoute] of darkAuditViews) {
+    await cdp.eval(`location.hash = '#/${hashPath}'`);
+    await cdp.waitFor(`() => document.querySelector('#main')?.dataset.renderedRoute === '${expectedRoute}' && !document.querySelector('.loading-state')`);
+    await new Promise(res => setTimeout(res, 80));
+    assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, `Desktop 1280px dark-mode overflow on ${hashPath}`);
+    const hits = await cdp.eval(`(() => {
+      const parseRgb = str => {
+        const m = String(str || '').match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)/);
+        return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] } : null;
+      };
+      const out = [];
+      for (const el of document.querySelectorAll('#main *')) {
+        if (el.closest('svg, .kakao-og-bubble, .kakao-og-chat-bg') || el.matches('img, svg, canvas, input[type="checkbox"], input[type="radio"]')) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 24 || rect.height < 16) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.1) continue;
+        const bg = parseRgb(cs.backgroundColor);
+        if (bg && bg.a > 0.6 && bg.r > 200 && bg.g > 195 && bg.b > 185) {
+          out.push(el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).trim().replace(/\\s+/g, '.') : '') + ' (' + cs.backgroundColor + ')');
+        }
+      }
+      return [...new Set(out)];
+    })()`);
+    if (hits.length) brightBoxFailures.push(`${hashPath}: ${hits.join(', ')}`);
   }
+  assert.deepEqual(brightBoxFailures, [], 'Dark-mode bright/cream surfaces detected:\n' + brightBoxFailures.join('\n'));
+
+  const allRoutes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
   await cdp.eval(`document.querySelector('#theme-toggle-btn').click()`);
   assert.equal(await cdp.eval(`document.body.classList.contains('is-dark-theme')`), false);
   await setViewport(390, 844);
@@ -398,7 +471,7 @@ try {
     const overflow = await cdp.eval(`document.documentElement.scrollWidth - window.innerWidth`);
     assert(overflow <= 0, `Mobile 390px horizontal overflow on ${r}: +${overflow}px`);
   }
-  console.log('E2E PASS 8/8: All 9 routes zero overflow on 1280px (Dark) & 390px (Light)');
+  console.log('E2E PASS 8/8: 18-view Dark Mode zero bright-box guard + 1280px/390px zero overflow OK');
 
   assert.deepEqual(consoleErrors, [], 'Browser console errors detected:\n' + consoleErrors.join('\n'));
   console.log('ALL E2E SMOKE TESTS PASSED WITH ZERO CONSOLE ERRORS!');

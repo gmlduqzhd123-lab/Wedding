@@ -1,6 +1,6 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-59';
-import { safeUrl } from './content.js?v=wedding-features-59';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-59';
+import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-60';
+import { safeUrl } from './content.js?v=wedding-features-60';
+import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-60';
 import {
   COST_LABELS,
   budgetSummary,
@@ -14,7 +14,7 @@ import {
   climateReview,
   climateBadgeInfo,
   tripFlightBadge
-} from './travel.js?v=wedding-features-59';
+} from './travel.js?v=wedding-features-60';
 
 export { tripFlightBadge };
 
@@ -27,6 +27,7 @@ let tripAgencyFilter = 'all';
 let tripSearchQuery = '';
 let overviewExpanded = false;
 let packingExpanded = false;
+let packingPendingOnly = false;
 let tripCompactMode = true;
 let tripVisibleLimit = 12;
 const TRIP_PAGE_STEP = 12;
@@ -372,10 +373,14 @@ function tripComparison(ctx) {
 }
 
 function renderCompareFloatingTray(ctx) {
-  if (ctx.isGuestMode()) return null;
+  if (ctx.isGuestMode()) {
+    document.body.classList.remove('has-compare-tray');
+    return null;
+  }
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
   const items = (prefs.tripCompare || []).map(id => content.honeymoon.find(item => item.id === id)).filter(Boolean);
+  document.body.classList.toggle('has-compare-tray', items.length > 0);
   if (!items.length) return null;
   return E('aside', { class: 'compare-floating-tray', role: 'region', 'aria-label': '신혼여행 비교함 빠른 이동' },
     E('div', { class: 'compare-tray-info' },
@@ -913,7 +918,28 @@ function renderHoneymoonPackingList(ctx) {
   const allItems = cats.flatMap(([, items]) => items);
   const doneCount = allItems.filter(([id]) => checked.has(id)).length;
   const totalCount = allItems.length;
+  const remainingCount = totalCount - doneCount;
   const pct = Math.round((doneCount / totalCount) * 100);
+  const uncheckedGroups = cats
+    .map(([cat, items]) => [cat, items.filter(([id]) => !checked.has(id))])
+    .filter(([, items]) => items.length > 0);
+  const displayCats = packingPendingOnly ? uncheckedGroups : cats;
+  const copyRemainingPacking = () => {
+    const lines = [`[신혼여행 남은 준비물 · ${remainingCount}개 미챙김]`, ''];
+    for (const [cat, items] of uncheckedGroups) {
+      lines.push(`■ ${cat} (${items.length})`);
+      for (const [, label] of items) lines.push(`- ${label}`);
+      lines.push('');
+    }
+    ctx.copyTextToClipboard(lines.join('\n').trim(), `남은 신혼여행 준비물 ${remainingCount}개를 복사했습니다.`, '신혼여행 남은 준비물 복사');
+  };
+  const pendingBox = E('input', { type: 'checkbox', id: 'packing-pending-only' });
+  pendingBox.checked = packingPendingOnly;
+  pendingBox.addEventListener('change', () => {
+    packingPendingOnly = pendingBox.checked;
+    packingExpanded = true;
+    ctx.render();
+  });
   const toggleItem = (id, inputNode) => {
     const next = new Set(ctx.getPrefs().packingList || []);
     if (inputNode.checked) next.add(id);
@@ -937,50 +963,57 @@ function renderHoneymoonPackingList(ctx) {
             if (!await ctx.confirmAction({ title: '짐 체크 초기화', message: '신혼여행 짐 싸기 체크 기록을 모두 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
             ctx.queuePreference(async () => { const saved = await ctx.savePrefs({ ...ctx.getPrefs(), packingList: [] }); if (saved) { ctx.render(); ctx.toast('신혼여행 짐 체크를 초기화했습니다.'); } return saved; });
           }, 'button quiet') : null)),
-      E('div', { class: 'checklist-grid' }, cats.map(([cat, items]) => E('article', { class: 'checklist-stage-card' },
-        E('div', { class: 'checklist-stage-head' },
-          E('h3', {}, cat),
-          E('span', { class: 'badge' }, `${items.filter(([id]) => checked.has(id)).length}/${items.length}`)),
-        E('ul', { class: 'checklist-items' }, items.map(([id, label, isCustom]) => {
-          const box = E('input', { type: 'checkbox', id: `pack-${id}` });
-          box.checked = checked.has(id);
-          box.addEventListener('change', () => toggleItem(id, box));
-          return E('li', { class: 'checklist-item' + (box.checked ? ' done' : '') },
-            E('div', { class: 'checklist-item-top' },
-              E('label', { for: box.id }, box, E('span', {}, label)),
-              isCustom ? E('div', { class: 'checklist-item-actions' },
-                button('수정', () => openCustomPackingEditor(ctx, { id, category: cat, title: label }), 'checklist-note-btn'),
-                button('삭제', () => {
-                  ctx.queuePreference(async () => {
-                    const latest = ctx.getPrefs();
-                    const curList = latest.customPackingList || [];
-                    const removedIndex = curList.findIndex(c => c.id === id);
-                    if (removedIndex < 0) return true;
-                    const snapshot = structuredClone(curList[removedIndex]);
-                    const wasChecked = (latest.packingList || []).includes(id);
-                    const nextList = curList.filter(c => c.id !== id);
-                    const nextChecked = (latest.packingList || []).filter(k => k !== id);
-                    const saved = await ctx.savePrefs({ ...latest, customPackingList: nextList, packingList: nextChecked });
-                    if (saved) {
-                      ctx.render();
-                      ctx.toast(`‘${label}’ 준비물을 삭제했습니다.`, {
-                        undoLabel: '되돌리기',
-                        onUndo: () => ctx.queuePreference(async () => {
-                          const cur = ctx.getPrefs();
-                          const restoredList = [...(cur.customPackingList || [])];
-                          if (restoredList.some(c => c.id === snapshot.id)) return true;
-                          restoredList.splice(Math.min(removedIndex, restoredList.length), 0, snapshot);
-                          const restoredChecked = wasChecked ? [...new Set([...(cur.packingList || []), snapshot.id])] : (cur.packingList || []);
-                          const restored = await ctx.savePrefs({ ...cur, customPackingList: restoredList, packingList: restoredChecked });
-                          if (restored) { ctx.render(); ctx.toast(`‘${snapshot.title}’ 준비물을 복구했습니다.`); }
-                          return restored;
-                        })
-                      });
-                    }
-                    return saved;
-                  });
-                }, 'checklist-note-btn danger-text')) : null));
-        })))))));
+      E('div', { class: 'packing-filter-row' },
+        E('label', { class: 'check-label', for: 'packing-pending-only' }, pendingBox, `미챙긴 항목만 보기 (${remainingCount}개 남음)`),
+        remainingCount > 0
+          ? button('📋 남은 짐 카톡 복사', copyRemainingPacking, 'button quiet small-copy-btn')
+          : E('span', { class: 'badge' }, '🎉 모든 준비물 완료!')),
+      displayCats.length
+        ? E('div', { class: 'checklist-grid' }, displayCats.map(([cat, items]) => E('article', { class: 'checklist-stage-card' },
+          E('div', { class: 'checklist-stage-head' },
+            E('h3', {}, cat),
+            E('span', { class: 'badge' }, packingPendingOnly ? `${items.length}개 남음` : `${items.filter(([id]) => checked.has(id)).length}/${items.length}`)),
+          E('ul', { class: 'checklist-items' }, items.map(([id, label, isCustom]) => {
+            const box = E('input', { type: 'checkbox', id: `pack-${id}` });
+            box.checked = checked.has(id);
+            box.addEventListener('change', () => toggleItem(id, box));
+            return E('li', { class: 'checklist-item' + (box.checked ? ' done' : '') },
+              E('div', { class: 'checklist-item-top' },
+                E('label', { for: box.id }, box, E('span', {}, label)),
+                isCustom ? E('div', { class: 'checklist-item-actions' },
+                  button('수정', () => openCustomPackingEditor(ctx, { id, category: cat, title: label }), 'checklist-note-btn'),
+                  button('삭제', () => {
+                    ctx.queuePreference(async () => {
+                      const latest = ctx.getPrefs();
+                      const curList = latest.customPackingList || [];
+                      const removedIndex = curList.findIndex(c => c.id === id);
+                      if (removedIndex < 0) return true;
+                      const snapshot = structuredClone(curList[removedIndex]);
+                      const wasChecked = (latest.packingList || []).includes(id);
+                      const nextList = curList.filter(c => c.id !== id);
+                      const nextChecked = (latest.packingList || []).filter(k => k !== id);
+                      const saved = await ctx.savePrefs({ ...latest, customPackingList: nextList, packingList: nextChecked });
+                      if (saved) {
+                        ctx.render();
+                        ctx.toast(`‘${label}’ 준비물을 삭제했습니다.`, {
+                          undoLabel: '되돌리기',
+                          onUndo: () => ctx.queuePreference(async () => {
+                            const cur = ctx.getPrefs();
+                            const restoredList = [...(cur.customPackingList || [])];
+                            if (restoredList.some(c => c.id === snapshot.id)) return true;
+                            restoredList.splice(Math.min(removedIndex, restoredList.length), 0, snapshot);
+                            const restoredChecked = wasChecked ? [...new Set([...(cur.packingList || []), snapshot.id])] : (cur.packingList || []);
+                            const restored = await ctx.savePrefs({ ...cur, customPackingList: restoredList, packingList: restoredChecked });
+                            if (restored) { ctx.render(); ctx.toast(`‘${snapshot.title}’ 준비물을 복구했습니다.`); }
+                            return restored;
+                          })
+                        });
+                      }
+                      return saved;
+                    });
+                  }, 'checklist-note-btn danger-text')) : null));
+          })))))
+        : E('p', { class: 'small muted' }, '🎉 모든 신혼여행 출국·짐 싸기 준비물을 챙겼습니다! ‘미챙긴 항목만 보기’를 해제하면 전체 목록을 확인할 수 있어요.')));
   if (packingExpanded) details.open = true;
   details.addEventListener('toggle', () => { packingExpanded = details.open; });
   return details;

@@ -1,6 +1,6 @@
-import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-59';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-59';
-import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-59';
+import { E, button, externalLink, downloadText } from './dom.js?v=wedding-features-60';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-60';
+import { PRENATAL_CHECK_ITEMS, prenatalDeadlineSummary } from './planning.js?v=wedding-features-60';
 
 export { PRENATAL_CHECK_ITEMS };
 

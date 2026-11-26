@@ -1150,5 +1150,73 @@ export function computeCashDenominations(envelopes = []) {
   };
 }
 
+export function budgetPlanToCsv(budgetPlan = {}, giftLedger = []) {
+  const keys = WEDDING_BUDGET_CATEGORIES.map(([key]) => key);
+  const budget = weddingBudgetSummary(budgetPlan, keys);
+  const net = netWeddingCostSummary(budgetPlan, giftLedger, keys);
+  const header = ['항목', '목표 예산(원)', '실제 지출·계약(원)', '잔액·차액(원)', '메모'];
+  const rows = WEDDING_BUDGET_CATEGORIES.map(([key, title]) => {
+    const entry = budgetPlan?.[key] || {};
+    const planned = known(entry.planned) ? entry.planned : null;
+    const actual = known(entry.actual) ? entry.actual : null;
+    const diff = planned !== null && actual !== null ? planned - actual : null;
+    return [
+      title.replace(/^[^\s]+\s*/, ''),
+      planned === null ? '' : planned,
+      actual === null ? '' : actual,
+      diff === null ? '' : diff,
+      entry.note || ''
+    ];
+  });
+  rows.push([
+    '6대 항목 합계',
+    budget.planned.known === null ? '' : budget.planned.known,
+    budget.actual.known === null ? '' : budget.actual.known,
+    budget.difference === null ? '' : budget.difference,
+    `목표 ${budget.planned.entered}/6 · 실제 ${budget.actual.entered}/6`
+  ]);
+  if (net.giftCount > 0 || net.actualKnown !== null) {
+    rows.push(['축의금 합계', '', net.giftTotal, '', `${net.giftCount}건 기준`]);
+    rows.push([
+      '축의금 반영 실부담액',
+      '',
+      net.netActual === null ? '' : net.netActual,
+      '',
+      net.coveragePct !== null ? `축의금 충당률 ${net.coveragePct}%` : '실제 지출 입력 필요'
+    ]);
+  }
+  return '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
+}
+
+export function buildBudgetSummaryText(budgetPlan = {}, giftLedger = []) {
+  const keys = WEDDING_BUDGET_CATEGORIES.map(([key]) => key);
+  const budget = weddingBudgetSummary(budgetPlan, keys);
+  const net = netWeddingCostSummary(budgetPlan, giftLedger, keys);
+  const fmt = v => (v === null ? '미입력' : `${v.toLocaleString('ko-KR')}원`);
+  const lines = ['[결혼 준비 통합 예산 요약]', ''];
+  for (const [key, title] of WEDDING_BUDGET_CATEGORIES) {
+    const entry = budgetPlan?.[key] || {};
+    const p = known(entry.planned) ? entry.planned : null;
+    const a = known(entry.actual) ? entry.actual : null;
+    const note = entry.note ? ` (${entry.note})` : '';
+    lines.push(`• ${title.replace(/^[^\s]+\s*/, '')}: 목표 ${fmt(p)} / 실제 ${fmt(a)}${note}`);
+  }
+  lines.push('');
+  lines.push(`▶ 목표 예산 (${budget.planned.entered}/6): ${fmt(budget.planned.known)}`);
+  lines.push(`▶ 실제 지출·계약 (${budget.actual.entered}/6): ${fmt(budget.actual.known)}`);
+  if (budget.difference !== null) {
+    lines.push(`▶ 예산 대비 차액: ${budget.difference >= 0 ? `여유 ${fmt(budget.difference)}` : `초과 ${fmt(-budget.difference)}`}`);
+  }
+  if (net.giftCount > 0) {
+    lines.push(`▶ 축의금 합계 (${net.giftCount}건): ${fmt(net.giftTotal)}`);
+    if (net.netActual !== null) {
+      const label = net.netActual < 0 ? `잉여 +${fmt(-net.netActual)}` : fmt(net.netActual);
+      lines.push(`▶ 축의금 반영 실부담액: ${label}${net.coveragePct !== null ? ` (충당률 ${net.coveragePct}%)` : ''}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+
 
 

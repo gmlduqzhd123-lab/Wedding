@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-59';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-59';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-59';
-import { quoteReview } from './travel.js?v=wedding-features-59';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-59';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-60';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-60';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-60';
+import { quoteReview } from './travel.js?v=wedding-features-60';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-60';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -11,11 +11,13 @@ import {
   weddingBudgetSummary,
   sdmEstimate,
   guestListSummary,
-  netWeddingCostSummary
-} from './planning.js?v=wedding-features-59';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-59';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-59';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-59';
+  netWeddingCostSummary,
+  budgetPlanToCsv,
+  buildBudgetSummaryText
+} from './planning.js?v=wedding-features-60';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-60';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard } from './life-planning-ui.js?v=wedding-features-60';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-60';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules };
 
@@ -28,6 +30,8 @@ let tipFilter = '';
 let tipCategory = 'all';
 let tipFavoritesOnly = false;
 let withTipNoteOnly = false;
+let vendorCatFilter = 'all';
+let vendorPendingOnly = false;
 let redrawTips = () => {};
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
@@ -459,6 +463,13 @@ function renderBudgetCalculator(ctx) {
         E('h2', { id: 'wedding-budget-title' }, '결혼 준비 통합 예산 계산기'),
         E('p', {}, '웨딩홀·스드메·본식·예물·신혼여행·혼수 6대 항목의 목표 예산과 실제 지출을 이 기기에서 한눈에 관리하세요.')),
       E('div', { class: 'page-actions' },
+        hasAny || net.giftCount > 0 ? button('📋 예산 요약 복사', () => {
+          ctx.copyTextToClipboard(buildBudgetSummaryText(plan, ctx.getPrefs().giftLedger || []), '결혼 준비 통합 예산 요약을 복사했습니다.', '통합 예산 요약 복사');
+        }, 'button quiet') : null,
+        hasAny || net.giftCount > 0 ? button('📥 CSV 내보내기', () => {
+          downloadText(budgetPlanToCsv(plan, ctx.getPrefs().giftLedger || []), 'wedding-budget-plan.csv', 'text/csv;charset=utf-8');
+          ctx.toast('결혼 준비 통합 예산표 CSV(wedding-budget-plan.csv)를 다운로드했습니다.');
+        }, 'button quiet') : null,
         button(hasAny ? '예산 입력·수정' : '첫 예산표 작성하기', () => openBudgetEditor(ctx), 'button quiet'))),
     hasAny ? E('div', { class: 'budget-calc-body' },
       E('div', { class: 'budget-summary-cards' },
@@ -547,9 +558,32 @@ export function openVendorScheduleEditor(ctx, existing = null) {
   }
 }
 
+function buildVendorCalSpec(item) {
+  if (!item?.date) return null;
+  const isLachmaShoot = item.id === 'vsched-lachma-shoot';
+  return {
+    uid: item.id || 'vendor',
+    summary: `[결혼준비] ${item.name}`,
+    date: item.date,
+    time: isLachmaShoot ? '12:00' : '',
+    location: isLachmaShoot ? '광주광역시 남구 중앙로 117 라크마 스튜디오' : '',
+    description: [
+      `분류: ${item.category}`,
+      isLachmaShoot && !(item.note || '').includes('중앙로 117') ? 'STEP 1 루나메이크업(광주 남구 천변좌로 432 1층) → STEP 2 라크마 스튜디오(광주 남구 중앙로 117, 예약 5~10분 전 도착 필수)' : '',
+      item.note || ''
+    ].filter(Boolean).join('\n')
+  };
+}
+
 function renderVendorScheduleBoard(ctx) {
   if (ctx.isGuestMode()) return null;
   const list = activeVendorSchedules(ctx.getPrefs());
+  const presentCats = [...new Set(list.map(v => v.category).filter(Boolean))];
+  const orderedCats = [
+    ...VENDOR_CATEGORIES.filter(c => presentCats.includes(c)),
+    ...presentCats.filter(c => !VENDOR_CATEGORIES.includes(c))
+  ];
+  if (vendorCatFilter !== 'all' && !orderedCats.includes(vendorCatFilter)) vendorCatFilter = 'all';
   const sorted = [...list].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
     if (a.date && b.date) return a.date.localeCompare(b.date);
@@ -557,7 +591,19 @@ function renderVendorScheduleBoard(ctx) {
     if (b.date) return 1;
     return 0;
   });
+  const filtered = sorted.filter(item =>
+    (vendorCatFilter === 'all' || item.category === vendorCatFilter) &&
+    (!vendorPendingOnly || !item.done)
+  );
   const doneCount = list.filter(v => v.done).length;
+  const isFiltered = vendorCatFilter !== 'all' || vendorPendingOnly;
+  const datedSpecs = filtered.map(buildVendorCalSpec).filter(Boolean);
+  const pendingBox = E('input', { type: 'checkbox', id: 'vendor-pending-only' });
+  pendingBox.checked = vendorPendingOnly;
+  pendingBox.addEventListener('change', () => {
+    vendorPendingOnly = pendingBox.checked;
+    ctx.render();
+  });
   const toggleDone = (item, box) => {
     const nextList = activeVendorSchedules(ctx.getPrefs()).map(v => (v.id === item.id ? { ...v, done: box.checked } : v));
     ctx.queuePreference(async () => {
@@ -567,6 +613,15 @@ function renderVendorScheduleBoard(ctx) {
       return saved;
     });
   };
+  const chipBtn = (value, label) => {
+    const active = vendorCatFilter === value;
+    return E('button', {
+      type: 'button',
+      class: 'trip-filter-chip' + (active ? ' active' : ''),
+      'aria-pressed': String(active),
+      onclick: () => { vendorCatFilter = value; ctx.render(); }
+    }, label);
+  };
   return E('section', { class: 'vendor-schedule-board', 'aria-labelledby': 'vendor-schedule-title' },
     E('div', { class: 'section-heading' },
       E('div', {},
@@ -575,25 +630,28 @@ function renderVendorScheduleBoard(ctx) {
         E('p', {}, '스튜디오 촬영일(2/3 수 12:00 라크마 확정), 드레스 피팅·가봉, 웨딩홀 시식·최종 보증인원 확정, 본식스냅 잔금 등 주요 일정을 날짜순으로 관리합니다. (이 기기에만 저장 · 계좌번호·주민번호 등 민감 정보 입력 금지)')),
       E('div', { class: 'page-actions' },
         E('span', { class: 'badge' }, `${doneCount}/${list.length} 완료`),
+        datedSpecs.length ? button(`📥 일정 ${datedSpecs.length}건 .ics`, () => {
+          try {
+            const ics = multiScheduleCalendar(datedSpecs);
+            downloadText(ics, 'wedding-vendor-schedules.ics', 'text/calendar;charset=utf-8');
+            ctx.toast(`날짜가 입력된 업체 일정 ${datedSpecs.length}건을 캘린더(.ics)로 내보냈습니다.`);
+          } catch (error) { ctx.toast(error.message, true); }
+        }, 'button quiet') : null,
         button('+ 일정 추가', () => openVendorScheduleEditor(ctx), 'button quiet'))),
-    sorted.length ? E('ul', { class: 'vendor-schedule-list' }, sorted.map(item => {
+    list.length ? E('div', { class: 'vendor-filter-bar', role: 'region', 'aria-label': '업체 일정 분류 필터' },
+      E('div', { class: 'vendor-filter-chips' },
+        chipBtn('all', `전체 (${list.length})`),
+        orderedCats.map(cat => chipBtn(cat, `${cat} (${list.filter(v => v.category === cat).length})`))),
+      E('div', { class: 'vendor-filter-meta' },
+        E('label', { class: 'check-label', for: 'vendor-pending-only' }, pendingBox, '미완료만 보기'),
+        isFiltered ? E('span', { class: 'small muted' }, `${filtered.length}건 표시`) : null,
+        isFiltered ? button('필터 초기화', () => { vendorCatFilter = 'all'; vendorPendingOnly = false; ctx.render(); }, 'text-button small') : null)) : null,
+    filtered.length ? E('ul', { class: 'vendor-schedule-list' }, filtered.map(item => {
       const dday = item.date ? weddingDday(item.date) : null;
       const box = E('input', { type: 'checkbox', 'aria-label': `${item.name} 완료 표시` });
       box.checked = Boolean(item.done);
       box.addEventListener('change', () => toggleDone(item, box));
-      const isLachmaShoot = item.id === 'vsched-lachma-shoot';
-      const calSpec = item.date ? {
-        uid: item.id || 'vendor',
-        summary: `[결혼준비] ${item.name}`,
-        date: item.date,
-        time: isLachmaShoot ? '12:00' : '',
-        location: isLachmaShoot ? '광주광역시 남구 중앙로 117 라크마 스튜디오' : '',
-        description: [
-          `분류: ${item.category}`,
-          isLachmaShoot && !(item.note || '').includes('중앙로 117') ? 'STEP 1 루나메이크업(광주 남구 천변좌로 432 1층) → STEP 2 라크마 스튜디오(광주 남구 중앙로 117, 예약 5~10분 전 도착 필수)' : '',
-          item.note || ''
-        ].filter(Boolean).join('\n')
-      } : null;
+      const calSpec = buildVendorCalSpec(item);
       const gcalUrl = calSpec ? scheduleGoogleCalendarUrl(calSpec) : null;
       return E('li', { class: 'vendor-schedule-item' + (item.done ? ' done' : '') },
         E('div', { class: 'vendor-schedule-main' },
@@ -641,7 +699,11 @@ function renderVendorScheduleBoard(ctx) {
               return saved;
             });
           }, 'checklist-note-btn danger-text')));
-    })) : E('p', { class: 'small muted' }, '등록된 업체·촬영 일정이 없습니다. 오른쪽 위 ‘+ 일정 추가’ 버튼으로 주요 일정을 기록해 보세요.'));
+    })) : (list.length
+      ? E('div', { class: 'no-results-box' },
+        E('p', { class: 'no-results' }, '선택한 조건에 맞는 업체 일정이 없습니다.'),
+        button('필터 초기화', () => { vendorCatFilter = 'all'; vendorPendingOnly = false; ctx.render(); }, 'button quiet'))
+      : E('p', { class: 'small muted' }, '등록된 업체·촬영 일정이 없습니다. 오른쪽 위 ‘+ 일정 추가’ 버튼으로 주요 일정을 기록해 보세요.')));
 }
 
 function tipFavoriteButton(ctx, item) {

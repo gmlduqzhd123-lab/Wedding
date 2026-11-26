@@ -83,14 +83,23 @@
   </style>
   <script>
     (function () {
-      var routes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'tips'];
+      var routes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
+      var subtabs = {
+        ceremony: ['rundown', 'guests', 'gifts', 'dayops'],
+        tips: ['tips', 'budget', 'schedule', 'home', 'benefits'],
+        prenatal: ['hospital', 'subsidy', 'guide']
+      };
       var path = location.pathname || '/';
       var isProjectPath = path === '/Wedding' || path.indexOf('/Wedding/') === 0;
       var base = isProjectPath ? '/Wedding/' : '/';
       var rest = path.slice(base.length).replace(/^\/+|\/+$/g, '');
-      var firstSegment = rest.split('/')[0];
+      var parts = rest ? rest.split('/') : [];
+      var firstSegment = parts[0] || '';
+      var secondSegment = parts[1] || '';
       if (routes.indexOf(firstSegment) !== -1) {
-        location.replace(base + location.search + '#/' + firstSegment);
+        var validSubs = subtabs[firstSegment];
+        var hashPath = '#/' + firstSegment + (validSubs && validSubs.indexOf(secondSegment) !== -1 ? '/' + secondSegment : '');
+        location.replace(base + location.search + hashPath);
       }
       window.__WEDDING_BASE__ = base;
     })();

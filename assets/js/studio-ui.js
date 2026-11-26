@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-59';
-import { weddingDday } from './content.js?v=wedding-features-59';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-59';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-59';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-60';
+import { weddingDday } from './content.js?v=wedding-features-60';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-60';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-60';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;

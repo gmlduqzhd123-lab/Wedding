@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-59';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-59';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-59';
-import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-59';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-60';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-60';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-60';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-60';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-59';
+} from './invitation-card.js?v=wedding-features-60';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();
@@ -458,7 +458,8 @@ export function renderInvitationView(ctx) {
           !guestMode ? button('💬 초대 문구', () => openInvitationMessageModal(ctx), 'button quiet') : null,
           button('💌 초대장 공유', ctx.shareInvitationLink, 'button quiet'),
           button('🔗 링크 복사', ctx.copyInvitationLink, 'button quiet'),
-          button('🖼️ 이미지 저장', () => downloadInvitationCardPng(info, content.albums, ctx.toast, { onPreview }), 'button quiet')))) :
+          button('🖼️ 이미지 저장', () => downloadInvitationCardPng(info, content.albums, ctx.toast, { onPreview }), 'button quiet'),
+          button('🖨️ 청첩장 인쇄', () => window.print(), 'button quiet')))) :
       ctx.empty('우리의 첫 초대장을 준비해요.', '두 분의 이름, 예식 날짜와 장소를 입력하면 청첩장에 담깁니다.', '예식 정보 입력', () => ctx.openEditor('invitation')),
     hasContent ? renderGuestQuickDock(ctx, info, Boolean(gallerySection)) : null];
 }

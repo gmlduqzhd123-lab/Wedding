@@ -3662,5 +3662,94 @@ body.is-dark-theme:not(.is-guest-mode) .account-number-code {
   color: #e8f0ea;
 }
 
+/* ===== Round 5: Remaining Dark Mode Contrast Fixes, Floating Tray Clearance & Filter Toolbars ===== */
+html.is-dark-theme:not(.is-guest-mode) .place-kicker,
+body.is-dark-theme:not(.is-guest-mode) .place-kicker {
+  background: #243429;
+  border-color: #3a5442;
+  color: #cbead2;
+}
+html.is-dark-theme:not(.is-guest-mode) .draft-diff-chip.is-modified,
+body.is-dark-theme:not(.is-guest-mode) .draft-diff-chip.is-modified {
+  background: rgba(212, 168, 79, 0.18);
+  border-color: rgba(226, 184, 96, 0.42);
+  color: #f4d898;
+}
+html.is-dark-theme:not(.is-guest-mode) .offline-banner,
+body.is-dark-theme:not(.is-guest-mode) .offline-banner {
+  background: #2b261b;
+  border-bottom-color: #4d422c;
+  color: #f1dba5;
+}
+html.is-dark-theme:not(.is-guest-mode) .quick-cycle-btn.is-muted,
+body.is-dark-theme:not(.is-guest-mode) .quick-cycle-btn.is-muted {
+  background: #212824;
+  border-color: #36413b;
+  color: #c2cec6;
+}
+html.is-dark-theme:not(.is-guest-mode) .dashboard-backup-strip,
+body.is-dark-theme:not(.is-guest-mode) .dashboard-backup-strip {
+  background: #272219;
+  border-color: #4a3f29;
+  color: #e5dcc9;
+}
+html.is-dark-theme:not(.is-guest-mode) .dashboard-backup-strip strong,
+body.is-dark-theme:not(.is-guest-mode) .dashboard-backup-strip strong {
+  color: #f3d796;
+}
+
+body.has-compare-tray .scroll-top-btn {
+  bottom: 92px;
+}
+
+.vendor-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.vendor-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vendor-filter-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.packing-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+html.is-dark-theme:not(.is-guest-mode) .vendor-filter-bar,
+body.is-dark-theme:not(.is-guest-mode) .vendor-filter-bar,
+html.is-dark-theme:not(.is-guest-mode) .packing-filter-row,
+body.is-dark-theme:not(.is-guest-mode) .packing-filter-row {
+  background: #1a221d;
+  border-color: #2c3830;
+}
+@media print {
+  .vendor-filter-bar,
+  .packing-filter-row {
+    display: none !important;
+  }
+}
+
+
 
 

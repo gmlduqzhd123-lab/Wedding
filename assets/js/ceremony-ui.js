@@ -1,8 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-59';
-import { formatDate } from './content.js?v=wedding-features-59';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-59';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-59';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-59';
+import { E, button } from './dom.js?v=wedding-features-60';
+import { formatDate } from './content.js?v=wedding-features-60';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-60';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal } from './guest-ledger-ui.js?v=wedding-features-60';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-60';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal };
 

@@ -1,13 +1,25 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-59';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-59';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-59';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-59';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-59';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-59';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-59';
+import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-60';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-60';
+import {
+  readBackupMeta,
+  writeBackupMeta,
+  computeBackupReminder,
+  formatBackupTime,
+  canShareBackupFiles,
+  confirmAction,
+  createToastController,
+  flashCopiedButton,
+  copyText,
+  initPwaInstall
+} from './ui-shell.js?v=wedding-features-60';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-60';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-60';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-60';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-60';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-60';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
-const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', BACKUP_META_KEY = 'wedding:v1:backupMeta', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
+const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
 const routes = ['home', 'invitation', 'story', 'albums', 'studios', 'honeymoon', 'ceremony', 'prenatal', 'tips'];
 const SUBTAB_MAP = {
   ceremony: ['rundown', 'guests', 'gifts', 'dayops'],
@@ -31,18 +43,18 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-59'),
-  storage: () => import('./storage.js?v=wedding-features-59'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-59'),
-  manager: () => import('./manager-ui.js?v=wedding-features-59'),
-  studios: () => import('./studio-ui.js?v=wedding-features-59'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-59'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-59'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-59'),
-  tips: () => import('./planning-ui.js?v=wedding-features-59'),
-  editor: () => import('./editor-ui.js?v=wedding-features-59'),
-  search: () => import('./search-ui.js?v=wedding-features-59'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-59')
+  preferences: () => import('./preferences.js?v=wedding-features-60'),
+  storage: () => import('./storage.js?v=wedding-features-60'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-60'),
+  manager: () => import('./manager-ui.js?v=wedding-features-60'),
+  studios: () => import('./studio-ui.js?v=wedding-features-60'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-60'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-60'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-60'),
+  tips: () => import('./planning-ui.js?v=wedding-features-60'),
+  editor: () => import('./editor-ui.js?v=wedding-features-60'),
+  search: () => import('./search-ui.js?v=wedding-features-60'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-60')
 };
 
 function loadModule(key) {
@@ -74,11 +86,18 @@ function applySubTabSelection(route, tab) {
   if (route === 'prenatal') loadedModules.prenatal?.setPrenatalSubTab?.(tab);
 }
 
-let baseContent, content, studios = [], prefs = {}, isDraft = false, toastTimer;
+let baseContent, content, studios = [], prefs = {}, isDraft = false;
 const DEFAULT_STUDIO_ID = 'studio-09';
 const activeLachmaStudio = () => studios.find(s => s.id === DEFAULT_STUDIO_ID) || studios.find(s => s.name === '라크마');
 let largeTextMode = (() => { try { return sessionStorage.getItem(LARGE_TEXT_KEY) === '1'; } catch { return false; } })();
-let darkTheme = (() => { try { return localStorage.getItem(THEME_KEY) === 'dark'; } catch { return false; } })();
+let darkTheme = (() => {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+  } catch {}
+  return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)')?.matches);
+})();
 let petalsEnabled = (() => {
   try {
     const saved = sessionStorage.getItem(PETALS_KEY);
@@ -93,11 +112,13 @@ let guestMode = urlGuestMode;
 let baseRevision = '', draftRevision = null, editorState = null, studiosStatus = 'loading', studiosError = '';
 let previousHash = location.hash, pendingWrites = 0;
 let conflictReview = null, photoNavigation = null, photoCleanup = null;
+let lastDialogTrigger = null, lastActivatedControl = null, pwaInstall = null;
 let preferenceQueue = Promise.resolve();
 const pendingWriteTasks = new Set();
 let lastWriteFailed = false;
 let waitingSw = null;
 let dockSpyObserver = null;
+const toast = createToastController({ dialog, getConflictReview: () => conflictReview });
 
 function trackWrite(task) {
   const completion = Promise.resolve(task).then(value => ({ ok: value !== false }), error => ({ ok: false, error }));
@@ -121,62 +142,7 @@ async function finishPendingWrites() {
 
 const editButton = (...args) => (guestMode ? null : button(...args));
 const readStorage = key => { try { return localStorage.getItem(key); } catch { return null; } };
-function readBackupMeta() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(BACKUP_META_KEY) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch { return {}; }
-}
-function writeBackupMeta(patch) {
-  try {
-    const next = { ...readBackupMeta(), ...patch };
-    localStorage.setItem(BACKUP_META_KEY, JSON.stringify(next));
-  } catch {}
-}
-function hasSubstantialPrivateData(p = prefs) {
-  if (!p || typeof p !== 'object') return false;
-  return Boolean(
-    (p.guestList?.length || 0) > 0 ||
-    (p.giftLedger?.length || 0) > 0 ||
-    (p.homeItems?.length || 0) > 0 ||
-    (p.weddingDayRoles?.length || 0) > 0 ||
-    (p.weddingDayEnvelopes?.length || 0) > 0 ||
-    Object.keys(p.budgetPlan || {}).length > 0 ||
-    Boolean(p.prenatalSchedule?.appliedDate || p.prenatalSchedule?.visitDate || p.prenatalSchedule?.examDate) ||
-    Boolean(p.marriageRegDate) ||
-    (p.checklist?.length || 0) >= 2 ||
-    (p.customChecklist?.length || 0) > 0 ||
-    Object.keys(p.notes || {}).length > 0 ||
-    Object.keys(p.tripNotes || {}).length > 0 ||
-    Boolean(p.prenatalNote?.trim()) ||
-    Boolean(p.benefitNote?.trim()) ||
-    Boolean(p.photoOrderNote?.trim()) ||
-    Array.isArray(p.vendorSchedules)
-  );
-}
-function backupReminderInfo(p = prefs, { ignoreSnooze = false } = {}) {
-  if (guestMode || !hasSubstantialPrivateData(p)) return null;
-  const meta = readBackupMeta();
-  const now = Date.now();
-  if (!ignoreSnooze && meta.snoozeUntil && now < meta.snoozeUntil) return null;
-  if (!meta.lastPrivateBackupAt) {
-    return { kind: 'never', daysAgo: null, message: '이 기기에 기록한 결혼 준비 데이터를 아직 백업하지 않았어요. 백업 파일을 보관하거나 상대방에게 보내 두세요.' };
-  }
-  const daysAgo = Math.floor((now - meta.lastPrivateBackupAt) / 86400000);
-  if (daysAgo >= 14) {
-    return { kind: 'stale', daysAgo, message: `마지막 개인 백업으로부터 ${daysAgo}일이 지났습니다. 안전한 보관을 위해 최신 백업을 저장해 두세요.` };
-  }
-  return null;
-}
-function formatBackupTime(ts) {
-  if (!ts) return '아직 백업 이력 없음';
-  try {
-    return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
-  } catch { return new Date(ts).toLocaleString(); }
-}
-function canShareBackupFiles() {
-  return typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && typeof File === 'function';
-}
+const backupReminderInfo = (p = prefs, opts = {}) => computeBackupReminder(p, { ...opts, guestMode });
 function syncLargeTextUi() {
   document.body.classList.toggle('is-large-text', largeTextMode);
   const btn = document.querySelector('.invitation-text-btn:not(.invitation-petals-btn)');
@@ -223,45 +189,7 @@ function syncThemeUi() {
   }
   const searchBtn = $('#global-search-btn');
   if (searchBtn) searchBtn.hidden = Boolean(guestMode);
-}
-function confirmAction({ title = '확인', message = '', confirmLabel = '확인', cancelLabel = '취소', danger = false } = {}) {
-  const modal = $('#confirm-dialog');
-  if (!modal || typeof modal.showModal !== 'function') {
-    return Promise.resolve(confirm(message));
-  }
-  return new Promise(resolve => {
-    const titleEl = $('#confirm-title');
-    const msgEl = $('#confirm-message');
-    const okBtn = $('#confirm-ok');
-    const cancelBtn = $('#confirm-cancel');
-    if (titleEl) titleEl.textContent = title;
-    if (msgEl) msgEl.textContent = message;
-    if (okBtn) {
-      okBtn.textContent = confirmLabel;
-      okBtn.className = 'button' + (danger ? ' is-danger' : '');
-    }
-    if (cancelBtn) cancelBtn.textContent = cancelLabel;
-    let settled = false;
-    const finish = result => {
-      if (settled) return;
-      settled = true;
-      okBtn?.removeEventListener('click', onOk);
-      cancelBtn?.removeEventListener('click', onCancel);
-      modal.removeEventListener('cancel', onCancel);
-      modal.removeEventListener('click', onBackdrop);
-      if (modal.open) modal.close();
-      resolve(result);
-    };
-    const onOk = () => finish(true);
-    const onCancel = event => { if (event?.type === 'cancel') event.preventDefault(); finish(false); };
-    const onBackdrop = event => { if (event.target === modal) finish(false); };
-    okBtn?.addEventListener('click', onOk);
-    cancelBtn?.addEventListener('click', onCancel);
-    modal.addEventListener('cancel', onCancel);
-    modal.addEventListener('click', onBackdrop);
-    if (!modal.open) modal.showModal();
-    (danger ? cancelBtn : okBtn)?.focus();
-  });
+  pwaInstall?.sync();
 }
 function toggleThemeMode() {
   if (guestMode) return;
@@ -270,6 +198,11 @@ function toggleThemeMode() {
   syncThemeUi();
   toast(darkTheme ? '🌙 야간 다크 보태니컬 테마로 전환했습니다. (하객 청첩장은 항상 밝은 화지 톤 유지)' : '☀️ 주간 라이트 보태니컬 테마로 전환했습니다.');
 }
+window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change', event => {
+  try { if (localStorage.getItem(THEME_KEY)) return; } catch {}
+  darkTheme = Boolean(event.matches);
+  syncThemeUi();
+});
 function syncPetalsUi() {
   const layer = main.querySelector('.invitation-petals-layer');
   if (layer) layer.hidden = !petalsEnabled;
@@ -487,51 +420,6 @@ function moduleCtx() {
   };
 }
 
-function toast(message, options = false) {
-  const opts = typeof options === 'object' && options !== null ? options : { error: Boolean(options) };
-  const error = Boolean(opts.error);
-  const onUndo = typeof opts.onUndo === 'function' ? opts.onUndo : null;
-  const undoLabel = opts.undoLabel || '되돌리기';
-  if (dialog.open) {
-    if (conflictReview) {
-      conflictReview.message = { text: message, error };
-      const status = $('#conflict-status');
-      if (status) { status.textContent = message; status.setAttribute('role', error ? 'alert' : 'status'); }
-      return;
-    }
-    const notice = $('#dialog-notice');
-    notice.textContent = message;
-    notice.hidden = false;
-    notice.className = 'dialog-notice' + (error ? ' error' : '');
-    notice.setAttribute('role', error ? 'alert' : 'status');
-    if (error) { notice.focus(); notice.scrollIntoView({ block: 'nearest' }); }
-    return;
-  }
-  clearTimeout(toastTimer);
-  const target = $('#toast');
-  if (onUndo) {
-    let clicked = false;
-    const undoBtn = E('button', {
-      type: 'button',
-      class: 'toast-undo-btn',
-      onclick: () => {
-        if (clicked) return;
-        clicked = true;
-        clearTimeout(toastTimer);
-        target.hidden = true;
-        onUndo();
-      }
-    }, undoLabel);
-    target.replaceChildren(E('span', { class: 'toast-msg' }, message), undoBtn);
-  } else {
-    target.textContent = message;
-  }
-  target.hidden = false;
-  target.className = 'toast' + (error ? ' error' : '') + (onUndo ? ' has-action' : '');
-  const duration = Number(opts.duration) || (error ? 8500 : (onUndo ? 6500 : 3800));
-  toastTimer = setTimeout(() => { target.hidden = true; }, duration);
-}
-
 function storageMessage(error) {
   if (error.name === 'QuotaExceededError') return '저장 공간이 부족합니다. 초안을 백업하고 사진 수나 용량을 줄여 주세요.';
   if (error.name === 'SecurityError') return '브라우저의 저장 허용 설정을 확인해 주세요.';
@@ -631,13 +519,18 @@ function canLeaveEditor() {
   return !dirtyEditor() || confirm('저장하지 않은 입력이 있습니다. 입력을 버리고 닫을까요?');
 }
 function unloadDialogMedia() { for (const frame of editor.querySelectorAll('iframe')) frame.src = 'about:blank'; }
-function closeDialog() {
+function closeDialog({ restoreFocus = true } = {}) {
   photoCleanup?.(); photoCleanup = null;
   conflictReview?.release?.(); editorState = null; conflictReview = null; photoNavigation = null;
   unloadDialogMedia();
   editor.replaceChildren();
   const actionSlot = $('#dialog-actions'); actionSlot.replaceChildren(); actionSlot.hidden = true;
   if (dialog.open) dialog.close();
+  const returnTarget = lastDialogTrigger;
+  lastDialogTrigger = null;
+  if (restoreFocus && returnTarget?.isConnected && typeof returnTarget.focus === 'function') {
+    returnTarget.focus({ preventScroll: true });
+  }
 }
 function requestClose() { if (canLeaveEditor()) closeDialog(); }
 function pageHeader(title, description, action, eyebrow) {
@@ -747,22 +640,6 @@ function renderHome() {
   ];
 }
 
-function flashCopiedButton(triggerEl = null) {
-  const btn = triggerEl || (document.activeElement?.matches?.('button') ? document.activeElement : null);
-  if (!btn || !btn.isConnected || btn.dataset.copyFlashActive === '1') return;
-  const orig = btn.textContent || '';
-  if (!orig.trim() || orig.trim().length > 26 || btn.children.length > 0) return;
-  btn.dataset.copyFlashActive = '1';
-  btn.classList.add('is-copied');
-  btn.textContent = '✓ 복사됨';
-  setTimeout(() => {
-    if (btn.isConnected && btn.dataset.copyFlashActive === '1') {
-      btn.textContent = orig;
-      btn.classList.remove('is-copied');
-      delete btn.dataset.copyFlashActive;
-    }
-  }, 1800);
-}
 async function copyInvitationLink() {
   const url = new URL('./?view=guest#/invitation', location.href).href;
   const msg = guestMode ? '모바일 청첩장 링크를 복사했습니다.' : '공개 청첩장 링크를 복사했습니다. 기기 초안은 공유되지 않습니다.';
@@ -787,16 +664,7 @@ async function shareInvitationLink() {
   await copyInvitationLink();
 }
 async function copyTextToClipboard(text, message = '클립보드에 복사했습니다.', fallbackTitle = '내용 복사', triggerEl = null) {
-  if (!text) return false;
-  try { await navigator.clipboard.writeText(text); flashCopiedButton(triggerEl); toast(message); return true; }
-  catch {
-    const field = text.includes('\n')
-      ? E('textarea', { rows: '10', readonly: true, 'aria-label': fallbackTitle }, text)
-      : E('input', { type: 'text', readonly: true, value: text, 'aria-label': fallbackTitle });
-    showDialog(fallbackTitle, E('div', {}, E('p', {}, '아래 내용을 선택해 복사해 주세요.'), field));
-    field.focus(); field.select();
-    return false;
-  }
+  return copyText({ text, message, fallbackTitle, triggerEl, showDialog, toast });
 }
 async function copyVenueAddress(text, label = '예식장 주소') {
   return copyTextToClipboard(text, `${label}를 복사했습니다.`, `${label} 복사`);
@@ -828,7 +696,7 @@ function syncGuestChrome() {
 }
 function toggleGuestPreview(enable) {
   if (urlGuestMode || !canLeaveEditor()) return;
-  closeDialog();
+  closeDialog({ restoreFocus: false });
   guestMode = Boolean(enable);
   if (guestMode) {
     content = structuredClone(baseContent);
@@ -1057,6 +925,7 @@ function render() {
   syncGuestChrome();
   const route = currentRoute();
   document.body.dataset.route = route;
+  if (route !== 'honeymoon') document.body.classList.remove('has-compare-tray');
   if (route !== 'invitation') { stopInvitationBgm(); stopInvitationCountdown(); activeCountdownSlot = null; revealObserver?.disconnect(); revealObserver = null; dockSpyObserver?.disconnect(); dockSpyObserver = null; }
   const renderers = { home: renderHome, invitation: renderInvitation, story: renderStories, albums: renderAlbums, studios: renderStudios, honeymoon: renderHoneymoon, ceremony: renderCeremony, prenatal: renderPrenatal, tips: renderTips };
   const keepView = route === 'honeymoon' && main.dataset.renderedRoute === route;
@@ -1106,6 +975,12 @@ function render() {
 
 function showDialog(title, body) {
   if (!canLeaveEditor()) return false;
+  if (!dialog.open) {
+    const activeEl = document.activeElement;
+    lastDialogTrigger = (activeEl instanceof HTMLElement && activeEl !== document.body && !dialog.contains(activeEl))
+      ? activeEl
+      : (lastActivatedControl?.isConnected && !dialog.contains(lastActivatedControl) ? lastActivatedControl : null);
+  }
   photoCleanup?.(); photoCleanup = null;
   conflictReview?.release?.(); editorState = null; conflictReview = null; photoNavigation = null;
   $('#dialog-notice').hidden = true;
@@ -1224,6 +1099,10 @@ $('#global-search-btn')?.addEventListener('click', openGlobalSearch);
 $('#theme-toggle-btn')?.addEventListener('click', toggleThemeMode);
 
 document.addEventListener('click', event => {
+  if (!dialog.open) {
+    const control = event.target?.closest?.('button, a, summary, [tabindex]');
+    if (control instanceof HTMLElement) lastActivatedControl = control;
+  }
   const anchor = event.target.closest('a[href]');
   if (anchor?.matches('.skip-link[href="#main"]')) {
     event.preventDefault();
@@ -1232,7 +1111,7 @@ document.addEventListener('click', event => {
   }
   const opensElsewhere = event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || anchor?.target.toLowerCase() === '_blank';
   if (anchor && dirtyEditor() && !opensElsewhere && !anchor.hasAttribute('download')) {
-    if (!canLeaveEditor()) { event.preventDefault(); event.stopImmediatePropagation(); } else closeDialog();
+    if (!canLeaveEditor()) { event.preventDefault(); event.stopImmediatePropagation(); } else closeDialog({ restoreFocus: false });
   }
 }, true);
 
@@ -1244,7 +1123,7 @@ window.addEventListener('hashchange', () => {
   const prevTopRoute = previousHash.replace(/^#\/?/, '').split('/')[0] || '';
   const nextTopRoute = currentRoute();
   previousHash = location.hash;
-  closeDialog();
+  closeDialog({ restoreFocus: false });
   render();
   if (prevTopRoute !== nextTopRoute) window.scrollTo({ top: 0, behavior: 'instant' });
 });
@@ -1320,7 +1199,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-59')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-60')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {
@@ -1354,6 +1233,7 @@ async function fetchInitialSiteText() {
 
 async function init() {
   try {
+    pwaInstall = initPwaInstall({ btn: $('#pwa-install-btn'), isGuestMode: () => guestMode, toast, showDialog });
     syncLargeTextUi();
     syncThemeUi();
     if (!urlGuestMode) void loadStudios();
