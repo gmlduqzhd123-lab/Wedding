@@ -19,10 +19,10 @@ import {
 const site = JSON.parse(readFileSync(new URL('../data/site.json', import.meta.url), 'utf8'));
 const trips = site.honeymoon;
 
-test('buildRegionMatrix summarizes all 5 honeymoon regions with FIT vs 5 agency packages', () => {
+test('buildRegionMatrix summarizes all 4 honeymoon regions with FIT vs 5 agency packages', () => {
   const matrix = buildRegionMatrix(trips);
-  assert.equal(matrix.length, 5);
-  assert.deepEqual(matrix.map(r => r.key), ['bali', 'nhatrang', 'danang', 'guam', 'hawaii']);
+  assert.equal(matrix.length, 4);
+  assert.deepEqual(matrix.map(r => r.key), ['cebu', 'bali', 'hawaii', 'guam']);
   for (const reg of matrix) {
     assert.equal(reg.count, 6, `${reg.key} should have 6 plans (1 FIT + 5 agency)`);
     assert.ok(reg.fitTrip, `${reg.key} should have a FIT trip`);
@@ -37,7 +37,7 @@ test('buildRegionMatrix summarizes all 5 honeymoon regions with FIT vs 5 agency 
 
 test('trip feature classifiers identify region, poolvilla, noshopping, and semi-package', () => {
   const regions = new Set(trips.map(t => tripRegionInfo(t).key));
-  assert.equal(regions.size, 5);
+  assert.equal(regions.size, 4);
   assert.ok(trips.some(isPoolvillaTrip));
   assert.ok(trips.some(isNoShoppingTrip));
   assert.ok(trips.some(isSemiPackageTrip));
@@ -54,6 +54,7 @@ test('recommendHoneymoonTrips returns scored top 3 honoring region, style, budge
   const valueFit = recommendHoneymoonTrips(trips, { maxBudget: 6000000, style: 'fit', priority: 'value', region: 'all' });
   assert.equal(valueFit.length, 3);
   assert.ok(valueFit[0].trip.budget <= 6000000);
+  assert.equal(valueFit[0].trip.id, 'cebu');
   assert.ok(valueFit[0].reasons.some(r => r.includes('자유여행')));
 });
 
@@ -98,8 +99,10 @@ test('buildTripComparisonText and buildSelectedTripSummaryText format 3-way comp
   assert.equal(buildSelectedTripSummaryText(null), '');
 });
 
-test('regional packing presets cover all 5 regions and agency questions list 7 items', () => {
-  for (const reg of REGION_DEFS.slice(0, 5)) {
+test('regional packing presets cover all 4 core regions and agency questions list 7 items', () => {
+  const coreRegions = REGION_DEFS.filter(r => r.key !== 'other');
+  assert.equal(coreRegions.length, 4);
+  for (const reg of coreRegions) {
     const preset = REGION_PACKING_SUGGESTIONS[reg.key];
     assert.ok(preset, `Missing packing preset for ${reg.key}`);
     assert.ok(preset.items.length >= 4);

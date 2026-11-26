@@ -4,23 +4,19 @@ import {readFile} from 'node:fs/promises';
 import {validateContent,parseContent} from '../assets/js/content.js';
 import {quoteReview,quoteBasis,dateSpan} from '../assets/js/travel.js';
 const source=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
-// Research acceptance values: 2 adults roundtrip, room plus displayed charges.
+// Research acceptance values: 2 adults roundtrip, room plus displayed charges (2026-11-09 checked FIT snapshots).
 const checked={
  bali:[2603400,1584721,'07:55','06-06','06-12'],
- nhatrang:[1610600,1435786,'07:25','06-06','06-12'],
- danang:[1159000,830097,'22:30','06-06','06-13'],
- guam:[1450000,1658027+182383,'21:00','06-06','06-13'],
- hawaii:[2671800,2206721+983196,'17:45','06-06','06-12']
+ hawaii:[2671800,2206721+983196,'17:45','06-06','06-12'],
+ guam:[1450000,1658027+182383,'21:00','06-06','06-13']
 };
-test('published FIT research matches date-specific quotes, local hotel nights and June 13 Korean arrivals',()=>{
+test('published FIT research matches verified quotes for Bali/Hawaii/Guam and honest date-specific search links for Cebu',()=>{
  const data=validateContent(source);
  const fitTrips=data.honeymoon.filter(t=>!t.id.startsWith('pkg-'));
- assert.deepEqual(fitTrips.map(t=>t.id),Object.keys(checked));
+ assert.deepEqual(fitTrips.map(t=>t.id),['cebu','bali','hawaii','guam']);
  for(const trip of fitTrips){
-  const [airfare,lodging,arrival,cin,cout]=checked[trip.id],p=trip.plan,q=p.quote;
-  assert.equal(q.costs.airfare,airfare,trip.id);assert.equal(q.costs.lodging,lodging,trip.id);
-  assert.equal(q.arrivalAt,'2027-06-13T'+arrival);assert(q.departureAt.startsWith('2027-06-06T'));
-  assert.equal(q.checkedOn,'2026-11-09');assert.deepEqual(q.basis,quoteBasis(trip));
+  const p=trip.plan,q=p.quote;
+  const cin='06-06',cout=trip.id==='guam'?'06-13':'06-12';
   assert.equal(p.stays.length,1);assert.equal(p.stays[0].checkIn,'2027-'+cin);assert.equal(p.stays[0].checkOut,'2027-'+cout);
   assert.equal(p.stays[0].nights,dateSpan('2027-'+cin,'2027-'+cout));
   const flight=new URL(p.references.find(r=>r.title.startsWith('날짜 지정 항공사')).url);
@@ -28,7 +24,17 @@ test('published FIT research matches date-specific quotes, local hotel nights an
   const hotel=new URL(p.references.find(r=>r.title.startsWith('날짜 지정 객실')).url);
   assert.equal(hotel.searchParams.get('checkin'),'2027-'+cin);assert.equal(hotel.searchParams.get('checkout'),'2027-'+cout);
   assert.equal(hotel.searchParams.get('group_adults'),'2');assert.equal(hotel.searchParams.get('no_rooms'),'1');
-  assert.equal(p.costs.airfare,airfare);assert.equal(p.costs.lodging,lodging);
+  if(checked[trip.id]){
+   const [airfare,lodging,arrival]=checked[trip.id];
+   assert.equal(q.costs.airfare,airfare,trip.id);assert.equal(q.costs.lodging,lodging,trip.id);
+   assert.equal(q.arrivalAt,'2027-06-13T'+arrival);assert(q.departureAt.startsWith('2027-06-06T'));
+   assert.equal(q.checkedOn,'2026-11-09');assert.deepEqual(q.basis,quoteBasis(trip));
+   assert.equal(p.costs.airfare,airfare);assert.equal(p.costs.lodging,lodging);
+  }else{
+   // Cebu FIT uses honest planning budget allocations until live 2027-06-06 checkout prices are recorded.
+   assert.equal(q.costs.airfare,null);assert.equal(q.costs.lodging,null);assert.equal(q.costs.other,null);
+   assert.equal(q.checkedOn,'');assert.equal(q.includesRequiredCosts,false);
+  }
  }
  assert.deepEqual(parseContent(JSON.stringify(data)),data);
 });
@@ -36,16 +42,24 @@ test('unknown costs, taxes and agency package planning allocations remain incomp
  const data=validateContent(source);
  const fitTrips=data.honeymoon.filter(t=>!t.id.startsWith('pkg-'));
  const pkgTrips=data.honeymoon.filter(t=>t.id.startsWith('pkg-'));
- assert.equal(pkgTrips.length,25);
+ assert.equal(pkgTrips.length,20);
  for(const trip of fitTrips){
-  const q=trip.plan.quote,result=quoteReview(trip,'2026-11-09');
-  assert.equal(q.costs.other,null);assert.equal(q.includesRequiredCosts,false);
-  assert.equal(result.complete,false);assert.equal(result.total,null);assert.equal(result.flightDates,true);assert.equal(result.stale,false);
-  assert.equal(result.known,q.costs.airfare+q.costs.lodging);assert(result.missing.includes('기타 여행비 견적'));
-  assert.match(trip.plan.budgetNotes,/기타 여행비.*안의 일부/);assert.match(trip.plan.transport,/실시간 환율.*아닙니다/);
+  const q=trip.plan.quote;
+  if(checked[trip.id]){
+   const result=quoteReview(trip,'2026-11-09');
+   assert.equal(q.costs.other,null);assert.equal(q.includesRequiredCosts,false);
+   assert.equal(result.complete,false);assert.equal(result.total,null);assert.equal(result.flightDates,true);assert.equal(result.stale,false);
+   assert.equal(result.known,q.costs.airfare+q.costs.lodging);assert(result.missing.includes('기타 여행비 견적'));
+   assert.match(trip.plan.budgetNotes,/기타 여행비.*안의 일부/);assert.match(trip.plan.transport,/실시간 환율.*아닙니다/);
+  }else{
+   const result=quoteReview(trip,'2026-11-26');
+   assert.equal(q.includesRequiredCosts,false);
+   assert.equal(result.complete,false);assert.equal(result.total,null);assert.equal(result.known,null);
+   assert.match(trip.plan.budgetNotes,/확인되지 않았으므로.*미확인/);assert.match(trip.plan.transport,/실시간 환율.*아닙니다/);
+  }
  }
  for(const trip of pkgTrips){
-  const q=trip.plan.quote,result=quoteReview(trip,'2026-11-16');
+  const q=trip.plan.quote,result=quoteReview(trip,'2026-11-26');
   assert.equal(q.costs.airfare,null);assert.equal(q.costs.lodging,null);assert.equal(q.costs.other,null);
   assert.equal(q.includesRequiredCosts,false);
   assert.equal(result.complete,false);assert.equal(result.total,null);assert.equal(result.known,null);

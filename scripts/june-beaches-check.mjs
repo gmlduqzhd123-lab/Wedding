@@ -38,7 +38,7 @@ try{
   assert.equal(await p.evaluate(()=>document.activeElement.textContent),expected.honeymoon.at(-1).title);assert.equal(new URL(p.url()).hash,'#/honeymoon');
   console.log(`PASS actual ${expected.honeymoon.length} Incheon direct-flight June candidates, confirmed conditions, budgets, climate/provenance links, overview navigation and 320–1440px layouts`);
 
-  for(const id of ['bali','nhatrang']){await card(p,id).getByRole('button',{name:'비교 선택',exact:true}).click();await p.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences'))?.tripCompare?.includes(id),id);}
+  for(const id of ['cebu','bali']){await card(p,id).getByRole('button',{name:'비교 선택',exact:true}).click();await p.waitForFunction(id=>JSON.parse(localStorage.getItem('wedding:v1:preferences'))?.tripCompare?.includes(id),id);}
   const comparison=await p.locator('.travel-comparison').innerText();for(const trip of expected.honeymoon.slice(0,2))assert(comparison.includes(trip.budget.toLocaleString('ko-KR')+'원'));assert(comparison.includes('6월 기준'));assert(!comparison.includes('5월 기준'));
   await card(p).getByRole('button',{name:'최종 선택',exact:true}).click();await p.locator('.selected-trip').waitFor();
   await card(p).getByRole('button',{name:'수정',exact:true}).click();await p.getByLabel('일정·상담 메모',{exact:true}).fill('이번 기기에서만 저장한 검증 메모');await save(p);

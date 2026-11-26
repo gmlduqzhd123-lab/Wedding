@@ -258,7 +258,7 @@ try {
   assert.equal(await cdp.eval(`document.querySelectorAll('.honeymoon-tools-strip > details').length`), 3, 'Honeymoon tools strip must group 3 top collapsible panels');
   // Smart quick filters hide redundant 100%-matching chips (direct, longstay) and expose budget/semi brackets
   assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="direct"]'))`), false, 'Redundant 100%-matching direct chip should be hidden');
-  assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="mid6to8m"]')) && Boolean(document.querySelector('[data-trip-filter="over8m"]')) && Boolean(document.querySelector('[data-trip-filter="semi"]'))`), true, 'Smart budget and semi-package chips must render');
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-region="cebu"]')) && Boolean(document.querySelector('[data-trip-filter="under6m"]')) && Boolean(document.querySelector('[data-trip-filter="mid6to8m"]')) && Boolean(document.querySelector('[data-trip-filter="over8m"]')) && Boolean(document.querySelector('[data-trip-filter="semi"]'))`), true, 'Cebu region chip and smart budget/semi-package chips must render');
   // Compact card quick YouTube button
   assert.equal(await cdp.eval(`document.querySelectorAll('.compact-video-row button').length >= 1`), true, 'Compact trip card must show quick video access button');
 
@@ -275,9 +275,9 @@ try {
   await cdp.eval(`[...document.querySelectorAll('.compare-floating-tray button')].find(b => b.textContent === '비우기').click()`);
   await cdp.waitFor(`() => !document.querySelector('.compare-floating-tray') && !document.body.classList.contains('has-compare-tray')`);
 
-  // Region matrix (5 regions) + 30s recommender (Top 3)
+  // Region matrix (4 regions: Cebu, Bali, Hawaii, Guam) + 30s recommender (Top 3)
   await cdp.eval(`document.querySelector('.honeymoon-matrix-section summary').click()`);
-  await cdp.waitFor(`() => document.querySelectorAll('.region-matrix-card').length === 5 && document.querySelectorAll('.region-bar-row').length === 6`);
+  await cdp.waitFor(`() => document.querySelectorAll('.region-matrix-card').length === 4 && document.querySelectorAll('.region-bar-row').length === 6`);
   await cdp.eval(`document.querySelector('.honeymoon-recommender summary').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.recommender-card').length === 3`);
 
@@ -292,7 +292,7 @@ try {
   // Local spending & manual FX calculator
   await cdp.eval(`document.querySelector('.honeymoon-local-calc summary').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.local-calc-stat').length === 3`);
-  await cdp.eval(`(() => { const fx = document.querySelector('#local-calc-fx'); fx.value = '8.5'; fx.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await cdp.eval(`(() => { const fx = document.querySelector('#local-calc-fx'); fx.value = '24.5'; fx.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   await cdp.waitFor(`() => document.querySelector('.local-calc-summary')?.innerText.includes('입력 환율 환산')`);
 
   // Regional packing preset banner + packing pending-only filter & copy button

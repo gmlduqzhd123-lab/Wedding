@@ -161,22 +161,20 @@ export function tripFlightBadge(item){
 }
 
 export const REGION_DEFS = [
+  { key: 'cebu', label: '세부', flag: '🇵🇭', currencyCode: 'PHP', currencyUnit: 1, rateHint: '예: 1 PHP ≈ 24.5원 (직접 입력)' },
   { key: 'bali', label: '발리', flag: '🇮🇩', currencyCode: 'IDR', currencyUnit: 100, rateHint: '예: 100 IDR ≈ 8.5원 (직접 입력)' },
-  { key: 'nhatrang', label: '나트랑', flag: '🇻🇳', currencyCode: 'VND', currencyUnit: 100, rateHint: '예: 100 VND ≈ 5.4원 (직접 입력)' },
-  { key: 'danang', label: '다낭·호이안', flag: '🇻🇳', currencyCode: 'VND', currencyUnit: 100, rateHint: '예: 100 VND ≈ 5.4원 (직접 입력)' },
-  { key: 'guam', label: '괌', flag: '🇬🇺', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
   { key: 'hawaii', label: '하와이', flag: '🇺🇸', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
+  { key: 'guam', label: '괌', flag: '🇬🇺', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
   { key: 'other', label: '기타 지역', flag: '✈️', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' }
 ];
 
 export function tripRegionInfo(item = {}) {
   const text = `${item.id || ''} ${item.title || ''} ${item.country || ''}`;
-  if (/bali|발리|짐바란|누사두아|우붓|스미냑/i.test(text)) return REGION_DEFS[0];
-  if (/nhatrang|나트랑|깜라인|깜란/i.test(text)) return REGION_DEFS[1];
-  if (/danang|다낭|호이안|미케/i.test(text)) return REGION_DEFS[2];
+  if (/cebu|세부|막탄|보홀|필리핀/i.test(text)) return REGION_DEFS[0];
+  if (/bali|발리|짐바란|누사두아|우붓|스미냑/i.test(text)) return REGION_DEFS[1];
+  if (/hawaii|하와이|와이키키|오아후/i.test(text)) return REGION_DEFS[2];
   if (/guam|괌|투몬/i.test(text)) return REGION_DEFS[3];
-  if (/hawaii|하와이|와이키키|오아후/i.test(text)) return REGION_DEFS[4];
-  return REGION_DEFS[5];
+  return REGION_DEFS[4];
 }
 
 export function isPoolvillaTrip(item = {}) {
@@ -300,6 +298,15 @@ export function recommendHoneymoonTrips(trips = [], { maxBudget = 10000000, styl
 }
 
 export const REGION_PACKING_SUGGESTIONS = {
+  cebu: {
+    label: '🇵🇭 세부 맞춤 필수 준비물',
+    items: [
+      { category: '📄 필수 서류·결제', title: '필리핀 공식 전자입국신고서(eTravel, etravel.gov.ph) QR 및 여권(유효기간 6개월+)' },
+      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치·카드 등록 및 페소(PHP) 소액 현금·트래블카드' },
+      { category: '🏖️ 의류·해변 용품', title: '호핑·스노클링용 방수팩·아쿠아슈즈·래시가드 및 여분 수영복' },
+      { category: '💊 상비약·세면·기타', title: '6월 스콜 대비 접이식 우양산, 여행용 샤워기 필터 및 모기기피제' }
+    ]
+  },
   bali: {
     label: '🇮🇩 발리 맞춤 필수 준비물',
     items: [
@@ -325,24 +332,6 @@ export const REGION_PACKING_SUGGESTIONS = {
       { category: '📄 필수 서류·결제', title: '국제운전면허증 + 한국 면허증 원본 (렌터카 픽업 필수)' },
       { category: '🔌 전자기기·통신', title: '110V 돼지코 어댑터 (미국 A타입) 및 차량용 스마트폰 거치대' },
       { category: '🏖️ 의류·해변 용품', title: '산호 친화 선크림 · 팁용 소액 달러 ($1·$5) 및 방수 파우치' }
-    ]
-  },
-  nhatrang: {
-    label: '🇻🇳 나트랑 맞춤 필수 준비물',
-    items: [
-      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치·카드 등록 및 현지 eSIM' },
-      { category: '📄 필수 서류·결제', title: '트래블카드(VND 환전) + 팁·야시장용 소액 동(VND) 현금' },
-      { category: '💊 상비약·세면·기타', title: '샤워기 필터 여분 및 모기기피제·수딩젤 (강한 자외선 대비)' },
-      { category: '🏖️ 의류·해변 용품', title: '호핑투어·머드스파용 여분 수영복 및 스마트폰 방수팩' }
-    ]
-  },
-  danang: {
-    label: '🇻🇳 다낭·호이안 맞춤 필수 준비물',
-    items: [
-      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치 및 바나힐·호이안 이동용 보조배터리' },
-      { category: '🏖️ 의류·해변 용품', title: '바나힐 고지대(서늘함) 대비 얇은 긴팔 겉옷 및 호이안 스냅 의상' },
-      { category: '📄 필수 서류·결제', title: '트래블카드(VND) 및 호이안 야시장·팁용 소액 동(VND) 현금' },
-      { category: '💊 상비약·세면·기타', title: '여행용 샤워기 필터 및 우양산 (갑작스러운 소나기·햇볕 대비)' }
     ]
   }
 };

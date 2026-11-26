@@ -1,5 +1,5 @@
-import { E, S, image } from './dom.js?v=wedding-features-66';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-66';
+import { E, S, image } from './dom.js?v=wedding-features-67';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-67';
 
 export function isKakaoInApp(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
   return /KAKAOTALK/i.test(ua || '');
@@ -426,7 +426,7 @@ async function loadImageSafe(src) {
 async function loadQrSvgImage(url) {
   if (!url) return null;
   try {
-    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-66');
+    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-67');
     const svgMarkup = renderQrSvgString(url, { margin: 2 });
     const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);

@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-66';
-import { safeUrl, validDate } from './content.js?v=wedding-features-66';
-import { pruneContentPreferences } from './preferences.js?v=wedding-features-66';
-import { scheduleCalendar } from './calendar.js?v=wedding-features-66';
+import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-67';
+import { safeUrl, validDate } from './content.js?v=wedding-features-67';
+import { pruneContentPreferences } from './preferences.js?v=wedding-features-67';
+import { scheduleCalendar } from './calendar.js?v=wedding-features-67';
 import {
   COST_LABELS,
   budgetSummary,
@@ -21,7 +21,7 @@ import {
   isSemiPackageTrip,
   buildTripComparisonText,
   buildSelectedTripSummaryText
-} from './travel.js?v=wedding-features-66';
+} from './travel.js?v=wedding-features-67';
 import {
   isPackingExpanded,
   setPackingExpanded,
@@ -30,7 +30,7 @@ import {
   renderTripRecommenderSection,
   renderLocalSpendingSimulator,
   renderHoneymoonPackingList
-} from './travel-tools-ui.js?v=wedding-features-66';
+} from './travel-tools-ui.js?v=wedding-features-67';
 
 export { tripFlightBadge };
 
@@ -792,11 +792,10 @@ function tripSortControl(ctx) {
     }, label)));
   const regionDefs = [
     ['all', '🌏 전체 지역', regionPool.length],
+    ['cebu', '🇵🇭 세부', regionPool.filter(item => tripRegionKey(item) === 'cebu').length],
     ['bali', '🇮🇩 발리', regionPool.filter(item => tripRegionKey(item) === 'bali').length],
-    ['nhatrang', '🇻🇳 나트랑', regionPool.filter(item => tripRegionKey(item) === 'nhatrang').length],
-    ['danang', '🇻🇳 다낭·호이안', regionPool.filter(item => tripRegionKey(item) === 'danang').length],
-    ['guam', '🇬🇺 괌', regionPool.filter(item => tripRegionKey(item) === 'guam').length],
     ['hawaii', '🇺🇸 하와이', regionPool.filter(item => tripRegionKey(item) === 'hawaii').length],
+    ['guam', '🇬🇺 괌', regionPool.filter(item => tripRegionKey(item) === 'guam').length],
     ['other', '✈️ 기타 지역', regionPool.filter(item => tripRegionKey(item) === 'other').length]
   ].filter(([key]) => key === 'all' || tripRegionFilter === key || content.honeymoon.some(item => tripRegionKey(item) === key));
   const regionBar = regionDefs.length > 2 ? E('div', { class: 'trip-quick-filters trip-region-filters', role: 'group', 'aria-label': '신혼여행 지역별 모아보기' },
@@ -863,13 +862,13 @@ function travelOverview(ctx) {
     ontoggle: event => { if (event.currentTarget.isConnected) overviewExpanded = event.currentTarget.open; }
   },
     E('summary', { class: 'travel-overview-summary' },
-      E('span', { class: 'travel-overview-summary-title' }, `📊 30곳 요약 보드 & 항공·예산 산정 기준`),
+      E('span', { class: 'travel-overview-summary-title' }, `📊 ${ordered.length}곳 요약 보드 & 항공·예산 산정 기준`),
       E('span', { class: 'travel-overview-summary-chips' },
         E('span', { class: 'spec-chip' }, pkgCount ? `자유 ${fitCount} · 패키지 ${pkgCount}` : `${ordered.length}곳`),
         E('span', { class: 'spec-chip direct' }, directCount === ordered.length ? `✈️ 전 노선 직항` : `✈️ 직항 ${directCount}곳`),
         budgets.length ? E('span', { class: 'spec-chip highlight' }, `💰 ${minBudget}만~${maxBudget}만 원`) : null)),
     E('div', { class: 'travel-overview-body' },
-      E('p', { class: 'form-note honeymoon-note' }, '성인 2명·인천 출발 직항·일반석·객실 1실 기준. 자유여행 가안(5곳)은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 배분이며, 종합여행사 패키지·세미패키지 후보(25곳)는 공개 상품 구성을 바탕으로 잡은 2027년 6월 계획예산 배분으로 실제 예약이나 확정 견적은 아닙니다. 기후 필터는 확인된 기준 월의 계절 경향이며 해당 기간의 날씨를 보장하지 않습니다.'),
+      E('p', { class: 'form-note honeymoon-note' }, `성인 2명·인천 출발 직항·일반석·객실 1실 기준(세부·발리·하와이·괌). 자유여행 가안(${fitCount}곳) 중 발리·하와이·괌은 날짜 지정 항공·객실 조회 표시가에 기타 지출 목표와 예비비를 더한 배분이며, 세부 자유여행과 종합여행사 패키지·세미패키지 후보(${pkgCount}곳)는 공개 노선·상품 구성을 바탕으로 잡은 2027년 6월 계획예산 배분으로 실제 예약이나 확정 견적은 아닙니다. 기후 필터는 확인된 기준 월의 계절 경향이며 해당 기간의 날씨를 보장하지 않습니다.`),
       E('ol', { class: 'overview-board' }, ordered.map(item => {
         const flight = tripFlightBadge(item);
         const style = tripStyleInfo(item);
@@ -1012,7 +1011,7 @@ export function renderHoneymoon(ctx) {
       : null);
 
   return [
-    ctx.pageHeader('둘만의 첫 여행을 그리며', '가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',
+    ctx.pageHeader('둘만의 첫 여행을 그리며', '세부·발리·하와이·괌 4대 핵심 휴양지의 자유여행과 5대 여행사 패키지를 한눈에 비교해요.',
       E('div', { class: 'page-actions' },
         ctx.editButton('여행지 추가', () => ctx.openEditor('honeymoon')),
         button('💬 상담 질문집', () => openAgencyQuestionsModal(ctx, selectedTrip), 'button quiet'),

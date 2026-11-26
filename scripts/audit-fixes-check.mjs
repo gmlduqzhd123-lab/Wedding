@@ -27,9 +27,9 @@ try{
  }
  await g.screenshot({path:'work/audit-fixes-qa/invitation-mobile.png',fullPage:true});
  await g.goto(base+'?view=guest#/honeymoon');await ready(g);
- assert.match(await g.locator('[data-trip-id="nhatrang"] .trip-spec-chips').innerText(),/6월 덥고 맑은 시기/);
+ assert.match(await g.locator('[data-trip-id="cebu"] .trip-spec-chips').innerText(),/6월 건기·우기 전환기/);
+ assert.match(await g.locator('[data-trip-id="bali"] .trip-spec-chips').innerText(),/6월 건기/);
  assert.match(await g.locator('[data-trip-id="guam"] .trip-spec-chips').innerText(),/6월 건기·우기 전환기/);
- assert.match(await g.locator('[data-trip-id="danang"] .trip-spec-chips').innerText(),/6월 더위 유의/);
  assert.match(await g.locator('[data-trip-id="hawaii"] .trip-spec-chips').innerText(),/6월 여름철/);
  const dryIds=expected.honeymoon.filter(t=>['dry','sunny'].includes(t.plan?.climateSummary?.category)).map(t=>t.id);
  await g.getByRole('button',{name:`☀️ 건기·맑은 시기 (${dryIds.length})`,exact:true}).click();
@@ -69,13 +69,13 @@ try{
  // Preference backup/restore and public content export/import must retain their boundaries.
  await p.getByRole('button',{name:'내용 관리',exact:true}).click();const backupDownload=p.waitForEvent('download');await p.getByRole('button',{name:'개인 백업 저장',exact:true}).click();const backup=await readFile(await(await backupDownload).path(),'utf8');assert.equal(JSON.parse(backup).preferences.venueSim.deposit,1000000);
  await p.getByLabel('개인 메모·선택 백업 선택',{exact:true}).setInputFiles({name:'private.json',mimeType:'application/json',buffer:Buffer.from(backup)});await closed(p);assert.equal((await values(p)).venueSim.deposit,1000000);
- await p.goto(base+'#/honeymoon');await ready(p);await p.locator('[data-trip-id="nhatrang"]').getByRole('button',{name:'수정',exact:true}).click();await p.locator('.plan-extra-editor > summary').click();
+ await p.goto(base+'#/honeymoon');await ready(p);await p.locator('[data-trip-id="cebu"]').getByRole('button',{name:'수정',exact:true}).click();await p.locator('.plan-extra-editor > summary').click();
  await p.getByLabel('기후 기준 월',{exact:true}).selectOption('7');assert.equal(await p.getByLabel('기후 요약 분류 (기준 월 자료 확인 후 선택)',{exact:true}).inputValue(),'');await p.getByRole('button',{name:'초안에 저장',exact:true}).click();await closed(p);
- assert.match(await p.locator('[data-trip-id="nhatrang"] .trip-spec-chips').innerText(),/재확인/);
+ assert.match(await p.locator('[data-trip-id="cebu"] .trip-spec-chips').innerText(),/재확인/);
  await p.getByRole('button',{name:'내용 관리',exact:true}).click();const contentDownload=p.waitForEvent('download');await p.getByRole('button',{name:'공개용 파일 저장',exact:true}).click();const contentRaw=await readFile(await(await contentDownload).path(),'utf8'),contentData=JSON.parse(contentRaw);
- assert.equal(contentData.honeymoon.find(t=>t.id==='bali').plan.climateSummary.category,'dry');assert.equal(contentData.honeymoon.find(t=>t.id==='nhatrang').plan.climateSummary,null);assert(!contentRaw.includes('venueSim'));
- await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'site.json',mimeType:'application/json',buffer:Buffer.from(contentRaw)});await closed(p);await p.reload();await ready(p);assert.match(await p.locator('[data-trip-id="nhatrang"] .trip-spec-chips').innerText(),/재확인/);
- await p.getByRole('button',{name:'내용 관리',exact:true}).click();await p.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();await closed(p);assert.equal(await p.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);assert.match(await p.locator('[data-trip-id="nhatrang"] .trip-spec-chips').innerText(),/덥고 맑은/);
+ assert.equal(contentData.honeymoon.find(t=>t.id==='bali').plan.climateSummary.category,'dry');assert.equal(contentData.honeymoon.find(t=>t.id==='cebu').plan.climateSummary,null);assert(!contentRaw.includes('venueSim'));
+ await p.getByLabel('콘텐츠 JSON 파일 선택',{exact:true}).setInputFiles({name:'site.json',mimeType:'application/json',buffer:Buffer.from(contentRaw)});await closed(p);await p.reload();await ready(p);assert.match(await p.locator('[data-trip-id="cebu"] .trip-spec-chips').innerText(),/재확인/);
+ await p.getByRole('button',{name:'내용 관리',exact:true}).click();await p.getByRole('button',{name:'공개본으로 돌아가기',exact:true}).click();await closed(p);assert.equal(await p.evaluate(()=>localStorage.getItem('wedding:v1:draft')),null);assert.match(await p.locator('[data-trip-id="cebu"] .trip-spec-chips').innerText(),/전환기/);
  for(const route of ['home','invitation','story','albums','studios','honeymoon','ceremony','tips']){await p.locator(`[data-route="${route}"]`).click();await ready(p);assert.equal(new URL(p.url()).hash,'#/'+route);}
  await p.goto(base+'?view=guest#/tips');await ready(p);assert.equal(await p.locator('.venue-sim-box').count(),0);assert.equal(await p.locator('[data-route="ceremony"]').isVisible(),false);
  assert.deepEqual(errors,[]);console.log('PASS five fixes: Google/ICS, reviewed climate filters and month invalidation, 19 unknown studio fees, partial/full venue costs and both import guards, dirty-close/save lock, backup/restore/JSON/reset/guest isolation, all menus and responsive layouts; zero browser errors');
