@@ -1,8 +1,8 @@
-import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-65';
-import { formatDate } from './content.js?v=wedding-features-65';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-65';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-65';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-65';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-66';
+import { formatDate } from './content.js?v=wedding-features-66';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-66';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-66';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-66';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
 
@@ -265,12 +265,12 @@ export function openCeremonyEditor(ctx, focusField = '') {
     E('label', { class: 'field', for: noteInput.id }, '식순·BGM·입장곡 특이사항 메모 (선택)', noteInput),
     E('div', { class: 'ceremony-editor-doc-block' },
       E('div', { class: 'ceremony-editor-doc-head' },
-        E('strong', { class: 'small' }, '💍 혼인서약서 문안 (비워 두면 아모르 기본 4가지 서약 예문 + 이름·날짜 자동 적용)'),
+        E('strong', { class: 'small' }, '💍 혼인서약서 문안 (수정 예정 · 비워 두면 아모르 기본 4가지 서약 예문 자동 적용)'),
         E('div', { class: 'lachma-official-links' }, fillVowsBtn, clearVowsBtn)),
       vowsInput),
     E('div', { class: 'ceremony-editor-doc-block' },
       E('div', { class: 'ceremony-editor-doc-head' },
-        E('strong', { class: 'small' }, '📜 성혼선언문 문안 (비워 두면 아모르 기본 예문 + 이름·교장선생님 자동 적용)'),
+        E('strong', { class: 'small' }, '📜 성혼선언문 문안 (수정 예정 · 비워 두면 교장선생님 기본 예문 자동 적용)'),
         E('div', { class: 'lachma-official-links' }, fillDeclBtn, clearDeclBtn)),
       declInput),
     E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), E('button', { class: 'button', type: 'submit' }, '식순 플래너 저장'))
@@ -362,7 +362,7 @@ function copyAmorMcScript(ctx, inv, cPlan) {
       `[${no}. ${title}]`,
       `  * 현장 체크: ${cue}`,
       ...scripts.map(s => `  "${s}"`),
-      ...(no === '08' ? ['', `  --- [${isOfficiant ? '성혼선언문 낭독문 (주례·사회 참고)' : `성혼선언문 낭독문 (${plan.speech || '사회자'} 진행)`}] ---`, ...declText.split('\n').map(l => `  ${l}`), '  ---------------------------'] : []),
+      ...(no === '08' ? ['', `  --- [${isOfficiant ? '성혼선언문 낭독문 (주례·사회 참고)' : `성혼선언문 낭독문 (${plan.speech || '사회자'} 진행${plan.declaration ? '' : ' · 수정 예정'})`}] ---`, ...declText.split('\n').map(l => `  ${l}`), '  ---------------------------'] : []),
       ''
     ]),
     '※ 본 대본은 두 사람의 예식 진행을 위해 정리한 개인 준비본입니다.'
@@ -394,8 +394,10 @@ export function renderCeremony(ctx) {
     '04. 신랑 입장 (버진로드 위 대기 후 입장)',
     '05. 신부 입장 (① 신부문 전 등장 콜 → ② 아버님 손 잡고 입장)',
     '06. 맞절 (첫 만남의 예 → 하객 향해 정렬)',
-    '07. 혼인서약서 낭독 (신랑·신부 함께 4가지 서약 낭독)',
-    cPlan.speech ? `08. 성혼선언문 낭독 및 축사 (${cPlan.speech} 진행)` : '08. 성혼선언문 낭독 (사회자 진행)',
+    `07. 혼인서약서 낭독 (신랑·신부 함께 낭독${cPlan.vows ? '' : ' · 수정 예정'})`,
+    cPlan.speech
+      ? `08. 성혼선언문 낭독 및 축사 (${cPlan.speech} 진행${cPlan.declaration ? '' : ' · 수정 예정'})`
+      : `08. 성혼선언문 낭독 (사회자 진행${cPlan.declaration ? '' : ' · 수정 예정'})`,
     '09. 혼주 및 내빈께 인사 (① 신부 부모님 → ② 신랑 부모님 → ③ 중앙 내빈)',
     `10. 축가 (${cPlan.song} · 혼주·내빈 인사 다음 순서)`,
     '11. 행진 (신랑·신부 드레스 정리 완료 확인 후 출발)',
@@ -404,8 +406,8 @@ export function renderCeremony(ctx) {
     `01. 개식 예고 및 개식 선언 (사회자: ${cPlan.mc})`,
     '02. 양가 어머님 화촉점화 (점화 → 상호인사 → 하객 인사)',
     '03. 신랑 입장 → 신부 입장',
-    '04. 신랑·신부 맞절 및 혼인서약',
-    `05. 성혼선언문 낭독 및 주례사 (${cPlan.speech} 진행)`,
+    `04. 신랑·신부 맞절 및 혼인서약${cPlan.vows ? '' : ' (수정 예정)'}`,
+    `05. 성혼선언문 낭독 및 주례사 (${cPlan.speech} 진행${cPlan.declaration ? '' : ' · 수정 예정'})`,
     '06. 혼주 및 내빈께 감사 인사 (신부 부모님 → 신랑 부모님 → 내빈)',
     `07. 축가 (${cPlan.song})`,
     `08. 행진 · 폐회식 & 연회홀(${cPlan.banquetFloor || '층수 확인'}) 안내`
@@ -690,8 +692,8 @@ export function renderCeremony(ctx) {
         E('article', { class: 'ceremony-paper-card' },
           E('div', { class: 'ceremony-paper-head' },
             E('div', {},
-              E('span', { class: 'lachma-step-badge' }, cPlan.vows ? '직접 다듬은 문안' : '아모르 기본 4가지 서약 예문'),
-              E('h3', {}, '💍 혼인서약서 (신랑·신부 함께 낭독)')),
+              E('span', { class: 'lachma-step-badge' }, cPlan.vows ? '직접 다듬은 문안' : '신랑·신부 함께 낭독 · 기본 예문'),
+              E('h3', {}, cPlan.vows ? '💍 혼인서약서 (신랑·신부 함께 낭독)' : '💍 혼인서약서 (수정 예정)')),
             E('div', { class: 'lachma-official-links' },
               button('📋 복사', () => ctx.copyTextToClipboard(vowsText, '혼인서약서 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
               button('✏️ 문구 수정', () => openCeremonyEditor(ctx, 'vows'), 'button quiet small-copy-btn'))),
@@ -699,8 +701,8 @@ export function renderCeremony(ctx) {
         E('article', { class: 'ceremony-paper-card' },
           E('div', { class: 'ceremony-paper-head' },
             E('div', {},
-              E('span', { class: 'lachma-step-badge' }, cPlan.declaration ? '직접 다듬은 문안' : `${declSpeakerLabel} 기본 예문`),
-              E('h3', {}, `📜 성혼선언문 (${declSpeakerLabel})`)),
+              E('span', { class: 'lachma-step-badge' }, cPlan.declaration ? '직접 다듬은 문안' : `${declSpeakerLabel} · 기본 예문`),
+              E('h3', {}, cPlan.declaration ? `📜 성혼선언문 (${declSpeakerLabel})` : '📜 성혼선언문 (수정 예정)')),
             E('div', { class: 'lachma-official-links' },
               button('📋 복사', () => ctx.copyTextToClipboard(declText, '성혼선언문 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
               button('✏️ 문구 수정', () => openCeremonyEditor(ctx, 'declaration'), 'button quiet small-copy-btn'))),

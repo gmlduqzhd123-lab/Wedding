@@ -1,4 +1,4 @@
-import { validatePreferences } from './preferences.js?v=wedding-features-65';
+import { validatePreferences } from './preferences.js?v=wedding-features-66';
 
 export const SYNC_CODE_PREFIX = 'WEDDING-SYNC-V1:';
 const MAX_ENCODED_CHARS = 524288;

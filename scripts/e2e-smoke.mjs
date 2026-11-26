@@ -344,7 +344,8 @@ try {
   const ceremonyText = await cdp.eval(`document.querySelector('#main').innerText`);
   assert(ceremonyText.includes('사회자: 김희엽 친구'), 'Ceremony rundown must reflect confirmed MC 김희엽 친구');
   assert(ceremonyText.includes('축가: 아카펠라'), 'Ceremony rundown must reflect confirmed song 아카펠라');
-  assert(ceremonyText.includes('성혼선언문 낭독 및 축사 (교장선생님 진행)'), 'Ceremony rundown must reflect 교장선생님 declaration & speech');
+  assert(ceremonyText.includes('성혼선언문 낭독 및 축사 (교장선생님 진행 · 수정 예정)'), 'Ceremony rundown must reflect 교장선생님 declaration & speech with 수정 예정');
+  assert(ceremonyText.includes('혼인서약서 (수정 예정)') && ceremonyText.includes('성혼선언문 (수정 예정)'), 'Vows and declaration cards must show (수정 예정) before editing');
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('라이브 큐시트 모드')).click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('.live-cue-stage')?.innerText.includes('STEP 01') && Boolean(document.querySelector('.live-cue-wake-btn')) && Boolean(document.querySelector('.live-cue-stage-badge'))`);
   await cdp.eval(`[...document.querySelectorAll('.live-cue-font-group button')].find(b => b.textContent === 'A+').click()`);

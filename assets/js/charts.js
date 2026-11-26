@@ -1,4 +1,4 @@
-import { E, S } from './dom.js?v=wedding-features-65';
+import { E, S } from './dom.js?v=wedding-features-66';
 
 const BUDGET_COLORS = {
   'seg-venue': '#3b5944',
