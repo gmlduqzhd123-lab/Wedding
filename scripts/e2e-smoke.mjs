@@ -239,24 +239,61 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main')?.dataset.renderedRoute === 'honeymoon' && !document.querySelector('.loading-state')`);
   console.log('E2E PASS 2/8: Home scroll diet, Dark Botanical Theme persistence, Modal focus return, Global Search OK');
 
-  // 3. Honeymoon compare floating tray + body.has-compare-tray + packing pending-only filter & copy button
-  await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 2`);
+  // 3. Honeymoon Round 7: 3-way compare + diff toggle + best budget + matrix + recommender + compact video + selected actions + local calc + regional packing
+  await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 3`);
+  // Smart quick filters hide redundant 100%-matching chips (direct, longstay) and expose budget/semi brackets
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="direct"]'))`), false, 'Redundant 100%-matching direct chip should be hidden');
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="mid6to8m"]')) && Boolean(document.querySelector('[data-trip-filter="over8m"]')) && Boolean(document.querySelector('[data-trip-filter="semi"]'))`), true, 'Smart budget and semi-package chips must render');
+  // Compact card quick YouTube button
+  assert.equal(await cdp.eval(`document.querySelectorAll('.compact-video-row button').length >= 1`), true, 'Compact trip card must show quick video access button');
+
+  // 3-way comparison + lowest budget highlight + diff-only toggle + copy summary
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[0].click()`);
-  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (1/2)') && document.body.classList.contains('has-compare-tray')`);
+  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (1/3)') && document.body.classList.contains('has-compare-tray')`);
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[1].click()`);
-  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (2/2)')`);
+  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (2/3)')`);
+  await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[2].click()`);
+  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (3/3)') && Boolean(document.querySelector('.travel-comparison td.is-best-budget')) && Boolean(document.querySelector('#compare-diff-only'))`);
+  const allCompareRows = await cdp.eval(`document.querySelectorAll('.travel-comparison tbody tr').length`);
+  await cdp.eval(`document.querySelector('#compare-diff-only').click()`);
+  await cdp.waitFor(`() => document.querySelector('#compare-diff-only')?.checked === true && document.querySelectorAll('.travel-comparison tbody tr').length <= ${allCompareRows}`);
   await cdp.eval(`[...document.querySelectorAll('.compare-floating-tray button')].find(b => b.textContent === '비우기').click()`);
   await cdp.waitFor(`() => !document.querySelector('.compare-floating-tray') && !document.body.classList.contains('has-compare-tray')`);
+
+  // Region matrix (5 regions) + 30s recommender (Top 3)
+  await cdp.eval(`document.querySelector('.honeymoon-matrix-section summary').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.region-matrix-card').length === 5 && document.querySelectorAll('.region-bar-row').length === 6`);
+  await cdp.eval(`document.querySelector('.honeymoon-recommender summary').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.recommender-card').length === 3`);
+
+  // Final selection practical action board (ICS, summary copy, agency questions modal)
+  await cdp.eval(`document.querySelectorAll('[data-trip-action="tripSelected"]')[0].click()`);
+  await cdp.waitFor(`() => [...document.querySelectorAll('#selected-trip-region button')].some(b => b.textContent.includes('캘린더(.ics)')) && [...document.querySelectorAll('#selected-trip-region button')].some(b => b.textContent.includes('여행사 상담 질문집'))`);
+  await cdp.eval(`[...document.querySelectorAll('#selected-trip-region button')].find(b => b.textContent.includes('여행사 상담 질문집')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelectorAll('.agency-question-list li').length === 7`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
+
+  // Local spending & manual FX calculator
+  await cdp.eval(`document.querySelector('.honeymoon-local-calc summary').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.local-calc-stat').length === 3`);
+  await cdp.eval(`(() => { const fx = document.querySelector('#local-calc-fx'); fx.value = '8.5'; fx.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await cdp.waitFor(`() => document.querySelector('.local-calc-summary')?.innerText.includes('입력 환율 환산')`);
+
+  // Regional packing preset banner + packing pending-only filter & copy button
   await cdp.eval(`document.querySelector('.honeymoon-packing summary').click()`);
-  await cdp.waitFor(`() => Boolean(document.querySelector('#packing-pending-only')) && [...document.querySelectorAll('.packing-filter-row button')].some(b => b.textContent.includes('남은 짐 카톡 복사'))`);
-  const packTotal = await cdp.eval(`document.querySelectorAll('.honeymoon-packing .checklist-item').length`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#packing-pending-only')) && Boolean(document.querySelector('.region-packing-banner')) && [...document.querySelectorAll('.packing-filter-row button')].some(b => b.textContent.includes('남은 짐 카톡 복사'))`);
+  const packBeforePreset = await cdp.eval(`document.querySelectorAll('.honeymoon-packing .checklist-item').length`);
+  await cdp.eval(`document.querySelector('.region-packing-banner button').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item').length === ${packBeforePreset + 4}`);
+  const packTotal = packBeforePreset + 4;
   await cdp.eval(`document.querySelector('.honeymoon-packing .checklist-item input[type="checkbox"]').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item.done').length === 1`);
   await cdp.eval(`document.querySelector('#packing-pending-only').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item').length === ${packTotal - 1}`);
   await cdp.eval(`document.querySelector('#packing-pending-only').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.honeymoon-packing .checklist-item').length === ${packTotal}`);
-  console.log('E2E PASS 3/8: Honeymoon compare tray offset class + packing pending filter & copy button OK');
+  console.log('E2E PASS 3/8: Honeymoon Round 7 (3-way compare, matrix, recommender, compact video, ICS/questions, local FX calc, regional packing) OK');
 
   // 4. Budget SVG donut chart + CSV/summary export + Vendor schedule filters & bulk .ics
   await cdp.eval(`location.hash = '#/tips/budget'`);

@@ -159,3 +159,251 @@ export function tripFlightBadge(item){
   }
   return {direct:false,short:'✈️ 항공 미정',detail:'✈️ 항공편 별도 확인'};
 }
+
+export const REGION_DEFS = [
+  { key: 'bali', label: '발리', flag: '🇮🇩', currencyCode: 'IDR', currencyUnit: 100, rateHint: '예: 100 IDR ≈ 8.5원 (직접 입력)' },
+  { key: 'nhatrang', label: '나트랑', flag: '🇻🇳', currencyCode: 'VND', currencyUnit: 100, rateHint: '예: 100 VND ≈ 5.4원 (직접 입력)' },
+  { key: 'danang', label: '다낭·호이안', flag: '🇻🇳', currencyCode: 'VND', currencyUnit: 100, rateHint: '예: 100 VND ≈ 5.4원 (직접 입력)' },
+  { key: 'guam', label: '괌', flag: '🇬🇺', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
+  { key: 'hawaii', label: '하와이', flag: '🇺🇸', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
+  { key: 'other', label: '기타 지역', flag: '✈️', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' }
+];
+
+export function tripRegionInfo(item = {}) {
+  const text = `${item.id || ''} ${item.title || ''} ${item.country || ''}`;
+  if (/bali|발리|짐바란|누사두아|우붓|스미냑/i.test(text)) return REGION_DEFS[0];
+  if (/nhatrang|나트랑|깜라인|깜란/i.test(text)) return REGION_DEFS[1];
+  if (/danang|다낭|호이안|미케/i.test(text)) return REGION_DEFS[2];
+  if (/guam|괌|투몬/i.test(text)) return REGION_DEFS[3];
+  if (/hawaii|하와이|와이키키|오아후/i.test(text)) return REGION_DEFS[4];
+  return REGION_DEFS[5];
+}
+
+export function isPoolvillaTrip(item = {}) {
+  return /풀빌라/.test(`${item.title || ''} ${(item.plan?.stays || []).map(s => s.region).join(' ')} ${item.plan?.lodgingNotes || ''}`);
+}
+
+export function isNoShoppingTrip(item = {}) {
+  return /노쇼핑|노옵션/.test(`${item.title || ''} ${item.pros || ''} ${item.plan?.lodgingNotes || ''} ${item.plan?.transport || ''}`);
+}
+
+export function isSemiPackageTrip(item = {}) {
+  return isBundledPackageTrip(item) && /세미패키지|반자유|우리끼리/.test(`${item.title || ''} ${item.pros || ''}`);
+}
+
+export function buildRegionMatrix(trips = []) {
+  const list = Array.isArray(trips) ? trips : [];
+  const groups = new Map();
+  for (const trip of list) {
+    const info = tripRegionInfo(trip);
+    if (!groups.has(info.key)) groups.set(info.key, { ...info, items: [] });
+    groups.get(info.key).items.push(trip);
+  }
+  const orderedKeys = REGION_DEFS.map(d => d.key).filter(k => groups.has(k));
+  return orderedKeys.map(key => {
+    const group = groups.get(key);
+    const items = [...group.items].sort((a, b) => (a.budget ?? Infinity) - (b.budget ?? Infinity));
+    const budgets = items.map(t => t.budget).filter(b => typeof b === 'number' && Number.isFinite(b));
+    const fitTrip = items.find(t => !isBundledPackageTrip(t)) || null;
+    const pkgTrips = items.filter(t => isBundledPackageTrip(t));
+    const pkgBudgets = pkgTrips.map(t => t.budget).filter(b => typeof b === 'number' && Number.isFinite(b));
+    const minBudget = budgets.length ? Math.min(...budgets) : null;
+    const maxBudget = budgets.length ? Math.max(...budgets) : null;
+    const avgBudget = budgets.length ? Math.round(budgets.reduce((s, v) => s + v, 0) / budgets.length) : null;
+    const pkgMinBudget = pkgBudgets.length ? Math.min(...pkgBudgets) : null;
+    const fitVsPkgDiff = (fitTrip?.budget != null && pkgMinBudget != null) ? (pkgMinBudget - fitTrip.budget) : null;
+    return {
+      key: group.key,
+      label: group.label,
+      flag: group.flag,
+      currencyCode: group.currencyCode,
+      count: items.length,
+      minBudget,
+      maxBudget,
+      avgBudget,
+      fitTrip,
+      pkgTrips,
+      pkgMinBudget,
+      fitVsPkgDiff,
+      dryCount: items.filter(t => climateBadgeInfo(t).dry).length,
+      poolvillaCount: items.filter(isPoolvillaTrip).length,
+      noshoppingCount: items.filter(isNoShoppingTrip).length,
+      items
+    };
+  });
+}
+
+export function recommendHoneymoonTrips(trips = [], { maxBudget = 10000000, style = 'any', priority = 'balanced', region = 'all' } = {}) {
+  const pool = (Array.isArray(trips) ? trips : []).filter(t => region === 'all' || tripRegionInfo(t).key === region);
+  const scored = pool.map(trip => {
+    let score = 50;
+    const reasons = [];
+    const budget = typeof trip.budget === 'number' ? trip.budget : null;
+    const isPkg = isBundledPackageTrip(trip);
+    const isSemi = isSemiPackageTrip(trip);
+    const isPool = isPoolvillaTrip(trip);
+    const isNoShop = isNoShoppingTrip(trip);
+    const isDry = climateBadgeInfo(trip).dry;
+
+    if (budget !== null) {
+      if (budget <= maxBudget) {
+        score += 24;
+        reasons.push(`예산 ${Math.round(maxBudget / 10000).toLocaleString('ko-KR')}만 이내`);
+      } else if (budget <= maxBudget * 1.1) {
+        score += 4;
+      } else {
+        score -= 24;
+      }
+    }
+
+    if (style === 'fit') {
+      if (!isPkg) { score += 26; reasons.push('자유여행 직접조회'); }
+      else score -= 10;
+    } else if (style === 'semi') {
+      if (isSemi) { score += 26; reasons.push('반자유·세미패키지'); }
+      else if (!isPkg) score += 6;
+      else score -= 4;
+    } else if (style === 'package') {
+      if (isPkg) { score += 22; reasons.push('여행사 패키지'); }
+      else score -= 10;
+    }
+
+    if (priority === 'poolvilla') {
+      if (isPool) { score += 28; reasons.push('풀빌라 포함'); }
+      if (isNoShop) { score += 6; reasons.push('노쇼핑·노옵션'); }
+    } else if (priority === 'noshopping') {
+      if (isNoShop) { score += 28; reasons.push('노쇼핑·노옵션'); }
+      if (isPool) { score += 6; reasons.push('풀빌라 포함'); }
+    } else if (priority === 'dry') {
+      if (isDry) { score += 28; reasons.push('6월 건기·맑음'); }
+      if (isPool) score += 6;
+    } else if (priority === 'value') {
+      if (budget !== null) {
+        const savingRatio = Math.max(0, Math.min(1, (10000000 - budget) / 6000000));
+        score += Math.round(savingRatio * 30);
+        if (budget <= 6000000) reasons.push('600만 이하 가성비');
+      }
+      if (isNoShop) score += 4;
+    } else {
+      if (isDry) { score += 10; reasons.push('6월 건기 경향'); }
+      if (isPool) { score += 9; reasons.push('풀빌라 포함'); }
+      if (isNoShop) { score += 9; reasons.push('노쇼핑·노옵션'); }
+      if (budget !== null && budget <= 7500000) score += 6;
+    }
+
+    if (!reasons.length && isDry) reasons.push('6월 건기 경향');
+    return { trip, score, reasons: [...new Set(reasons)].slice(0, 3) };
+  });
+
+  scored.sort((a, b) => b.score - a.score || (a.trip.budget ?? Infinity) - (b.trip.budget ?? Infinity));
+  return scored.slice(0, 3);
+}
+
+export const REGION_PACKING_SUGGESTIONS = {
+  bali: {
+    label: '🇮🇩 발리 맞춤 필수 준비물',
+    items: [
+      { category: '📄 필수 서류·결제', title: '발리 관광부담금(Love Bali) 납부 QR 및 도착비자(e-VOA) 확인' },
+      { category: '💊 상비약·세면·기타', title: '발리밸리 대비 정장제·지사제·전해질 분말 및 샤워기 리필 필터' },
+      { category: '🔌 전자기기·통신', title: '그랩(Grab)·고젝(Gojek) 앱 사전 가입 및 해외결제 카드 등록' },
+      { category: '🏖️ 의류·해변 용품', title: '우붓 사원·스윙 방문용 가벼운 겉옷·스카프 및 모기기피제' }
+    ]
+  },
+  hawaii: {
+    label: '🇺🇸 하와이 맞춤 필수 준비물',
+    items: [
+      { category: '📄 필수 서류·결제', title: '미국 ESTA 전자여행허가 승인서 출력본 및 국제운전면허증+국내면허증' },
+      { category: '📄 필수 서류·결제', title: '팁용 소액 달러 지폐 ($1·$5 다수) 및 컨택리스 신용카드' },
+      { category: '🔌 전자기기·통신', title: '110V 돼지코 어댑터 (미국 A타입, 프리볼트 여부 확인)' },
+      { category: '🏖️ 의류·해변 용품', title: '산호 친화(Reef-Safe) 선크림 (하와이 규정) 및 스노클링 장비' }
+    ]
+  },
+  guam: {
+    label: '🇬🇺 괌 맞춤 필수 준비물',
+    items: [
+      { category: '📄 필수 서류·결제', title: '괌 전자세관신고서(EDF) QR 및 G-CNMI ETA(또는 ESTA) 확인' },
+      { category: '📄 필수 서류·결제', title: '국제운전면허증 + 한국 면허증 원본 (렌터카 픽업 필수)' },
+      { category: '🔌 전자기기·통신', title: '110V 돼지코 어댑터 (미국 A타입) 및 차량용 스마트폰 거치대' },
+      { category: '🏖️ 의류·해변 용품', title: '산호 친화 선크림 · 팁용 소액 달러 ($1·$5) 및 방수 파우치' }
+    ]
+  },
+  nhatrang: {
+    label: '🇻🇳 나트랑 맞춤 필수 준비물',
+    items: [
+      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치·카드 등록 및 현지 eSIM' },
+      { category: '📄 필수 서류·결제', title: '트래블카드(VND 환전) + 팁·야시장용 소액 동(VND) 현금' },
+      { category: '💊 상비약·세면·기타', title: '샤워기 필터 여분 및 모기기피제·수딩젤 (강한 자외선 대비)' },
+      { category: '🏖️ 의류·해변 용품', title: '호핑투어·머드스파용 여분 수영복 및 스마트폰 방수팩' }
+    ]
+  },
+  danang: {
+    label: '🇻🇳 다낭·호이안 맞춤 필수 준비물',
+    items: [
+      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치 및 바나힐·호이안 이동용 보조배터리' },
+      { category: '🏖️ 의류·해변 용품', title: '바나힐 고지대(서늘함) 대비 얇은 긴팔 겉옷 및 호이안 스냅 의상' },
+      { category: '📄 필수 서류·결제', title: '트래블카드(VND) 및 호이안 야시장·팁용 소액 동(VND) 현금' },
+      { category: '💊 상비약·세면·기타', title: '여행용 샤워기 필터 및 우양산 (갑작스러운 소나기·햇볕 대비)' }
+    ]
+  }
+};
+
+export const HONEYMOON_AGENCY_QUESTIONS = [
+  '허니문 특전(스파·플로팅 조식·스냅·와인 등) 적용 조건과 청첩장 제출 기한이 어떻게 되나요?',
+  '안내된 금액에 항공 유류할증료·공항세·현지 세금 및 가이드·기사 팁이 모두 포함인가요?',
+  '노쇼핑·노옵션 상품인 경우, 현지에서 선택관광이나 팁 등 추가 필수 경비가 전혀 없나요?',
+  '귀국편이 밤 비행기인 경우 체크아웃 후 레이트 체크아웃 또는 짐 보관·라운지 이용이 포함되나요?',
+  '객실 업그레이드(풀빌라·오션뷰)나 허니문 베드 데코레이션 요청 시 추가 비용이 있나요?',
+  '항공권 발권 전·후 취소 및 날짜 변경 시 위약금 발생 기준일(D-며칠)이 어떻게 되나요?',
+  '해외여행자보험 보장 한도와 공항↔리조트 왕복 단독 픽업 차량 포함 여부를 확인하고 싶습니다.'
+];
+
+export function calculateLocalSpending({ nights = 6, dailyFood = 0, activities = 0, spa = 0, transport = 0, tips = 0, shopping = 0, fxRate = 0, currencyUnit = 1 } = {}) {
+  const safe = v => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.round(Number(v)) : 0);
+  const stayNights = Math.max(1, Math.min(30, safe(nights) || 6));
+  const foodTotal = safe(dailyFood) * stayNights;
+  const totalKrw = foodTotal + safe(activities) + safe(spa) + safe(transport) + safe(tips) + safe(shopping);
+  const perDayKrw = Math.round(totalKrw / stayNights);
+  const perPersonKrw = Math.round(totalKrw / 2);
+  const rate = Number(fxRate);
+  const unit = Number(currencyUnit) > 0 ? Number(currencyUnit) : 1;
+  const foreignTotal = Number.isFinite(rate) && rate > 0 ? Math.round((totalKrw / rate) * unit) : null;
+  return { stayNights, foodTotal, totalKrw, perDayKrw, perPersonKrw, foreignTotal };
+}
+
+export function buildTripComparisonText(items = [], prefs = {}) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return '';
+  const fmt = v => (v === null || v === undefined ? '미정' : `${v.toLocaleString('ko-KR')}원`);
+  const lines = [`[신혼여행 후보 ${list.length}곳 비교 요약]`, ''];
+  list.forEach((item, idx) => {
+    const note = prefs?.tripNotes?.[item.id] ? ` | 메모: ${prefs.tripNotes[item.id]}` : '';
+    lines.push(`${idx + 1}. ${item.title}`);
+    lines.push(`   • 일정: ${item.startDate || '미정'} ~ ${item.endDate || '미정'} (${staySummary(item)})`);
+    lines.push(`   • 2인 계획예산: ${fmt(item.budget)} (${tripFlightBadge(item).short} · ${climateBadgeInfo(item).label})`);
+    if (item.pros) lines.push(`   • 장점: ${item.pros.split(/\r?\n/)[0]}`);
+    if (item.cons) lines.push(`   • 고민: ${item.cons.split(/\r?\n/)[0]}${note}`);
+  });
+  const budgets = list.filter(i => typeof i.budget === 'number');
+  if (budgets.length >= 2) {
+    const sorted = [...budgets].sort((a, b) => a.budget - b.budget);
+    const gap = sorted[sorted.length - 1].budget - sorted[0].budget;
+    lines.push('', `▶ 최저 예산: ${sorted[0].title} (${fmt(sorted[0].budget)}, 최고안 대비 ${fmt(gap)} 절감)`);
+  }
+  return lines.join('\n');
+}
+
+export function buildSelectedTripSummaryText(item, note = '') {
+  if (!item) return '';
+  const fmt = v => (v === null || v === undefined ? '미정' : `${v.toLocaleString('ko-KR')}원`);
+  const lines = [
+    `[신혼여행 최종 선택 후보 요약 · ${item.title}]`,
+    `• 여행지: ${item.country || '미정'}`,
+    `• 일정: ${item.startDate || '미정'} 한국 출발 → ${item.endDate || '미정'} 한국 도착`,
+    `• 숙박 구성: ${staySummary(item)}`,
+    `• 항공·기후: ${tripFlightBadge(item).detail} · ${climateBadgeInfo(item).label}`,
+    `• 2인 계획예산: ${fmt(item.budget)} (${currentBudgetText(item)})`
+  ];
+  if (note?.trim()) lines.push(`• 상담 메모: ${note.trim()}`);
+  return lines.join('\n');
+}
+

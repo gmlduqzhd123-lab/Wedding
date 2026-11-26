@@ -1,5 +1,5 @@
-import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-61';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-61';
+import { parseContent, validateContent, formatDate, weddingDday, invitationLiveCountdown, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-62';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-62';
 import {
   readBackupMeta,
   writeBackupMeta,
@@ -11,12 +11,12 @@ import {
   flashCopiedButton,
   copyText,
   initPwaInstall
-} from './ui-shell.js?v=wedding-features-61';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-61';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-61';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-61';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-61';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-61';
+} from './ui-shell.js?v=wedding-features-62';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-62';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-62';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-62';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView } from './story-album-ui.js?v=wedding-features-62';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-62';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
 const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences', LARGE_TEXT_KEY = 'wedding:v1:largeText', THEME_KEY = 'wedding:v1:theme', PETALS_KEY = 'wedding:v1:petals';
@@ -43,18 +43,18 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-61'),
-  storage: () => import('./storage.js?v=wedding-features-61'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-61'),
-  manager: () => import('./manager-ui.js?v=wedding-features-61'),
-  studios: () => import('./studio-ui.js?v=wedding-features-61'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-61'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-61'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-61'),
-  tips: () => import('./planning-ui.js?v=wedding-features-61'),
-  editor: () => import('./editor-ui.js?v=wedding-features-61'),
-  search: () => import('./search-ui.js?v=wedding-features-61'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-61')
+  preferences: () => import('./preferences.js?v=wedding-features-62'),
+  storage: () => import('./storage.js?v=wedding-features-62'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-62'),
+  manager: () => import('./manager-ui.js?v=wedding-features-62'),
+  studios: () => import('./studio-ui.js?v=wedding-features-62'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-62'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-62'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-62'),
+  tips: () => import('./planning-ui.js?v=wedding-features-62'),
+  editor: () => import('./editor-ui.js?v=wedding-features-62'),
+  search: () => import('./search-ui.js?v=wedding-features-62'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-62')
 };
 
 function loadModule(key) {
@@ -1201,7 +1201,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-61')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-62')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {

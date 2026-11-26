@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-61';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-62';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -342,7 +342,7 @@ export function validatePreferences(input) {
     }
     result.budgetPlan = plan;
   }
-  if (result.tripCompare.length > 2) throw new Error('여행 비교는 두 곳까지 선택해 주세요.');
+  if (result.tripCompare.length > 3) throw new Error('여행 비교는 세 곳까지 선택해 주세요.');
   for (const key of ['left', 'right', 'tripSelected', 'studioSelected']) {
     if (input[key] !== undefined && input[key] !== '') {
       if (!id(input[key])) throw new Error('선택 항목을 확인해 주세요.');
@@ -425,7 +425,7 @@ export function mergePreferences(currentInput, incomingInput) {
     favorites: mergeIdList(cur.favorites, inc.favorites, 1000) || [],
     notes: mergeNoteMap(cur.notes, inc.notes, 1000, 1000) || {},
     tripFavorites: mergeIdList(cur.tripFavorites, inc.tripFavorites, 1000) || [],
-    tripCompare: mergeIdList(cur.tripCompare, inc.tripCompare, 2) || []
+    tripCompare: mergeIdList(cur.tripCompare, inc.tripCompare, 3) || []
   };
 
   for (const key of ['tipFavorites', 'checklist', 'packingList', 'shootChecklist', 'ceremonyChecks', 'prenatalChecks', 'benefitChecks']) {

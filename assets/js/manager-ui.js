@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-61';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-61';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-61';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-61';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-61';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-62';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-62';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-62';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-62';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-62';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';

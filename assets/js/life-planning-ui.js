@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-61';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-61';
-import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-61';
-import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-61';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-61';
+import { E, button, externalLink, downloadText, searchBox } from './dom.js?v=wedding-features-62';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-62';
+import { HOME_ITEM_CATEGORIES, HOME_ITEM_STATUSES } from './preferences.js?v=wedding-features-62';
+import { homeItemsSummary, homeItemsToCsv, marriageBenefitTimeline } from './planning.js?v=wedding-features-62';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-62';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 

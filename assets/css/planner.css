@@ -3791,10 +3791,292 @@ body.has-compare-tray .scroll-top-btn {
 @media print {
   .vendor-filter-bar,
   .packing-filter-row,
-  .ledger-crosscheck-strip {
+  .ledger-crosscheck-strip,
+  .honeymoon-matrix-section,
+  .honeymoon-recommender,
+  .honeymoon-local-calc,
+  .region-packing-banner,
+  .trip-comparison-toolbar {
     display: none !important;
   }
 }
+
+/* ===== Round 7: Honeymoon Region Matrix, 30s Recommender, Local Spending & 3-Way Compare ===== */
+.honeymoon-matrix-section,
+.honeymoon-recommender,
+.honeymoon-local-calc {
+  margin-bottom: 16px;
+}
+.matrix-body,
+.recommender-body,
+.local-calc-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+.region-matrix-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+}
+.region-matrix-card {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  text-align: left;
+  padding: 12px 13px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.14s ease;
+}
+.region-matrix-card:hover {
+  border-color: var(--olive);
+  transform: translateY(-1px);
+}
+.region-matrix-card.is-selected {
+  border-color: var(--green-solid);
+  background: var(--olive-soft);
+  box-shadow: 0 0 0 2px rgba(59, 89, 68, 0.14);
+}
+.region-matrix-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.region-matrix-price {
+  font-family: var(--display);
+  font-size: 0.96rem;
+  color: var(--green-dark);
+}
+.region-matrix-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.region-matrix-detail {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+}
+.region-matrix-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.region-bar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+.region-bar-row {
+  display: grid;
+  gap: 4px;
+}
+.region-bar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.region-bar-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.region-bar-val {
+  margin-left: auto;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.region-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--paper-warm);
+  overflow: hidden;
+}
+.region-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green);
+}
+.region-bar-fill.is-fit {
+  background: var(--rose-accent-dark);
+}
+
+.recommender-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+}
+.rec-field,
+.local-calc-field {
+  display: grid;
+  gap: 5px;
+}
+.recommender-results {
+  display: grid;
+  gap: 10px;
+}
+.recommender-results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recommender-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.recommender-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--olive-line);
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.recommender-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recommender-price {
+  font-size: 0.92rem;
+  color: var(--green-dark);
+}
+.recommender-title {
+  font-size: 0.94rem;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+.recommender-card-actions {
+  margin-top: 2px;
+}
+
+.local-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+}
+.local-calc-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.local-calc-stat {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+}
+.local-calc-stat strong {
+  font-family: var(--display);
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.trip-comparison-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.trip-comparison-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.travel-comparison td.is-best-budget {
+  background: var(--olive-soft);
+  color: var(--green-dark);
+  font-weight: 700;
+}
+.region-packing-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: var(--olive-soft);
+  border: 1px solid var(--olive-line);
+}
+.compact-video-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.agency-question-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .recommender-grid,
+  .local-calc-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media screen {
+  html.is-dark-theme:not(.is-guest-mode) .region-matrix-card,
+  body.is-dark-theme:not(.is-guest-mode) .region-matrix-card,
+  html.is-dark-theme:not(.is-guest-mode) .recommender-card,
+  body.is-dark-theme:not(.is-guest-mode) .recommender-card,
+  html.is-dark-theme:not(.is-guest-mode) .local-calc-stat,
+  body.is-dark-theme:not(.is-guest-mode) .local-calc-stat {
+    background: #1c241f;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .region-matrix-card.is-selected,
+  body.is-dark-theme:not(.is-guest-mode) .region-matrix-card.is-selected,
+  html.is-dark-theme:not(.is-guest-mode) .region-packing-banner,
+  body.is-dark-theme:not(.is-guest-mode) .region-packing-banner,
+  html.is-dark-theme:not(.is-guest-mode) .travel-comparison td.is-best-budget,
+  body.is-dark-theme:not(.is-guest-mode) .travel-comparison td.is-best-budget {
+    background: #213026;
+    border-color: #3d5d48;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .region-matrix-detail,
+  body.is-dark-theme:not(.is-guest-mode) .region-matrix-detail {
+    background: #18201b;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .region-bar-track,
+  body.is-dark-theme:not(.is-guest-mode) .region-bar-track {
+    background: #252f29;
+  }
+}
+
 
 
 

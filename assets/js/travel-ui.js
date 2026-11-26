@@ -1,6 +1,7 @@
-import { $, E, button, externalLink, searchBox } from './dom.js?v=wedding-features-61';
-import { safeUrl } from './content.js?v=wedding-features-61';
-import { PACKING_CATEGORIES, pruneContentPreferences } from './preferences.js?v=wedding-features-61';
+import { $, E, button, externalLink, searchBox, downloadText } from './dom.js?v=wedding-features-62';
+import { safeUrl, validDate } from './content.js?v=wedding-features-62';
+import { pruneContentPreferences } from './preferences.js?v=wedding-features-62';
+import { scheduleCalendar } from './calendar.js?v=wedding-features-62';
 import {
   COST_LABELS,
   budgetSummary,
@@ -13,8 +14,23 @@ import {
   currentBudgetText,
   climateReview,
   climateBadgeInfo,
-  tripFlightBadge
-} from './travel.js?v=wedding-features-61';
+  tripFlightBadge,
+  tripRegionInfo,
+  isPoolvillaTrip,
+  isNoShoppingTrip,
+  isSemiPackageTrip,
+  buildTripComparisonText,
+  buildSelectedTripSummaryText
+} from './travel.js?v=wedding-features-62';
+import {
+  isPackingExpanded,
+  setPackingExpanded,
+  openAgencyQuestionsModal,
+  renderRegionMatrixSection,
+  renderTripRecommenderSection,
+  renderLocalSpendingSimulator,
+  renderHoneymoonPackingList
+} from './travel-tools-ui.js?v=wedding-features-62';
 
 export { tripFlightBadge };
 
@@ -26,8 +42,7 @@ let tripRegionFilter = 'all';
 let tripAgencyFilter = 'all';
 let tripSearchQuery = '';
 let overviewExpanded = false;
-let packingExpanded = false;
-let packingPendingOnly = false;
+let compareDiffOnly = false;
 let tripCompactMode = true;
 let tripVisibleLimit = 12;
 const TRIP_PAGE_STEP = 12;
@@ -67,13 +82,7 @@ export function tripStyleInfo(item) {
 }
 
 export function tripRegionKey(item) {
-  const text = `${item.id || ''} ${item.title || ''} ${item.country || ''}`;
-  if (/bali|발리|짐바란|누사두아|우붓|스미냑/i.test(text)) return 'bali';
-  if (/nhatrang|나트랑|깜라인|깜란/i.test(text)) return 'nhatrang';
-  if (/danang|다낭|호이안|미케/i.test(text)) return 'danang';
-  if (/guam|괌|투몬/i.test(text)) return 'guam';
-  if (/hawaii|하와이|와이키키|오아후/i.test(text)) return 'hawaii';
-  return 'other';
+  return tripRegionInfo(item).key;
 }
 
 function tripClimateBadge(item) {
@@ -83,11 +92,14 @@ function tripClimateBadge(item) {
 function matchesTripQuickFilter(item, key = tripQuickFilter) {
   if (key === 'package') return tripStyleInfo(item).isPackage;
   if (key === 'fit') return !tripStyleInfo(item).isPackage;
+  if (key === 'semi') return isSemiPackageTrip(item);
   if (key === 'direct') return tripFlightBadge(item).direct;
   if (key === 'dry') return climateBadgeInfo(item).dry;
   if (key === 'under6m') return item.budget !== null && item.budget <= 6000000;
-  if (key === 'poolvilla') return /풀빌라/.test(`${item.title} ${(item.plan?.stays || []).map(s => s.region).join(' ')} ${item.plan?.lodgingNotes || ''}`);
-  if (key === 'noshopping') return /노쇼핑|노옵션/.test(`${item.title} ${item.pros || ''} ${item.plan?.lodgingNotes || ''} ${item.plan?.transport || ''}`);
+  if (key === 'mid6to8m') return item.budget !== null && item.budget > 6000000 && item.budget <= 8000000;
+  if (key === 'over8m') return item.budget !== null && item.budget > 8000000;
+  if (key === 'poolvilla') return isPoolvillaTrip(item);
+  if (key === 'noshopping') return isNoShoppingTrip(item);
   if (key === 'longstay') return stayReview(item).nights >= 6;
   return true;
 }
@@ -320,6 +332,23 @@ function selectedTripSummary(ctx) {
       return saved;
     });
   };
+  const exportSelectedTripIcs = () => {
+    try {
+      const hasValidEnd = Boolean(item.endDate && validDate(item.endDate) && item.endDate >= item.startDate);
+      const ics = scheduleCalendar({
+        uid: `honeymoon-${item.id}`,
+        summary: `[신혼여행] ${item.title}`,
+        date: item.startDate,
+        endDate: hasValidEnd ? item.endDate : '',
+        location: item.country || '',
+        description: buildSelectedTripSummaryText(item, note)
+      });
+      downloadText(ics, 'wedding-honeymoon.ics', 'text/calendar;charset=utf-8');
+      ctx.toast(`‘${item.title}’ 일정을 캘린더(.ics) 파일로 저장했습니다.`);
+    } catch (error) {
+      ctx.toast(error.message || '캘린더 파일을 생성하지 못했습니다.', true);
+    }
+  };
   return E('section', { class: 'selected-trip' },
     E('h2', {}, '최종 선택 · ' + item.title),
     E('p', {}, `${item.startDate || '미정'} 한국 출발 → ${item.endDate || '미정'} 한국 도착 · 2인 계획예산 ${won(item.budget)}`),
@@ -328,7 +357,9 @@ function selectedTripSummary(ctx) {
     E('p', { class: 'small muted' }, '이 기기에 저장한 선택입니다. 예약 확정을 의미하지 않습니다.'),
     E('div', { class: 'page-actions' },
       button('선택한 계획 보기', () => {
-        if (!matchesAllTripFilters(ctx, item)) { resetTripFilters(); ctx.render(); }
+        if (!matchesAllTripFilters(ctx, item)) resetTripFilters();
+        ensureTripVisible(ctx, item.id);
+        ctx.render();
         const card = [...main.querySelectorAll('[data-trip-id]')].find(node => node.dataset.tripId === item.id);
         if (!card) return;
         const details = card.querySelector('.travel-details');
@@ -338,15 +369,20 @@ function selectedTripSummary(ctx) {
         heading.focus({ preventScroll: true });
         card.scrollIntoView({ block: 'start' });
       }, 'button quiet'),
-      button('💰 통합 예산(신혼여행)에 반영', syncTripToBudget, 'button quiet')));
+      button('💰 통합 예산(신혼여행)에 반영', syncTripToBudget, 'button quiet'),
+      validDate(item.startDate) ? button('📅 캘린더(.ics) 저장', exportSelectedTripIcs, 'button quiet') : null,
+      button('📋 상담·공유 요약 복사', () => ctx.copyTextToClipboard(buildSelectedTripSummaryText(item, note), '최종 선택 신혼여행 요약을 복사했습니다.', '신혼여행 요약 복사'), 'button quiet'),
+      button('💬 여행사 상담 질문집', () => openAgencyQuestionsModal(ctx, item), 'button quiet')));
 }
 
 function tripComparison(ctx) {
   if (ctx.isGuestMode()) return null;
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
-  const items = (prefs.tripCompare || []).map(id => content.honeymoon.find(item => item.id === id)).filter(Boolean);
+  const items = (prefs.tripCompare || []).map(id => content.honeymoon.find(item => item.id === id)).filter(Boolean).slice(0, 3);
   if (!items.length) return null;
+  const numericBudgets = items.map(it => it.budget).filter(b => typeof b === 'number' && Number.isFinite(b));
+  const minBudget = items.length >= 2 && numericBudgets.length >= 2 ? Math.min(...numericBudgets) : null;
   const fields = [
     ['여행 형태·구분', item => tripStyleInfo(item).badge],
     ['나라·지역', item => item.country || '미정'],
@@ -363,13 +399,35 @@ function tripComparison(ctx) {
     ['고민할 점', item => item.cons || '미기재'],
     ['우리의 상담 메모', item => prefs.tripNotes?.[item.id] || '미입력']
   ];
+  const visibleFields = compareDiffOnly && items.length >= 2
+    ? fields.filter(([, value]) => new Set(items.map(item => String(value(item)))).size > 1)
+    : fields;
+  const diffCheck = E('input', { type: 'checkbox', id: 'compare-diff-only' });
+  diffCheck.checked = compareDiffOnly;
+  diffCheck.addEventListener('change', () => {
+    compareDiffOnly = diffCheck.checked;
+    updateTripChoices(ctx);
+    $('#compare-diff-only')?.focus({ preventScroll: true });
+  });
+  const renderCell = (label, value, item) => {
+    if (label === '2인 계획예산' && minBudget !== null && typeof item.budget === 'number') {
+      if (item.budget === minBudget) return E('td', { class: 'is-best-budget' }, `🏆 ${won(item.budget)} (최저)`);
+      const diffMan = Math.round((item.budget - minBudget) / 10000);
+      return E('td', {}, `${won(item.budget)}${diffMan > 0 ? ` (+${diffMan.toLocaleString('ko-KR')}만)` : ''}`);
+    }
+    return E('td', {}, value(item));
+  };
   return E('section', { class: 'trip-comparison' },
-    E('h2', {}, '여행 후보 나란히 비교'),
-    E('p', { class: 'small muted' }, '관심·비교·최종 선택은 이 기기에 저장됩니다. 비용은 모두 2인 전체 여행 계획 배분입니다.'),
+    E('div', { class: 'trip-comparison-head' },
+      E('h2', {}, `여행 후보 나란히 비교 (${items.length}/3)`),
+      E('div', { class: 'trip-comparison-toolbar' },
+        items.length >= 2 ? E('label', { class: 'check-label', for: 'compare-diff-only' }, diffCheck, '차이 있는 항목만 보기') : null,
+        button('📋 비교표 카톡 복사', () => ctx.copyTextToClipboard(buildTripComparisonText(items, prefs), `여행 후보 ${items.length}곳 비교 요약을 복사했습니다.`, '신혼여행 비교 요약 복사'), 'button quiet small-copy-btn'))),
+    E('p', { class: 'small muted' }, '관심·비교(최대 3곳)·최종 선택은 이 기기에 저장됩니다. 비용은 모두 2인 전체 여행 계획 배분입니다.'),
     E('div', { class: 'table-scroll' },
       E('table', { class: 'travel-comparison' },
         E('thead', {}, E('tr', {}, E('th', { scope: 'col' }, '비교 항목'), items.map(item => E('th', { scope: 'col' }, item.title)))),
-        E('tbody', {}, fields.map(([label, value]) => E('tr', {}, E('th', { scope: 'row' }, label), items.map(item => E('td', {}, value(item)))))))));
+        E('tbody', {}, (visibleFields.length ? visibleFields : fields).map(([label, value]) => E('tr', {}, E('th', { scope: 'row' }, label), items.map(item => renderCell(label, value, item))))))));
 }
 
 function renderCompareFloatingTray(ctx) {
@@ -379,12 +437,12 @@ function renderCompareFloatingTray(ctx) {
   }
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
-  const items = (prefs.tripCompare || []).map(id => content.honeymoon.find(item => item.id === id)).filter(Boolean);
+  const items = (prefs.tripCompare || []).map(id => content.honeymoon.find(item => item.id === id)).filter(Boolean).slice(0, 3);
   document.body.classList.toggle('has-compare-tray', items.length > 0);
   if (!items.length) return null;
   return E('aside', { class: 'compare-floating-tray', role: 'region', 'aria-label': '신혼여행 비교함 빠른 이동' },
     E('div', { class: 'compare-tray-info' },
-      E('strong', { class: 'small' }, `✈️ 비교함 (${items.length}/2)`),
+      E('strong', { class: 'small' }, `✈️ 비교함 (${items.length}/3)`),
       E('span', { class: 'small muted compare-tray-names' }, items.map(it => it.title).join(' vs '))),
     E('div', { class: 'compare-tray-actions' },
       button('비교표 보기 ↑', () => {
@@ -404,7 +462,9 @@ export function updateTripChoices(ctx) {
   if (ctx.currentRoute() !== 'honeymoon') return;
   if (tripFavoritesOnly || withTripNoteOnly) { ctx.render(); return; }
   const main = ctx.getMain();
+  const content = ctx.getContent();
   const prefs = ctx.getPrefs();
+  const selectedTrip = content.honeymoon.find(t => t.id === prefs.tripSelected) || null;
   const active = document.activeElement;
   const anchor = main.contains(active) ? active : null;
   const before = anchor?.getBoundingClientRect().top;
@@ -421,6 +481,10 @@ export function updateTripChoices(ctx) {
     selRegion.classList.toggle('is-unselected', !prefs.tripSelected);
     selRegion.replaceChildren(selectedTripSummary(ctx));
   }
+  const localRegion = $('#local-calc-region'), localCalc = renderLocalSpendingSimulator(ctx, selectedTrip);
+  if (localRegion) localRegion.replaceChildren(...(localCalc ? [localCalc] : []));
+  const packRegion = $('#packing-list-region'), packList = renderHoneymoonPackingList(ctx, { selectedTrip, activeRegion: tripRegionFilter });
+  if (packRegion) packRegion.replaceChildren(...(packList ? [packList] : []));
   if (anchor?.isConnected) window.scrollBy(0, anchor.getBoundingClientRect().top - before);
 }
 
@@ -469,7 +533,7 @@ function tripControls(ctx, item) {
     else {
       const selected = new Set(active[key] || []);
       selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
-      if (key === 'tripCompare' && selected.size > 2) { ctx.toast('비교할 여행지는 두 곳까지 선택해 주세요.', true); return true; }
+      if (key === 'tripCompare' && selected.size > 3) { ctx.toast('비교할 여행지는 세 곳까지 선택해 주세요.', true); return true; }
       next = { ...active, [key]: [...selected] };
     }
     const saved = await ctx.savePrefs(next, storedBase);
@@ -693,19 +757,25 @@ function tripSortControl(ctx) {
     target?.focus({ preventScroll: true });
     if (target) window.scrollBy(0, target.getBoundingClientRect().top - before);
   });
-  const hasPackages = content.honeymoon.some(item => matchesTripQuickFilter(item, 'package'));
+  const allTrips = content.honeymoon;
+  const hasSubset = key => {
+    const matched = allTrips.filter(item => matchesTripQuickFilter(item, key)).length;
+    return (matched > 0 && matched < allTrips.length) || tripQuickFilter === key;
+  };
+  const hasAny = key => allTrips.some(item => matchesTripQuickFilter(item, key)) || tripQuickFilter === key;
   const quickFilters = [
     ['all', `전체 (${quickPool.length})`],
-    ...(hasPackages ? [
-      ['package', `📦 패키지·반자유 (${quickPool.filter(item => matchesTripQuickFilter(item, 'package')).length})`],
-      ['fit', `🧳 자유여행 (${quickPool.filter(item => matchesTripQuickFilter(item, 'fit')).length})`]
-    ] : []),
-    ['direct', `✈️ 직항 (${quickPool.filter(item => matchesTripQuickFilter(item, 'direct')).length})`],
-    ['dry', `☀️ 건기·맑음 (${quickPool.filter(item => matchesTripQuickFilter(item, 'dry')).length})`],
-    ['under6m', `💸 600만 이하 (${quickPool.filter(item => matchesTripQuickFilter(item, 'under6m')).length})`],
-    ...(content.honeymoon.some(item => matchesTripQuickFilter(item, 'poolvilla')) || tripQuickFilter === 'poolvilla' ? [['poolvilla', `🏡 풀빌라 (${quickPool.filter(item => matchesTripQuickFilter(item, 'poolvilla')).length})`]] : []),
-    ...(content.honeymoon.some(item => matchesTripQuickFilter(item, 'noshopping')) || tripQuickFilter === 'noshopping' ? [['noshopping', `🚫 노쇼핑 (${quickPool.filter(item => matchesTripQuickFilter(item, 'noshopping')).length})`]] : []),
-    ['longstay', `🏖️ 6~7박 (${quickPool.filter(item => matchesTripQuickFilter(item, 'longstay')).length})`]
+    ...(hasSubset('fit') ? [['fit', `🧳 자유여행 (${quickPool.filter(item => matchesTripQuickFilter(item, 'fit')).length})`]] : []),
+    ...(hasAny('semi') ? [['semi', `✨ 반자유·세미 (${quickPool.filter(item => matchesTripQuickFilter(item, 'semi')).length})`]] : []),
+    ...(hasSubset('package') ? [['package', `📦 패키지 전체 (${quickPool.filter(item => matchesTripQuickFilter(item, 'package')).length})`]] : []),
+    ...(hasAny('under6m') ? [['under6m', `💸 600만 이하 (${quickPool.filter(item => matchesTripQuickFilter(item, 'under6m')).length})`]] : []),
+    ...(hasAny('mid6to8m') ? [['mid6to8m', `💰 600~800만 (${quickPool.filter(item => matchesTripQuickFilter(item, 'mid6to8m')).length})`]] : []),
+    ...(hasAny('over8m') ? [['over8m', `💎 800만+ (${quickPool.filter(item => matchesTripQuickFilter(item, 'over8m')).length})`]] : []),
+    ...(hasSubset('direct') ? [['direct', `✈️ 직항 (${quickPool.filter(item => matchesTripQuickFilter(item, 'direct')).length})`]] : []),
+    ...(hasSubset('dry') ? [['dry', `☀️ 건기·맑음 (${quickPool.filter(item => matchesTripQuickFilter(item, 'dry')).length})`]] : []),
+    ...(hasAny('poolvilla') ? [['poolvilla', `🏡 풀빌라 (${quickPool.filter(item => matchesTripQuickFilter(item, 'poolvilla')).length})`]] : []),
+    ...(hasAny('noshopping') ? [['noshopping', `🚫 노쇼핑 (${quickPool.filter(item => matchesTripQuickFilter(item, 'noshopping')).length})`]] : []),
+    ...(hasSubset('longstay') ? [['longstay', `🏖️ 6~7박 (${quickPool.filter(item => matchesTripQuickFilter(item, 'longstay')).length})`]] : [])
   ];
   const filterBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '여행지 핵심 조건 빠른 필터' },
     quickFilters.map(([key, label]) => E('button', {
@@ -827,200 +897,8 @@ function travelOverview(ctx) {
       }))));
 }
 
-const HONEYMOON_PACKING_LIST = [
-  ['📄 필수 서류·결제', [
-    ['pack-passport', '여권 (유효기간 6개월 이상) · 비자·전자입국신고서 확인'],
-    ['pack-voucher', '항공권 이티켓 · 호텔·리조트 바우처 · 청첩장 사본 (허니문 특전용)'],
-    ['pack-cards', '해외결제 카드 (트래블월렛/트래블로그 등) · 현지 비상 현금·달러'],
-    ['pack-insurance', '해외여행자보험 가입 증서 · 국제운전면허증 (렌터카 이용 시)']
-  ]],
-  ['🔌 전자기기·통신', [
-    ['pack-roaming', '유심(USIM) · 이심(eSIM) · 통신사 로밍 설정'],
-    ['pack-adapter', '해외용 멀티어댑터 · 멀티탭 · 보조배터리 (기내 반입)'],
-    ['pack-camera', '카메라 · 삼각대/셀카봉 · 방수팩 · 여분 충전 케이블'],
-    ['pack-offline', '오프라인 지도·번역 앱 다운로드']
-  ]],
-  ['🏖️ 의류·해변 용품', [
-    ['pack-swim', '수영복 · 래쉬가드 · 아쿠아슈즈 · 비치타월'],
-    ['pack-couple', '커플 스냅 촬영용 의상 · 디너 드레스코드 의상 · 편한 신발'],
-    ['pack-sun', '선글라스 · 챙 넓은 모자 · 우양산 · 얇은 겉옷 (기내·실내 냉방용)'],
-    ['pack-laundry', '지퍼백 · 세탁망 · 휴대용 세제 · 접이식 보조가방']
-  ]],
-  ['💊 상비약·세면·기타', [
-    ['pack-meds', '상비약 (진통제·소화제·지사제·멀미약·밴드·모기기피제)'],
-    ['pack-sunblock', '자외선 차단제 (선크림·알로에 수딩젤) · 개인 기초화장품'],
-    ['pack-shower', '여행용 샤워기 필터 · 칫솔·치약 · 미니 헤어용품'],
-    ['pack-snack', '컵라면·튜브 고추장·김 등 비상 간식 (입국 반입 규정 확인)']
-  ]]
-];
-
-function allPackingCategories(prefs) {
-  const custom = prefs.customPackingList || [];
-  return HONEYMOON_PACKING_LIST.map(([cat, items]) => [cat, [
-    ...items.map(([id, label]) => [id, label, false]),
-    ...custom.filter(c => c.category === cat).map(c => [c.id, c.title, true])
-  ]]);
-}
-
-function openCustomPackingEditor(ctx, existing = null) {
-  if (ctx.isGuestMode()) return;
-  const isEdit = Boolean(existing && existing.id);
-  const form = E('form', { class: 'editor-form' });
-  const catSelect = E('select', { id: 'custom-pack-cat' }, PACKING_CATEGORIES.map(c => E('option', { value: c }, c)));
-  if (isEdit && PACKING_CATEGORIES.includes(existing.category)) catSelect.value = existing.category;
-  const titleInput = E('input', { type: 'text', maxlength: '160', id: 'custom-pack-title', required: 'true', placeholder: '예: 다이슨 에어랩 (변압기 확인) / 커플 필름카메라' });
-  if (isEdit) titleInput.value = existing.title || '';
-  form.append(
-    E('p', { class: 'form-note' }, '추가·수정한 준비물은 이 기기의 개인 설정에만 저장됩니다.'),
-    E('label', { class: 'field', for: catSelect.id }, '준비물 분류', catSelect),
-    E('label', { class: 'field', for: titleInput.id }, '준비물 이름', titleInput),
-    E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), E('button', { class: 'button', type: 'submit' }, isEdit ? '준비물 저장' : '준비물 추가'))
-  );
-  const submit = form.querySelector('[type="submit"]');
-  let saving = false;
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    if (saving) return;
-    const title = titleInput.value.trim();
-    if (!title) return;
-    const curList = [...(ctx.getPrefs().customPackingList || [])];
-    if (!isEdit && curList.length >= 80) { ctx.toast('사용자 정의 준비물은 80개까지 추가할 수 있습니다.', true); return; }
-    const id = isEdit ? existing.id : 'cpack-' + crypto.randomUUID().slice(0, 8);
-    const list = isEdit ? curList.map(c => (c.id === id ? { id, category: catSelect.value, title } : c)) : [...curList, { id, category: catSelect.value, title }];
-    saving = true;
-    submit.disabled = true;
-    try {
-      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), customPackingList: list }));
-      if (saved) {
-        packingExpanded = true;
-        ctx.closeDialog();
-        ctx.render();
-        ctx.toast(isEdit ? '신혼여행 준비물 항목을 수정했습니다.' : '신혼여행 준비물 항목을 추가했습니다.');
-      }
-    } catch (error) {
-      ctx.toast(ctx.storageMessage(error), true);
-    } finally {
-      saving = false;
-      submit.disabled = false;
-    }
-  });
-  const snapshot = () => JSON.stringify([catSelect.value, titleInput.value]), initial = snapshot();
-  if (ctx.showDialog(isEdit ? '신혼여행 우리만의 준비물 수정' : '신혼여행 우리만의 준비물 추가', form)) {
-    ctx.setEditorState({ isDirty: () => saving || snapshot() !== initial, isSaving: () => saving });
-  }
-}
-
-function renderHoneymoonPackingList(ctx) {
-  if (ctx.isGuestMode()) return null;
-  const prefs = ctx.getPrefs();
-  const checked = new Set(prefs.packingList || []);
-  const cats = allPackingCategories(prefs);
-  const allItems = cats.flatMap(([, items]) => items);
-  const doneCount = allItems.filter(([id]) => checked.has(id)).length;
-  const totalCount = allItems.length;
-  const remainingCount = totalCount - doneCount;
-  const pct = Math.round((doneCount / totalCount) * 100);
-  const uncheckedGroups = cats
-    .map(([cat, items]) => [cat, items.filter(([id]) => !checked.has(id))])
-    .filter(([, items]) => items.length > 0);
-  const displayCats = packingPendingOnly ? uncheckedGroups : cats;
-  const copyRemainingPacking = () => {
-    const lines = [`[신혼여행 남은 준비물 · ${remainingCount}개 미챙김]`, ''];
-    for (const [cat, items] of uncheckedGroups) {
-      lines.push(`■ ${cat} (${items.length})`);
-      for (const [, label] of items) lines.push(`- ${label}`);
-      lines.push('');
-    }
-    ctx.copyTextToClipboard(lines.join('\n').trim(), `남은 신혼여행 준비물 ${remainingCount}개를 복사했습니다.`, '신혼여행 남은 준비물 복사');
-  };
-  const pendingBox = E('input', { type: 'checkbox', id: 'packing-pending-only' });
-  pendingBox.checked = packingPendingOnly;
-  pendingBox.addEventListener('change', () => {
-    packingPendingOnly = pendingBox.checked;
-    packingExpanded = true;
-    ctx.render();
-  });
-  const toggleItem = (id, inputNode) => {
-    const next = new Set(ctx.getPrefs().packingList || []);
-    if (inputNode.checked) next.add(id);
-    else next.delete(id);
-    ctx.queuePreference(async () => {
-      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), packingList: [...next] });
-      if (saved) ctx.render();
-      else inputNode.checked = checked.has(id);
-      return saved;
-    });
-  };
-  const details = E('details', { class: 'disclosure honeymoon-packing', 'data-view-key': 'honeymoon-packing' },
-    E('summary', {}, `🧳 신혼여행 출국·짐 싸기 체크리스트 (${doneCount}/${totalCount} 완료 · ${pct}%)`),
-    E('div', { class: 'packing-body' },
-      E('div', { class: 'packing-toolbar' },
-        E('p', { class: 'small muted' }, '출국 전 꼭 챙겨야 할 필수 서류·로밍·스냅 의상·상비약 체크리스트입니다. 체크 상태와 직접 추가한 준비물은 이 기기에 자동 저장됩니다.'),
-        E('div', { class: 'page-actions' },
-          button('+ 우리만의 준비물 추가', () => openCustomPackingEditor(ctx), 'button quiet'),
-          button('🖨️ 인쇄 / PDF 저장', () => window.print(), 'button quiet'),
-          doneCount > 0 ? button('짐 체크 초기화', async () => {
-            if (!await ctx.confirmAction({ title: '짐 체크 초기화', message: '신혼여행 짐 싸기 체크 기록을 모두 초기화할까요?', confirmLabel: '초기화', danger: true })) return;
-            ctx.queuePreference(async () => { const saved = await ctx.savePrefs({ ...ctx.getPrefs(), packingList: [] }); if (saved) { ctx.render(); ctx.toast('신혼여행 짐 체크를 초기화했습니다.'); } return saved; });
-          }, 'button quiet') : null)),
-      E('div', { class: 'packing-filter-row' },
-        E('label', { class: 'check-label', for: 'packing-pending-only' }, pendingBox, `미챙긴 항목만 보기 (${remainingCount}개 남음)`),
-        remainingCount > 0
-          ? button('📋 남은 짐 카톡 복사', copyRemainingPacking, 'button quiet small-copy-btn')
-          : E('span', { class: 'badge' }, '🎉 모든 준비물 완료!')),
-      displayCats.length
-        ? E('div', { class: 'checklist-grid' }, displayCats.map(([cat, items]) => E('article', { class: 'checklist-stage-card' },
-          E('div', { class: 'checklist-stage-head' },
-            E('h3', {}, cat),
-            E('span', { class: 'badge' }, packingPendingOnly ? `${items.length}개 남음` : `${items.filter(([id]) => checked.has(id)).length}/${items.length}`)),
-          E('ul', { class: 'checklist-items' }, items.map(([id, label, isCustom]) => {
-            const box = E('input', { type: 'checkbox', id: `pack-${id}` });
-            box.checked = checked.has(id);
-            box.addEventListener('change', () => toggleItem(id, box));
-            return E('li', { class: 'checklist-item' + (box.checked ? ' done' : '') },
-              E('div', { class: 'checklist-item-top' },
-                E('label', { for: box.id }, box, E('span', {}, label)),
-                isCustom ? E('div', { class: 'checklist-item-actions' },
-                  button('수정', () => openCustomPackingEditor(ctx, { id, category: cat, title: label }), 'checklist-note-btn'),
-                  button('삭제', () => {
-                    ctx.queuePreference(async () => {
-                      const latest = ctx.getPrefs();
-                      const curList = latest.customPackingList || [];
-                      const removedIndex = curList.findIndex(c => c.id === id);
-                      if (removedIndex < 0) return true;
-                      const snapshot = structuredClone(curList[removedIndex]);
-                      const wasChecked = (latest.packingList || []).includes(id);
-                      const nextList = curList.filter(c => c.id !== id);
-                      const nextChecked = (latest.packingList || []).filter(k => k !== id);
-                      const saved = await ctx.savePrefs({ ...latest, customPackingList: nextList, packingList: nextChecked });
-                      if (saved) {
-                        ctx.render();
-                        ctx.toast(`‘${label}’ 준비물을 삭제했습니다.`, {
-                          undoLabel: '되돌리기',
-                          onUndo: () => ctx.queuePreference(async () => {
-                            const cur = ctx.getPrefs();
-                            const restoredList = [...(cur.customPackingList || [])];
-                            if (restoredList.some(c => c.id === snapshot.id)) return true;
-                            restoredList.splice(Math.min(removedIndex, restoredList.length), 0, snapshot);
-                            const restoredChecked = wasChecked ? [...new Set([...(cur.packingList || []), snapshot.id])] : (cur.packingList || []);
-                            const restored = await ctx.savePrefs({ ...cur, customPackingList: restoredList, packingList: restoredChecked });
-                            if (restored) { ctx.render(); ctx.toast(`‘${snapshot.title}’ 준비물을 복구했습니다.`); }
-                            return restored;
-                          })
-                        });
-                      }
-                      return saved;
-                    });
-                  }, 'checklist-note-btn danger-text')) : null));
-          })))))
-        : E('p', { class: 'small muted' }, '🎉 모든 신혼여행 출국·짐 싸기 준비물을 챙겼습니다! ‘미챙긴 항목만 보기’를 해제하면 전체 목록을 확인할 수 있어요.')));
-  if (packingExpanded) details.open = true;
-  details.addEventListener('toggle', () => { packingExpanded = details.open; });
-  return details;
-}
-
 function printHoneymoonSummary() {
-  const packing = $('.honeymoon-packing'), wasOpen = Boolean(packing?.open), wasExpanded = packingExpanded;
+  const packing = $('.honeymoon-packing'), wasOpen = Boolean(packing?.open), wasExpanded = isPackingExpanded();
   if (packing && !wasOpen) packing.open = true;
   document.body.classList.add('print-honeymoon-summary');
   let cleaned = false;
@@ -1028,7 +906,7 @@ function printHoneymoonSummary() {
     if (cleaned) return;
     cleaned = true;
     document.body.classList.remove('print-honeymoon-summary');
-    if (packing && !wasOpen) { packing.open = false; packingExpanded = wasExpanded; }
+    if (packing && !wasOpen) { packing.open = false; setPackingExpanded(wasExpanded); }
     window.removeEventListener('afterprint', cleanup);
   };
   window.addEventListener('afterprint', cleanup, { once: true });
@@ -1036,11 +914,38 @@ function printHoneymoonSummary() {
   setTimeout(cleanup, 1500);
 }
 
+function tripCompactVideoButton(ctx, item) {
+  const videos = (item.plan?.references || []).filter(ref => isYoutubeUrl(ref.url));
+  if (!videos.length) return null;
+  const first = videos[0];
+  const firstUrl = safeUrl(first.url);
+  if (!firstUrl) return null;
+  const firstClean = first.title.replace(/^유튜브\s*·\s*/, '');
+  const openFirst = () => {
+    if (youtubeVideoId(firstUrl)) openYoutubeModal(ctx, firstUrl, firstClean);
+    else window.open(firstUrl, '_blank', 'noopener,noreferrer');
+  };
+  return E('div', { class: 'compact-video-row' },
+    button(`▶ 참고 영상 (${videos.length})`, openFirst, 'button quiet small-copy-btn'),
+    videos.length > 1 ? button('영상 목록 보기', () => {
+      const card = ctx.getMain().querySelector(`[data-trip-id="${item.id}"]`);
+      const details = card?.querySelector('.travel-details');
+      if (details) details.open = true;
+      const refSec = card?.querySelector(`[data-view-key="${item.id}:sources"]`);
+      if (refSec) {
+        refSec.open = true;
+        refSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 'text-button small') : null);
+}
+
 export function renderHoneymoon(ctx) {
   const guestMode = ctx.isGuestMode();
   if (guestMode) return ctx.guestRestrictedView('둘만의 첫 여행을 그리며', '신랑·신부의 신혼여행 후보와 일정을 비교하는 공간입니다.', 'HONEYMOON');
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
+  const main = ctx.getMain();
+  const selectedTrip = content.honeymoon.find(t => t.id === prefs.tripSelected) || null;
   const visibleTrips = sortedTrips(ctx);
   const shownTrips = visibleTrips.slice(0, tripVisibleLimit);
   const remaining = visibleTrips.length - shownTrips.length;
@@ -1049,6 +954,42 @@ export function renderHoneymoon(ctx) {
     : withTripNoteOnly && !tripFavoritesOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
       ? '메모를 남긴 여행 후보가 없습니다.'
       : '선택한 조건에 맞는 여행 후보가 없습니다.';
+
+  const focusTripFromTool = tripId => {
+    const item = content.honeymoon.find(t => t.id === tripId);
+    if (!item) return;
+    if (!matchesAllTripFilters(ctx, item)) resetTripFilters();
+    ensureTripVisible(ctx, item.id);
+    ctx.render();
+    const card = main.querySelector(`[data-trip-id="${item.id}"]`);
+    if (card) {
+      const det = card.querySelector('.travel-details');
+      if (det) det.open = true;
+      ctx.focusTrip(item.id);
+    }
+  };
+
+  const selectRegionFromMatrix = regionKey => {
+    tripRegionFilter = regionKey;
+    tripVisibleLimit = TRIP_PAGE_STEP;
+    ctx.render();
+    $('.travel-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const setCompareTrips = (ids, msg) => {
+    const validIds = [...new Set((ids || []).filter(id => content.honeymoon.some(t => t.id === id)))].slice(0, 3);
+    if (!validIds.length) return;
+    ctx.queuePreference(async () => {
+      const storedBase = ctx.readRawPrefs(), active = pruneContentPreferences(storedBase, ctx.getContent());
+      const saved = await ctx.savePrefs({ ...active, tripCompare: validIds }, storedBase);
+      if (saved) {
+        updateTripChoices(ctx);
+        $('#trip-comparison-region')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (msg) ctx.toast(msg);
+      }
+      return saved;
+    });
+  };
 
   const pagerBar = remaining > 0
     ? E('div', { class: 'list-pager-bar' },
@@ -1074,9 +1015,12 @@ export function renderHoneymoon(ctx) {
     ctx.pageHeader('둘만의 첫 여행을 그리며', '가고 싶은 여행지와 일정, 예상 비용, 마음에 드는 이유를 모아요.',
       E('div', { class: 'page-actions' },
         ctx.editButton('여행지 추가', () => ctx.openEditor('honeymoon')),
+        button('💬 상담 질문집', () => openAgencyQuestionsModal(ctx, selectedTrip), 'button quiet'),
         button('🖨️ 선택·비교 요약 인쇄', printHoneymoonSummary, 'button quiet')),
       'HONEYMOON'),
     tripSortControl(ctx),
+    renderRegionMatrixSection(ctx, { onSelectRegion: selectRegionFromMatrix, onCompareTrips: setCompareTrips, onFocusTrip: focusTripFromTool }),
+    renderTripRecommenderSection(ctx, { onFocusTrip: focusTripFromTool, onCompareTrips: setCompareTrips }),
     travelOverview(ctx),
     E('div', { id: 'selected-trip-region', class: prefs.tripSelected ? '' : 'is-unselected' }, selectedTripSummary(ctx)),
     E('div', { id: 'trip-comparison-region' }, tripComparison(ctx)),
@@ -1101,7 +1045,7 @@ export function renderHoneymoon(ctx) {
               E('dt', {}, '한국 도착'), E('dd', {}, item.endDate || '미정'),
               E('dt', {}, '2인 계획예산'), E('dd', {}, item.budget === null ? '미정' : `${item.budget.toLocaleString('ko-KR')}원`),
               E('dt', {}, '숙박 요약'), E('dd', {}, staySummary(item))),
-            tripCompactMode ? null : tripVideoLinks(ctx, item),
+            tripCompactMode ? tripCompactVideoButton(ctx, item) : tripVideoLinks(ctx, item),
             travelDetails(item),
             tripControls(ctx, item),
             ctx.recordActions('honeymoon', item));
@@ -1111,7 +1055,8 @@ export function renderHoneymoon(ctx) {
           hasActiveTripFilters(guestMode) ? button('모든 필터·검색 초기화', () => { resetTripFilters(); ctx.render(); $('#trip-search')?.focus({ preventScroll: true }); }, 'button quiet') : null))
       : ctx.empty('어디로 떠나고 싶나요?', '아직 정하지 않아도 괜찮아요. 끌리는 여행지부터 후보로 남겨 두세요.', '여행 후보 남기기', () => ctx.openEditor('honeymoon')),
     pagerBar,
-    renderHoneymoonPackingList(ctx),
+    E('div', { id: 'local-calc-region' }, renderLocalSpendingSimulator(ctx, selectedTrip)),
+    E('div', { id: 'packing-list-region' }, renderHoneymoonPackingList(ctx, { selectedTrip, activeRegion: tripRegionFilter })),
     E('div', { id: 'trip-compare-tray-region' }, renderCompareFloatingTray(ctx))
   ];
 }
