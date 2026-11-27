@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-71';
-import { formatDate } from './content.js?v=wedding-features-71';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-71';
-import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-71';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-71';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-72';
+import { formatDate } from './content.js?v=wedding-features-72';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-72';
+import { guestListSummary, guestsToCsv, parseGuestsCsv, parseQuickGuestText, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-72';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-72';
 import {
   printDedicatedSheet,
   openThankYouModal,
@@ -11,7 +11,7 @@ import {
   openQuickGiftEntryModal,
   renderGiftLedgerBoard,
   focusGiftSearch
-} from './gift-ledger-ui.js?v=wedding-features-71';
+} from './gift-ledger-ui.js?v=wedding-features-72';
 
 export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard, focusGiftSearch };
 
@@ -77,7 +77,17 @@ function buildGuestPrintSheet(ctx, list) {
 export function openGuestCsvImportModal(ctx) {
   if (ctx.isGuestMode()) return;
   const form = E('form', { class: 'editor-form' });
+  let importTab = 'paste';
   const fileInput = E('input', { type: 'file', accept: '.csv,text/csv', class: 'file-input', id: 'guest-csv-file', 'aria-label': '하객 명단 CSV 파일 선택' });
+  const defaultSideSel = E('select', { id: 'guest-bulk-side' }, GUEST_SIDES.map(v => E('option', { value: v }, v)));
+  const defaultGroupSel = E('select', { id: 'guest-bulk-group' }, GUEST_GROUPS.map(v => E('option', { value: v }, v)));
+  defaultGroupSel.value = '친구';
+  const bulkTextInput = E('textarea', {
+    id: 'guest-bulk-text',
+    rows: '6',
+    placeholder: '한 줄에 한 분씩 붙여넣어 주세요 (카톡·메모장·엑셀 복사본 모두 가능)\n예:\n홍길동\n김영희 2명\n박민수 (직장, 부부동반 2명)\n이철수 - 신부측 가족 참석'
+  });
+  const parseErrorEl = E('p', { class: 'small muted', role: 'status', 'aria-live': 'polite' });
   const previewWrap = E('div', { class: 'csv-import-preview', 'aria-live': 'polite' });
   const modeUpdateRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'update', id: 'csv-mode-update' });
   const modeSkipRadio = E('input', { type: 'radio', name: 'csv-import-mode', value: 'skip', id: 'csv-mode-skip', checked: true });
@@ -104,6 +114,7 @@ export function openGuestCsvImportModal(ctx) {
       previewWrap.replaceChildren();
       modeWrap.hidden = true;
       submit.disabled = true;
+      submit.textContent = '하객 명단에 가져오기';
       return;
     }
     const plan = computeSync();
@@ -144,6 +155,30 @@ export function openGuestCsvImportModal(ctx) {
     ].filter(Boolean));
   };
 
+  const reparsePaste = () => {
+    const raw = bulkTextInput.value.trim();
+    if (!raw) {
+      parsed = null;
+      parseErrorEl.textContent = '';
+      renderPreview();
+      return;
+    }
+    try {
+      parsed = parseQuickGuestText(raw, { defaultSide: defaultSideSel.value, defaultGroup: defaultGroupSel.value });
+      if (parsed.isRsvpForm) modeUpdateRadio.checked = true;
+      parseErrorEl.textContent = '';
+      renderPreview();
+    } catch (error) {
+      parsed = null;
+      parseErrorEl.textContent = error.message || '명단을 인식하지 못했습니다.';
+      renderPreview();
+    }
+  };
+
+  bulkTextInput.addEventListener('input', reparsePaste);
+  defaultSideSel.addEventListener('change', reparsePaste);
+  defaultGroupSel.addEventListener('change', reparsePaste);
+
   modeUpdateRadio.addEventListener('change', renderPreview);
   modeSkipRadio.addEventListener('change', renderPreview);
   modeAllRadio.addEventListener('change', renderPreview);
@@ -156,9 +191,11 @@ export function openGuestCsvImportModal(ctx) {
       const text = await file.text();
       parsed = parseGuestsCsv(text);
       if (parsed.isRsvpForm) modeUpdateRadio.checked = true;
+      parseErrorEl.textContent = '';
       renderPreview();
     } catch (error) {
       parsed = null;
+      parseErrorEl.textContent = error.message || 'CSV 파일을 읽지 못했습니다.';
       renderPreview();
       ctx.toast(error.message || 'CSV 파일을 읽지 못했습니다.', true);
     }
@@ -174,12 +211,50 @@ export function openGuestCsvImportModal(ctx) {
     ctx.toast('하객 명단 예시 양식(wedding-guest-sample.csv)을 내려받았습니다.');
   };
 
-  form.append(
+  const pasteSection = E('div', { class: 'editor-form' },
+    E('p', { class: 'form-note' }, '카카오톡·메모장에 적어 둔 명단을 그대로 붙여넣으면 이름·인원(‘2명’, ‘외 1명’)·관계·참석 여부를 자동 인식해 한 번에 등록합니다. 엑셀/구글 시트 표 복사(헤더 포함)도 바로 인식해요.'),
+    E('div', { class: 'field-row' },
+      E('label', { class: 'field', for: defaultSideSel.id }, '기본 양가 구분', defaultSideSel),
+      E('label', { class: 'field', for: defaultGroupSel.id }, '기본 관계 분류', defaultGroupSel)),
+    E('label', { class: 'field', for: bulkTextInput.id }, '하객 명단 텍스트 붙여넣기', bulkTextInput));
+
+  const csvSection = E('div', { class: 'editor-form', hidden: true },
     E('p', { class: 'form-note' }, '엑셀·구글 시트 명단 또는 Google Forms RSVP 설문 응답 CSV(UTF-8)를 한 번에 가져올 수 있습니다. ‘성함/이름’, ‘어느 측’, ‘참석 여부’, ‘본인 포함 인원수’, ‘식사 여부’, ‘축하 메시지’ 열을 자동 인식하며, 기존 명단과 RSVP를 바로 동기화할 수 있습니다.'),
     E('div', { class: 'page-actions' },
       button('📄 예시 CSV 양식 받기', downloadSample, 'button quiet'),
       button('📋 RSVP 설문 질문 양식 복사', () => ctx.copyTextToClipboard(RSVP_FORM_GUIDE_TEXT, 'Google Forms / 네이버 폼용 RSVP 질문 구성을 복사했습니다.', 'RSVP 설문 질문 양식'), 'button quiet')),
-    E('label', { class: 'field', for: fileInput.id }, '하객 명단 CSV 파일 선택', fileInput),
+    E('label', { class: 'field', for: fileInput.id }, '하객 명단 CSV 파일 선택', fileInput));
+
+  const tabBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '하객 일괄 가져오기 방식 선택' });
+  const syncTabs = () => {
+    pasteSection.hidden = importTab !== 'paste';
+    csvSection.hidden = importTab !== 'csv';
+    tabBar.replaceChildren(...[
+      ['paste', '📋 카톡·텍스트 붙여넣기'],
+      ['csv', '📄 CSV · RSVP 파일 업로드']
+    ].map(([key, label]) => E('button', {
+      type: 'button',
+      class: 'button quiet trip-filter-chip',
+      'data-guest-import-tab': key,
+      'aria-pressed': String(importTab === key),
+      onclick: () => {
+        if (importTab === key) return;
+        importTab = key;
+        parsed = null;
+        parseErrorEl.textContent = '';
+        if (key === 'paste') reparsePaste();
+        else renderPreview();
+        syncTabs();
+      }
+    }, label)));
+  };
+  syncTabs();
+
+  form.append(
+    tabBar,
+    pasteSection,
+    csvSection,
+    parseErrorEl,
     modeWrap,
     previewWrap,
     E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit)
@@ -199,10 +274,10 @@ export function openGuestCsvImportModal(ctx) {
         ctx.closeDialog();
         ctx.render();
         const msg = plan.updatedCount > 0 && plan.addedCount > 0
-          ? `CSV에서 기존 하객 ${plan.updatedCount}건 업데이트·신규 ${plan.addedCount}건 추가했습니다.`
+          ? `하객 ${plan.updatedCount}건 업데이트·신규 ${plan.addedCount}건 일괄 등록했습니다.`
           : plan.updatedCount > 0
-            ? `RSVP CSV로 기존 하객 ${plan.updatedCount}건의 참석·식사 정보를 업데이트했습니다.`
-            : `CSV에서 하객 ${plan.addedCount}건을 명단에 추가했습니다.`;
+            ? `기존 하객 ${plan.updatedCount}건의 참석·식사 정보를 업데이트했습니다.`
+            : `하객 ${plan.addedCount}건을 명단에 일괄 추가했습니다.`;
         ctx.toast(msg);
       }
     } catch (error) {
@@ -213,8 +288,8 @@ export function openGuestCsvImportModal(ctx) {
     }
   });
 
-  if (ctx.showDialog('📤 하객 명단 · RSVP CSV 가져오기', form)) {
-    ctx.setEditorState({ isDirty: () => saving || Boolean(parsed), isSaving: () => saving });
+  if (ctx.showDialog('📤 하객 명단 일괄 등록 (붙여넣기 · CSV)', form)) {
+    ctx.setEditorState({ isDirty: () => saving || Boolean(parsed) || Boolean(bulkTextInput.value.trim()), isSaving: () => saving });
   }
 }
 
@@ -686,7 +761,7 @@ export function renderGuestListBoard(ctx) {
         E('p', {}, '양가 하객 명단, 청첩장 발송 상태, 참석·식사 여부를 정리하고 배지를 한 번 눌러 발송·참석 상태를 빠르게 바꿀 수 있습니다. (이 기기 전용)')),
       E('div', { class: 'page-actions guest-board-toolbar' },
         button('+ 하객 추가', () => openGuestEditor(ctx)),
-        button('📤 CSV 가져오기', () => openGuestCsvImportModal(ctx), 'button quiet'),
+        button('📤 명단·CSV 일괄 등록', () => openGuestCsvImportModal(ctx), 'button quiet'),
         list.length ? button(`🏛️ ${syncModeLabel}(${syncTarget}명) 시뮬레이터 반영`, syncVenueGuestCount, 'button quiet') : null,
         button('🖨️ 축의대 명부 인쇄', () => printDedicatedSheet('print-guest-sheet', buildGuestPrintSheet(ctx, list)), 'button quiet'),
         list.length ? button('📥 CSV 내보내기', () => {

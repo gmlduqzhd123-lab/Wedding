@@ -1,5 +1,5 @@
-import { parseContent, validateContent, formatDate, weddingDday, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-71';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-71';
+import { parseContent, validateContent, formatDate, weddingDday, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-72';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-72';
 import {
   readBackupMeta,
   writeBackupMeta,
@@ -11,13 +11,13 @@ import {
   flashCopiedButton,
   copyText,
   initPwaInstall
-} from './ui-shell.js?v=wedding-features-71';
-import { createShellEffects } from './shell-effects.js?v=wedding-features-71';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-71';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-71';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-71';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView, focusStorySearch } from './story-album-ui.js?v=wedding-features-71';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-71';
+} from './ui-shell.js?v=wedding-features-72';
+import { createShellEffects } from './shell-effects.js?v=wedding-features-72';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-72';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-72';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-72';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView, focusStorySearch } from './story-album-ui.js?v=wedding-features-72';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-72';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
 const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences';
@@ -44,20 +44,20 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-71'),
-  storage: () => import('./storage.js?v=wedding-features-71'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-71'),
-  manager: () => import('./manager-ui.js?v=wedding-features-71'),
-  studios: () => import('./studio-ui.js?v=wedding-features-71'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-71'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-71'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-71'),
-  tips: () => import('./planning-ui.js?v=wedding-features-71'),
-  editor: () => import('./editor-ui.js?v=wedding-features-71'),
-  search: () => import('./search-ui.js?v=wedding-features-71'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-71'),
-  coupleSync: () => import('./couple-sync-ui.js?v=wedding-features-71'),
-  fieldOps: () => import('./field-ops-ui.js?v=wedding-features-71')
+  preferences: () => import('./preferences.js?v=wedding-features-72'),
+  storage: () => import('./storage.js?v=wedding-features-72'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-72'),
+  manager: () => import('./manager-ui.js?v=wedding-features-72'),
+  studios: () => import('./studio-ui.js?v=wedding-features-72'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-72'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-72'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-72'),
+  tips: () => import('./planning-ui.js?v=wedding-features-72'),
+  editor: () => import('./editor-ui.js?v=wedding-features-72'),
+  search: () => import('./search-ui.js?v=wedding-features-72'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-72'),
+  coupleSync: () => import('./couple-sync-ui.js?v=wedding-features-72'),
+  fieldOps: () => import('./field-ops-ui.js?v=wedding-features-72')
 };
 
 function loadModule(key) {
@@ -476,10 +476,25 @@ async function persistDraft(next, base, approvedRaw) {
   } finally { pendingWrites--; }
 }
 
+let leaveConfirmBusy = false;
 function dirtyEditor() { return editorState?.isDirty() || false; }
-function canLeaveEditor() {
-  if (editorState?.isSaving() || conflictReview?.busy) { toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.'); return false; }
-  return !dirtyEditor() || confirm('저장하지 않은 입력이 있습니다. 입력을 버리고 닫을까요?');
+function isEditorBusy() { return Boolean(editorState?.isSaving() || conflictReview?.busy); }
+async function confirmLeaveEditor() {
+  if (isEditorBusy()) { toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.'); return false; }
+  if (!dirtyEditor()) return true;
+  if (leaveConfirmBusy) return false;
+  leaveConfirmBusy = true;
+  try {
+    return await confirmAction({
+      title: '저장하지 않은 입력이 있습니다',
+      message: '지금 닫으면 작성 중인 내용이 사라집니다. 입력을 버리고 닫을까요?',
+      confirmLabel: '버리고 닫기',
+      cancelLabel: '계속 작성',
+      danger: true
+    });
+  } finally {
+    leaveConfirmBusy = false;
+  }
 }
 function unloadDialogMedia() { for (const frame of editor.querySelectorAll('iframe')) frame.src = 'about:blank'; }
 function closeDialog({ restoreFocus = true } = {}) {
@@ -495,7 +510,7 @@ function closeDialog({ restoreFocus = true } = {}) {
     returnTarget.focus({ preventScroll: true });
   }
 }
-function requestClose() { if (canLeaveEditor()) closeDialog(); }
+async function requestClose() { if (await confirmLeaveEditor()) closeDialog(); }
 function pageHeader(title, description, action, eyebrow) {
   return E('div', { class: 'page-header' }, E('div', {}, E('p', { class: 'eyebrow' }, eyebrow || 'OUR WEDDING JOURNAL'), E('h1', {}, title), E('p', {}, description)), action);
 }
@@ -661,8 +676,8 @@ function syncGuestChrome() {
     if (footerText) footerText.textContent = '함께 준비하고, 오래 기억할 우리의 이야기.';
   }
 }
-function toggleGuestPreview(enable) {
-  if (urlGuestMode || !canLeaveEditor()) return;
+async function toggleGuestPreview(enable) {
+  if (urlGuestMode || !(await confirmLeaveEditor())) return;
   closeDialog({ restoreFocus: false });
   guestMode = Boolean(enable);
   if (guestMode) {
@@ -953,7 +968,8 @@ function render() {
 }
 
 function showDialog(title, body) {
-  if (!canLeaveEditor()) return false;
+  if (isEditorBusy()) { toast('저장 중입니다. 완료될 때까지 잠시 기다려 주세요.'); return false; }
+  if (dirtyEditor()) { toast('먼저 열려 있는 편집 내용을 저장하거나 닫아 주세요.', true); return false; }
   if (!dialog.open) {
     const activeEl = document.activeElement;
     lastDialogTrigger = (activeEl instanceof HTMLElement && activeEl !== document.body && !dialog.contains(activeEl))
@@ -1116,7 +1132,16 @@ document.addEventListener('click', event => {
   }
   const opensElsewhere = event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || anchor?.target.toLowerCase() === '_blank';
   if (anchor && dirtyEditor() && !opensElsewhere && !anchor.hasAttribute('download')) {
-    if (!canLeaveEditor()) { event.preventDefault(); event.stopImmediatePropagation(); } else closeDialog({ restoreFocus: false });
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const rawHref = anchor.getAttribute('href') || '';
+    const fullHref = anchor.href || '';
+    confirmLeaveEditor().then(ok => {
+      if (!ok) return;
+      closeDialog({ restoreFocus: false });
+      if (rawHref.startsWith('#')) location.hash = rawHref;
+      else if (fullHref) location.href = fullHref;
+    });
   }
 }, true);
 
@@ -1124,7 +1149,16 @@ window.addEventListener('beforeunload', event => { if (dirtyEditor() || pendingW
 window.addEventListener('hashchange', () => {
   closeMobileMenu(false);
   if (!content || location.hash === '#main') return;
-  if (!canLeaveEditor()) { history.replaceState(null, '', location.pathname + location.search + previousHash); return; }
+  if (isEditorBusy() || dirtyEditor()) {
+    const targetHash = location.hash;
+    history.replaceState(null, '', location.pathname + location.search + previousHash);
+    confirmLeaveEditor().then(ok => {
+      if (!ok) return;
+      closeDialog({ restoreFocus: false });
+      location.hash = targetHash;
+    });
+    return;
+  }
   const prevTopRoute = previousHash.replace(/^#\/?/, '').split('/')[0] || '';
   const nextTopRoute = currentRoute();
   previousHash = location.hash;
@@ -1204,7 +1238,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-71')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-72')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {

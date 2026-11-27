@@ -450,6 +450,15 @@ try {
   await cdp.waitFor(`() => document.querySelector('[data-ceremony-tab="guests"]')?.getAttribute('aria-selected') === 'true' && Boolean(document.querySelector('#guest-board-title'))`);
   assert.equal(await cdp.eval(`document.activeElement?.dataset?.ceremonyTab`), 'guests', 'ArrowRight on tablist must move focus to newly selected tab');
 
+  // v72: Closing a dirty editor uses botanical #confirm-dialog instead of native window.confirm()
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ 하객 추가').click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('#guest-name'))`);
+  await cdp.eval(`(() => { const el = document.querySelector('#guest-name'); el.value = '임시입력'; el.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => document.querySelector('#confirm-dialog').open && document.querySelector('#confirm-title')?.textContent.includes('저장하지 않은 입력')`);
+  await cdp.eval(`document.querySelector('#confirm-ok').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#confirm-dialog').open && !document.querySelector('#editor-dialog').open`);
+
   // Add a guest with 미확인 RSVP first, verify unsent quick filter, then log gift via Quick Entry and verify RSVP auto-syncs to 참석
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ 하객 추가').click()`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#guest-name'))`);
@@ -468,6 +477,18 @@ try {
   await cdp.waitFor(`() => Boolean(document.querySelector('.batch-thankyou-done'))`);
   await cdp.eval(`[...document.querySelectorAll('.batch-thankyou-done button')].find(b => b.textContent.includes('하객 명단으로 돌아가기')).click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('.ledger-row')?.innerText.includes('모바일 발송')`);
+
+  // v72: Bulk guest paste import from KakaoTalk / plain text lines
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('명단·CSV 일괄 등록')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#guest-bulk-text'))`);
+  await cdp.eval(`(() => {
+    const ta = document.querySelector('#guest-bulk-text');
+    ta.value = '김지훈 2명\\n박서연 (신부측 친구, 참석)';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.csv-preview-table tbody tr').length === 2 && !document.querySelector('#dialog-actions [type="submit"]').disabled`);
+  await cdp.eval(`document.querySelector('#dialog-actions [type="submit"]').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main').innerText.includes('김지훈') && document.querySelector('#main').innerText.includes('박서연')`);
 
   await cdp.eval(`location.hash = '#/ceremony/gifts'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#gift-ledger-title'))`);
@@ -516,19 +537,23 @@ try {
   await cdp.waitFor(`() => Boolean(document.querySelector('#dayops-title'))`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('기본 봉투 5종')).click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.ledger-row').length >= 5`);
-  // Round 9: Wedding Day Field Ops Hub (3 switcher tabs)
+  // Round 9 + v72: Wedding Day Field Ops Hub (4 switcher tabs including BGM + localStorage photo-call sync)
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('본식 당일 현장 모드')).click()`);
-  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelectorAll('.wedding-day-hub [role="tab"]').length === 3`);
-  await cdp.eval(`document.querySelectorAll('.wedding-day-hub [role="tab"]')[1].click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelectorAll('.wedding-day-hub [role="tab"]').length === 4`);
+  await cdp.eval(`document.querySelector('[data-wedding-hub-tab="envelopes"]').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.wedding-day-hub .field-ops-checklist li').length >= 5`);
-  await cdp.eval(`document.querySelectorAll('.wedding-day-hub [role="tab"]')[2].click()`);
+  await cdp.eval(`document.querySelector('[data-wedding-hub-tab="photocall"]').click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.wedding-day-hub .photo-call-btn').length >= 6`);
+  await cdp.eval(`document.querySelector('.wedding-day-hub .photo-call-btn').click()`);
+  await cdp.waitFor(`() => document.querySelector('.wedding-day-hub .photo-call-btn')?.classList.contains('is-done')`);
+  await cdp.eval(`document.querySelector('[data-wedding-hub-tab="bgm"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.wedding-day-hub [data-hub-bgm]').length === 9`);
+  await cdp.eval(`document.querySelector('#fbgm-bgm-candle').click()`);
+  await cdp.waitFor(`() => document.querySelector('.wedding-day-hub [data-hub-bgm="bgm-candle"]')?.classList.contains('is-done')`);
   await cdp.eval(`document.querySelector('#close-dialog').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('현장 호명 체크 모드')).click()`);
-  await cdp.waitFor(`() => Boolean(document.querySelector('.photo-call-board'))`);
-  await cdp.eval(`document.querySelector('.photo-call-btn').click()`);
-  await cdp.waitFor(`() => document.querySelector('.photo-call-head')?.innerText.includes('촬영 완료 1 /')`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.photo-call-board')) && document.querySelector('.photo-call-head')?.innerText.includes('촬영 완료 1 /')`);
 
   await cdp.eval(`location.hash = '#/studios'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer')) && Boolean(document.querySelector('#shoot-prep-pending-only')) && Boolean(document.querySelector('.shoot-brief-board'))`);

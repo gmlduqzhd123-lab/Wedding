@@ -1,56 +1,97 @@
-import { E, button, externalLink } from './dom.js?v=wedding-features-71';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-71';
-import { computeCashDenominations } from './planning.js?v=wedding-features-71';
+import { E, button, externalLink } from './dom.js?v=wedding-features-72';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-72';
+import { computeCashDenominations } from './planning.js?v=wedding-features-72';
+import { DEFAULT_PHOTO_ORDER, readPhotoCallChecked, writePhotoCallChecked } from './wedding-day-ui.js?v=wedding-features-72';
+import { CEREMONY_BGM_SLOTS, buildBgmCueSheetText } from './ceremony-ui.js?v=wedding-features-72';
 
-const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
-const DEFAULT_PHOTO_LINES = [
-  '1. 신랑 · 신부 + 양가 부모님',
-  '2. 신랑 · 신부 + 양가 직계가족 (형제·자매·조카)',
-  '3. 신랑 측 친가 · 외가 친척',
-  '4. 신부 측 친가 · 외가 친척',
-  '5. 양가 직장 동료 · 지인',
-  '6. 신랑 · 신부 친구 (단체 컷 → 부케 던지기 컷)'
-];
+const DEFAULT_PHOTO_LINES = DEFAULT_PHOTO_ORDER.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
-function createWakeLockController() {
+export function createWakeLockController(onChange = null) {
   let sentinel = null;
-  let active = false;
+  let wanted = false;
   const supported = Boolean(typeof navigator !== 'undefined' && navigator.wakeLock?.request);
 
-  const release = () => {
-    active = false;
-    if (sentinel) {
-      sentinel.release().catch(() => {});
-      sentinel = null;
-    }
+  const notify = () => {
+    if (typeof onChange === 'function') onChange();
   };
 
-  const toggle = async (btn, toast) => {
+  const acquire = async (silent = false, toast = null) => {
     if (!supported) {
-      toast?.('이 브라우저는 화면 자동 꺼짐 방지(Wake Lock)를 지원하지 않습니다.', true);
-      return;
-    }
-    if (active) {
-      release();
-      if (btn) { btn.textContent = '🌙 화면 켜짐 유지 끄기 상태'; btn.setAttribute('aria-pressed', 'false'); }
-      toast?.('화면 켜짐 유지를 해제했습니다.');
-      return;
+      if (!silent) toast?.('이 브라우저는 화면 자동 꺼짐 방지(Wake Lock)를 지원하지 않습니다.', true);
+      return false;
     }
     try {
-      sentinel = await navigator.wakeLock.request('screen');
-      active = true;
-      if (btn) { btn.textContent = '☀️ 화면 켜짐 유지 중'; btn.setAttribute('aria-pressed', 'true'); }
-      sentinel.addEventListener('release', () => {
-        active = false;
-        if (btn?.isConnected) { btn.textContent = '🌙 화면 켜짐 유지'; btn.setAttribute('aria-pressed', 'false'); }
+      const next = await navigator.wakeLock.request('screen');
+      sentinel = next;
+      wanted = true;
+      next.addEventListener('release', () => {
+        if (sentinel === next) sentinel = null;
+        notify();
       });
-      toast?.('현장 브리핑 동안 화면이 꺼지지 않도록 유지합니다.');
+      if (!silent) toast?.('현장 브리핑 동안 화면이 꺼지지 않도록 유지합니다.');
+      notify();
+      return true;
     } catch {
-      toast?.('화면 켜짐 유지를 활성화하지 못했습니다.', true);
+      wanted = false;
+      sentinel = null;
+      if (!silent) toast?.('화면 켜짐 유지를 활성화하지 못했습니다.', true);
+      notify();
+      return false;
     }
   };
 
-  return { supported, toggle, release };
+  const onVisibility = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible' && wanted && !sentinel) {
+      acquire(true);
+    }
+  };
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisibility);
+  }
+
+  const release = () => {
+    wanted = false;
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibility);
+    }
+    if (sentinel) {
+      const prev = sentinel;
+      sentinel = null;
+      prev.release().catch(() => {});
+    }
+  };
+
+  const toggle = async (toast = null) => {
+    if (!supported) {
+      toast?.('이 브라우저는 화면 자동 꺼짐 방지(Wake Lock)를 지원하지 않습니다.', true);
+      return false;
+    }
+    if (sentinel || wanted) {
+      wanted = false;
+      if (sentinel) {
+        const prev = sentinel;
+        sentinel = null;
+        await prev.release().catch(() => {});
+      }
+      toast?.('화면 켜짐 유지를 해제했습니다.');
+      notify();
+      return false;
+    }
+    return acquire(false, toast);
+  };
+
+  return { supported, isActive: () => Boolean(sentinel || wanted), toggle, release };
+}
+
+function renderWakeButton(wake, toast) {
+  const active = wake.isActive();
+  return E('button', {
+    type: 'button',
+    class: 'button quiet small-copy-btn live-cue-wake-btn' + (active ? ' is-active' : ''),
+    'aria-pressed': String(active),
+    onclick: () => wake.toggle(toast)
+  }, active ? '☀️ 화면 켜짐 유지 중' : (wake.supported ? '☀️ 화면 켜짐 유지' : '화면 유지 미지원'));
 }
 
 export function openShootDayMode(ctx) {
@@ -62,10 +103,10 @@ export function openShootDayMode(ctx) {
     return;
   }
 
-  const wake = createWakeLockController();
   let fontZoom = 100;
   let shootTab = 'ops';
   const root = E('div', { class: 'field-ops-shell' });
+  const wake = createWakeLockController(() => { if (root.isConnected) renderBody(); });
 
   const renderBody = () => {
     const prefs = ctx.getPrefs();
@@ -81,12 +122,7 @@ export function openShootDayMode(ctx) {
       });
     });
 
-    const wakeBtn = E('button', {
-      type: 'button',
-      class: 'button quiet small-copy-btn',
-      'aria-pressed': 'false',
-      onclick: () => wake.toggle(wakeBtn, ctx.toast)
-    }, wake.supported ? '☀️ 화면 켜짐 유지' : '화면 유지 미지원');
+    const wakeBtn = renderWakeButton(wake, ctx.toast);
 
     const togglePrep = (id, box) => {
       const next = new Set(ctx.getPrefs().shootChecklist || []);
@@ -185,19 +221,9 @@ export function openShootDayMode(ctx) {
 
 export function openWeddingDayHub(ctx) {
   if (ctx.isGuestMode()) return;
-  const wake = createWakeLockController();
   let activeTab = 'ops';
   const root = E('div', { class: 'field-ops-shell wedding-day-hub' });
-
-  const readPhotoSet = () => {
-    try {
-      const arr = JSON.parse(sessionStorage.getItem(PHOTO_CALL_KEY) || '[]');
-      return new Set(Array.isArray(arr) ? arr : []);
-    } catch { return new Set(); }
-  };
-  const writePhotoSet = set => {
-    try { sessionStorage.setItem(PHOTO_CALL_KEY, JSON.stringify([...set])); } catch {}
-  };
+  const wake = createWakeLockController(() => { if (root.isConnected) renderHub(); });
 
   const renderHub = () => {
     const content = ctx.getContent();
@@ -205,23 +231,21 @@ export function openWeddingDayHub(ctx) {
     const inv = content.invitation || {};
     const roles = prefs.weddingDayRoles || [];
     const envelopes = prefs.weddingDayEnvelopes || [];
+    const bgmMap = prefs.ceremonyBgm || {};
+    const bgmReadyCount = CEREMONY_BGM_SLOTS.filter(([id]) => Boolean(bgmMap[id]?.ready)).length;
     const denom = computeCashDenominations(envelopes);
     const photoLines = (prefs.photoOrderNote || '').trim()
       ? prefs.photoOrderNote.trim().split(/\r?\n/).map(s => s.trim()).filter(Boolean)
       : DEFAULT_PHOTO_LINES;
-    const photoDone = readPhotoSet();
+    const photoDone = readPhotoCallChecked();
 
-    const wakeBtn = E('button', {
-      type: 'button',
-      class: 'button quiet small-copy-btn',
-      'aria-pressed': 'false',
-      onclick: () => wake.toggle(wakeBtn, ctx.toast)
-    }, wake.supported ? '☀️ 화면 켜짐 유지' : '화면 유지 미지원');
+    const wakeBtn = renderWakeButton(wake, ctx.toast);
 
     const tabs = [
       ['ops', '⚡ 현장 런처 · 연락'],
       ['envelopes', `✉️ 현금 봉투 (${envelopes.filter(e => e.ready).length}/${envelopes.length})`],
-      ['photocall', `📸 원판 호명 (${photoLines.filter((_, i) => photoDone.has(i)).length}/${photoLines.length})`]
+      ['photocall', `📸 원판 호명 (${photoLines.filter((_, i) => photoDone.has(String(i))).length}/${photoLines.length})`],
+      ['bgm', `🎼 본식 BGM (${bgmReadyCount}/${CEREMONY_BGM_SLOTS.length})`]
     ];
 
     const tabBar = E('div', { class: 'trip-quick-filters field-ops-tabs', role: 'tablist', 'aria-label': '본식 현장 모드 전환' },
@@ -229,6 +253,7 @@ export function openWeddingDayHub(ctx) {
         type: 'button',
         role: 'tab',
         class: 'button quiet trip-filter-chip',
+        'data-wedding-hub-tab': key,
         'aria-selected': String(activeTab === key),
         'aria-pressed': String(activeTab === key),
         onclick: () => { activeTab = key; renderHub(); }
@@ -249,7 +274,7 @@ export function openWeddingDayHub(ctx) {
                 [...document.querySelectorAll('button')].find(b => b.textContent.includes('라이브 큐시트 모드'))?.click();
               }, 160);
             }
-          }, E('strong', {}, '🎤 사회자 라이브 큐시트'), E('span', { class: 'small muted' }, '12단계 진행 대본 · 큰 글씨')),
+          }, E('strong', {}, '🎤 사회자 라이브 큐시트'), E('span', { class: 'small muted' }, '12단계 진행 대본 · BGM 큐 · 큰 글씨')),
           E('button', {
             type: 'button',
             class: 'field-ops-launch-btn',
@@ -300,21 +325,64 @@ export function openWeddingDayHub(ctx) {
                   env.note ? E('span', { class: 'small muted' }, ` — ${env.note}`) : null)));
           }))
           : E('p', { class: 'small muted' }, '등록된 현금 봉투가 없습니다. 본식 → 당일 운영에서 ‘기본 봉투 5종’을 채워 보세요.'));
+    } else if (activeTab === 'bgm') {
+      panel = E('section', { class: 'field-ops-card' },
+        E('div', { class: 'field-ops-card-head' },
+          E('h3', {}, `🎼 본식 음향 · BGM 9구간 현장 점검 (${bgmReadyCount}/${CEREMONY_BGM_SLOTS.length})`),
+          button('📋 BGM 큐시트 복사', () => {
+            const text = buildBgmCueSheetText(ctx.getPrefs().ceremonyBgm || {}, inv, ctx.getPrefs().ceremonyPlan || {});
+            ctx.copyTextToClipboard(text, '본식 BGM 음향 큐시트를 복사했습니다.', '본식 BGM 큐시트 복사');
+          }, 'button quiet small-copy-btn')),
+        E('ul', { class: 'field-ops-checklist' }, CEREMONY_BGM_SLOTS.map(([slotId, slotTitle, slotHint]) => {
+          const entry = bgmMap[slotId] || {};
+          const box = E('input', { type: 'checkbox', id: `fbgm-${slotId}` });
+          box.checked = Boolean(entry.ready);
+          box.addEventListener('change', () => {
+            ctx.queuePreference(async () => {
+              const latestMap = { ...(ctx.getPrefs().ceremonyBgm || {}) };
+              const prev = latestMap[slotId] || {};
+              latestMap[slotId] = {
+                ...(prev.song ? { song: prev.song } : {}),
+                ...(prev.cue ? { cue: prev.cue } : {}),
+                ready: box.checked
+              };
+              const ok = await ctx.savePrefs({ ...ctx.getPrefs(), ceremonyBgm: latestMap });
+              if (ok) renderHub();
+              return ok;
+            });
+          });
+          return E('li', { class: box.checked ? 'is-done' : '', 'data-hub-bgm': slotId },
+            E('label', { for: box.id, class: 'checklist-label' },
+              box,
+              E('span', {},
+                E('strong', {}, slotTitle),
+                ' · ',
+                entry.song
+                  ? `${entry.song}${entry.cue ? ` (${entry.cue})` : ''}`
+                  : E('span', { class: 'small muted' }, `미지정 (${slotHint})`))));
+        })),
+        E('div', { class: 'page-actions' },
+          button('🎼 곡명·큐 상세 편집하러 가기 →', () => {
+            wake.release();
+            ctx.closeDialog();
+            ctx.navigateToRoute('ceremony', 'rundown');
+          }, 'button quiet small-copy-btn')));
     } else {
       panel = E('section', { class: 'field-ops-card' },
         E('div', { class: 'field-ops-card-head' },
           E('h3', {}, '📸 원판 가족·친구 사진 현장 호명 체크'),
-          photoDone.size > 0 ? button('체크 초기화', () => { writePhotoSet(new Set()); renderHub(); }, 'button quiet small-copy-btn') : null),
+          photoDone.size > 0 ? button('체크 초기화', () => { writePhotoCallChecked(new Set()); renderHub(); }, 'button quiet small-copy-btn') : null),
         E('div', { class: 'photo-call-list' }, photoLines.map((line, idx) => {
-          const done = photoDone.has(idx);
+          const key = String(idx);
+          const done = photoDone.has(key);
           return E('button', {
             type: 'button',
             class: 'photo-call-btn' + (done ? ' is-done' : ''),
             'aria-pressed': String(done),
             onclick: () => {
-              const set = readPhotoSet();
-              if (set.has(idx)) set.delete(idx); else set.add(idx);
-              writePhotoSet(set);
+              const set = readPhotoCallChecked();
+              if (set.has(key)) set.delete(key); else set.add(key);
+              writePhotoCallChecked(set);
               renderHub();
             }
           }, E('span', { class: 'photo-call-mark' }, done ? '✓' : '○'), E('span', {}, line));

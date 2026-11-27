@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-71';
-import { formatDate } from './content.js?v=wedding-features-71';
-import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-71';
-import { giftLedgerSummary, giftsToCsv, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-71';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-71';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-72';
+import { formatDate } from './content.js?v=wedding-features-72';
+import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-72';
+import { giftLedgerSummary, giftsToCsv, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-72';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-72';
 
 let giftSideFilter = 'all';
 let giftChannelFilter = 'all';

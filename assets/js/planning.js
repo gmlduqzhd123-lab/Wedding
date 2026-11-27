@@ -7,12 +7,13 @@ import {
   parseCsvRows,
   RSVP_FORM_GUIDE_TEXT,
   parseGuestsCsv,
+  parseQuickGuestText,
   syncGuestsFromCsv,
   buildThankYouMessage,
   computeCashDenominations,
   estimateBanquetTables,
   crossCheckGuestsAndGifts
-} from './ledger.js?v=wedding-features-71';
+} from './ledger.js?v=wedding-features-72';
 
 export {
   guestListSummary,
@@ -23,6 +24,7 @@ export {
   parseCsvRows,
   RSVP_FORM_GUIDE_TEXT,
   parseGuestsCsv,
+  parseQuickGuestText,
   syncGuestsFromCsv,
   buildThankYouMessage,
   computeCashDenominations,

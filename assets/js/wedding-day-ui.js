@@ -1,19 +1,31 @@
-import { E, button } from './dom.js?v=wedding-features-71';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-71';
-import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-71';
-import { weddingDaySummary, computeCashDenominations } from './planning.js?v=wedding-features-71';
+import { E, button } from './dom.js?v=wedding-features-72';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-72';
+import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-72';
+import { weddingDaySummary, computeCashDenominations } from './planning.js?v=wedding-features-72';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
-const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
+export const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
 let photoCallMode = false;
-function readPhotoCallChecked() {
+export function readPhotoCallChecked() {
   try {
-    const parsed = JSON.parse(sessionStorage.getItem(PHOTO_CALL_KEY) || '[]');
-    return new Set(Array.isArray(parsed) ? parsed : []);
+    let raw = localStorage.getItem(PHOTO_CALL_KEY);
+    if (raw === null) {
+      const legacy = sessionStorage.getItem(PHOTO_CALL_KEY);
+      if (legacy !== null) {
+        raw = legacy;
+        try { localStorage.setItem(PHOTO_CALL_KEY, legacy); sessionStorage.removeItem(PHOTO_CALL_KEY); } catch {}
+      }
+    }
+    const parsed = JSON.parse(raw || '[]');
+    return new Set(Array.isArray(parsed) ? parsed.map(v => String(v)) : []);
   } catch { return new Set(); }
 }
-function writePhotoCallChecked(set) {
-  try { sessionStorage.setItem(PHOTO_CALL_KEY, JSON.stringify([...set])); } catch {}
+export function writePhotoCallChecked(set) {
+  const normalized = [...(set || [])].map(v => String(v));
+  try {
+    localStorage.setItem(PHOTO_CALL_KEY, JSON.stringify(normalized));
+    sessionStorage.removeItem(PHOTO_CALL_KEY);
+  } catch {}
 }
 
 const STARTER_DAY_ROLES = [
@@ -33,7 +45,7 @@ const STARTER_ENVELOPES = [
   ['혼주·기타', '가방순이·축의대·운전 도우미 감사의 마음']
 ];
 
-const DEFAULT_PHOTO_ORDER = [
+export const DEFAULT_PHOTO_ORDER = [
   '1. 신랑 · 신부 + 양가 부모님',
   '2. 신랑 · 신부 + 양가 직계가족 (형제·자매·조카)',
   '3. 신랑 측 친가 · 외가 친척',

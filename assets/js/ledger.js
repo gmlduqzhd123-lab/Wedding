@@ -305,6 +305,151 @@ export function parseGuestsCsv(csvText) {
   return { records, skipped, warnings, isRsvpForm };
 }
 
+const GUEST_ATTR_TOKEN_RE = /^(?:신랑\s*측?|신부\s*측?|공통|가족(?:·?친척)?|친척|친지|친구|동창|대학|직장(?:·?동료)?|동료|회사|지인(?:·?기타)?|기타|참석|불참|미정|미확인|미식사|식사\s*안\s*함|답례품|모바일\s*발송|종이\s*전달|미발송|(?:\+|외\s*|x|×)?\d+\s*(?:명|인)?)$/i;
+
+export function parseQuickGuestText(rawText, { defaultSide = '신랑 측', defaultGroup = '친구', defaultInvite = '미발송' } = {}) {
+  const cleanedRaw = String(rawText || '').replace(/^\uFEFF/, '').trim();
+  if (!cleanedRaw) throw new Error('하객 이름 목록을 입력하거나 붙여넣어 주세요.');
+
+  const rawLines = cleanedRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const firstLine = rawLines[0] || '';
+  if (rawLines.length >= 2 && (/[\t,]/.test(firstLine)) && /(성함|이름|성명|하객|name)/i.test(firstLine)) {
+    const csvCandidate = firstLine.includes('\t')
+      ? rawLines.map(line => line.split('\t').map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n')
+      : cleanedRaw;
+    return parseGuestsCsv(csvCandidate);
+  }
+
+  const safeDefaultSide = ['신랑 측', '신부 측', '공통'].includes(defaultSide) ? defaultSide : '신랑 측';
+  const safeDefaultGroup = ['가족·친척', '친구', '직장·동료', '지인·기타'].includes(defaultGroup) ? defaultGroup : '친구';
+  const safeDefaultInvite = ['미발송', '모바일 발송', '종이 전달', '모바일+종이'].includes(defaultInvite) ? defaultInvite : '미발송';
+
+  const expandedLines = [];
+  for (const rawLine of rawLines) {
+    const stripped = rawLine.replace(/^\s*(?:\d+[.)\]]|[-•·*▪︎□☑✅])\s*/, '').trim();
+    if (!stripped) continue;
+    if (stripped.includes(',') && !/[()\-/]/.test(stripped)) {
+      const parts = stripped.split(',').map(p => p.trim()).filter(Boolean);
+      const allPlainNames = parts.length >= 2 && parts.every(p => !GUEST_ATTR_TOKEN_RE.test(p) && !/^\d/.test(p) && p.length <= 20);
+      if (allPlainNames) {
+        expandedLines.push(...parts);
+        continue;
+      }
+    }
+    expandedLines.push(stripped);
+  }
+
+  const records = [];
+  const warnings = [];
+  let skipped = 0;
+
+  expandedLines.forEach((line, idx) => {
+    let side = safeDefaultSide;
+    let group = safeDefaultGroup;
+    let rsvp = '미확인';
+    let mealTicket = true;
+    let partySize = 1;
+    let working = line;
+    const extraNotes = [];
+
+    // Extract parenthetical metadata e.g. "홍길동 (신부측 친구, 2명, 부부동반)"
+    working = working.replace(/\(([^)]+)\)/g, (_, inside) => {
+      extraNotes.push(inside.trim());
+      return ' ';
+    }).trim();
+
+    // Split dash/slash/comma trailing metadata from leading name chunk
+    const segments = working.split(/\s*(?:[-–—/|]|,)\s*/).map(s => s.trim()).filter(Boolean);
+    let head = segments.shift() || '';
+    const metaChunks = [...segments, ...extraNotes];
+
+    // Inspect head for inline count or keywords (e.g., "김영희 2명" or "박민수 외 1명")
+    const parseMetaText = text => {
+      let rest = String(text || '').trim();
+      if (!rest) return '';
+      if (/신랑\s*측?/.test(rest)) { side = '신랑 측'; rest = rest.replace(/신랑\s*측?/g, ' '); }
+      else if (/신부\s*측?/.test(rest)) { side = '신부 측'; rest = rest.replace(/신부\s*측?/g, ' '); }
+      else if (/(?:^|\s)공통(?:\s|$)/.test(rest)) { side = '공통'; rest = rest.replace(/(?:^|\s)공통(?:\s|$)/g, ' '); }
+
+      if (/가족|친척|친지/.test(rest)) { group = '가족·친척'; rest = rest.replace(/가족(?:·?친척)?|친척|친지/g, ' '); }
+      else if (/직장|동료|회사/.test(rest)) { group = '직장·동료'; rest = rest.replace(/직장(?:·?동료)?|동료|회사/g, ' '); }
+      else if (/친구|동창|대학/.test(rest)) { group = '친구'; rest = rest.replace(/친구|동창|대학/g, ' '); }
+      else if (/지인|기타/.test(rest)) { group = '지인·기타'; rest = rest.replace(/지인(?:·?기타)?|기타/g, ' '); }
+
+      if (/불참/.test(rest)) { rsvp = '불참'; mealTicket = false; rest = rest.replace(/불참/g, ' '); }
+      else if (/미정/.test(rest)) { rsvp = '미정'; rest = rest.replace(/미정/g, ' '); }
+      else if (/참석/.test(rest)) { rsvp = '참석'; rest = rest.replace(/참석/g, ' '); }
+
+      if (/미식사|식사\s*안\s*함|답례품/.test(rest)) { mealTicket = false; rest = rest.replace(/미식사|식사\s*안\s*함|답례품/g, ' '); }
+
+      const plusMatch = rest.match(/(?:외\s*|\+)\s*(\d+)\s*(?:명|인)?/);
+      if (plusMatch) {
+        partySize = Math.min(20, Math.max(1, 1 + Number.parseInt(plusMatch[1], 10)));
+        rest = rest.replace(plusMatch[0], ' ');
+      } else {
+        const countMatch = rest.match(/(?:[x×]\s*)?(\d+)\s*(?:명|인)/i) || rest.match(/[x×]\s*(\d+)/i);
+        if (countMatch) {
+          partySize = Math.min(20, Math.max(1, Number.parseInt(countMatch[1], 10)));
+          rest = rest.replace(countMatch[0], ' ');
+        }
+      }
+      return rest.replace(/[,\s]+/g, ' ').trim();
+    };
+
+    const headCountPlus = head.match(/\s+(?:외\s*|\+)\s*(\d+)\s*(?:명|인)?$/);
+    if (headCountPlus) {
+      partySize = Math.min(20, Math.max(1, 1 + Number.parseInt(headCountPlus[1], 10)));
+      head = head.slice(0, headCountPlus.index).trim();
+    } else {
+      const headCount = head.match(/\s+(?:[x×]\s*)?(\d+)\s*(?:명|인)$/i) || head.match(/\s+[x×]\s*(\d+)$/i);
+      if (headCount) {
+        partySize = Math.min(20, Math.max(1, Number.parseInt(headCount[1], 10)));
+        head = head.slice(0, headCount.index).trim();
+      }
+    }
+
+    const headTokens = head.split(/\s+/).filter(Boolean);
+    const nameTokens = [];
+    for (let ti = 0; ti < headTokens.length; ti++) {
+      const tok = headTokens[ti];
+      if (ti > 0 && GUEST_ATTR_TOKEN_RE.test(tok)) {
+        metaChunks.unshift(tok);
+      } else {
+        nameTokens.push(tok);
+      }
+    }
+    const name = nameTokens.join(' ').trim().slice(0, 80);
+    if (!name) {
+      skipped++;
+      warnings.push(`${idx + 1}번째 줄: 성함을 인식하지 못해 건너뛰었습니다.`);
+      return;
+    }
+
+    const cleanNotes = [];
+    for (const chunk of metaChunks) {
+      for (const sub of chunk.split(',').map(s => s.trim()).filter(Boolean)) {
+        const leftover = parseMetaText(sub);
+        if (leftover) cleanNotes.push(leftover);
+      }
+    }
+    const note = cleanNotes.join(' · ').slice(0, 300);
+
+    records.push({
+      name,
+      side,
+      group,
+      partySize,
+      inviteStatus: safeDefaultInvite,
+      rsvp,
+      mealTicket,
+      ...(note ? { note } : {})
+    });
+  });
+
+  if (!records.length) throw new Error('가져올 수 있는 유효한 하객 이름이 없습니다.');
+  return { records, skipped, warnings, isRsvpForm: false };
+}
+
 export function syncGuestsFromCsv(existingList = [], incomingRecords = [], mode = 'skip', createId = () => 'guest-' + crypto.randomUUID().slice(0, 8)) {
   const list = existingList.map(item => ({ ...item }));
   const keyOf = (side, name) => `${side}|${String(name || '').trim().toLocaleLowerCase()}`;

@@ -2555,13 +2555,26 @@ a.spec-chip:hover {
   border-radius: 14px;
   background: var(--surface-tint);
   overflow: hidden;
-  touch-action: pan-y;
+  touch-action: none;
+}
+.photo-stage.is-zoomed {
+  cursor: grab;
+}
+.photo-stage.is-dragging {
+  cursor: grabbing;
 }
 .photo-stage-img {
   width: 100%;
   max-height: 62vh;
   object-fit: contain;
   display: block;
+  transition: transform 0.16s ease-out;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.photo-stage-img.is-zoomed {
+  transition: none;
 }
 .photo-stage-counter {
   position: absolute;
@@ -2788,7 +2801,7 @@ body.is-mobile-menu-open { overflow: hidden; }
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .site-header, .skip-link, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .invitation-actions, .invitation-readiness-card, .invitation-topbar-tools, .invitation-text-btn, .invitation-bgm-btn, .invitation-share-foot, .invitation-rsvp-card, .invitation-gallery-foot, .calendar-update-note, .inapp-browser-note, .contact-row-actions, .scroll-top-btn, .guest-quick-dock, .nav-scroll-cue, .mobile-menu-btn, .mobile-menu-sheet, .mobile-menu-backdrop, .toast, dialog {
+  .site-header, .skip-link, .status-banner, .draft-banner, .guest-preview-bar, .story-toolbar, .site-footer, .page-actions, .record-actions, .invitation-actions, .invitation-readiness-card, .invitation-topbar-tools, .invitation-text-btn, .invitation-bgm-btn, .invitation-share-foot, .invitation-rsvp-card, .invitation-gallery-foot, .calendar-update-note, .inapp-browser-note, .contact-row-actions, .scroll-top-btn, .guest-quick-dock, .nav-scroll-cue, .mobile-menu-btn, .mobile-menu-sheet, .mobile-menu-backdrop, .toast, dialog {
     display: none !important;
   }
   .reveal-section, .reveal-section.will-reveal {
@@ -2836,22 +2849,6 @@ body.is-mobile-menu-open { overflow: hidden; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-.photo-stage {
-  overflow: hidden;
-  touch-action: none;
-}
-.photo-stage.is-zoomed {
-  cursor: grab;
-}
-.photo-stage-img {
-  transition: transform 0.16s ease-out;
-  transform-origin: center center;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-.photo-stage-img.is-zoomed {
-  transition: none;
 }
 .photo-zoom-toolbar {
   position: absolute;
@@ -3163,16 +3160,6 @@ body.is-mobile-menu-open { overflow: hidden; }
   color: var(--green-dark);
   background: var(--olive-soft);
   border-color: var(--olive-line);
-}
-.photo-stage.is-zoomed {
-  cursor: grab;
-}
-.photo-stage.is-dragging {
-  cursor: grabbing;
-}
-.photo-stage-img {
-  user-select: none;
-  -webkit-user-drag: none;
 }
 
 /* Round 9: Nav Grouping, Overflow Action Menu, 2-Group Mobile Sheet, Unsynced Dot & Guest 390px Polish */

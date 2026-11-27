@@ -1,4 +1,4 @@
-import { E, button, image } from './dom.js?v=wedding-features-71';
+import { E, button, image } from './dom.js?v=wedding-features-72';
 
 export function openPhotoViewer(ctx, title, photos, startIndex = 0) {
   if (!photos?.length) return null;

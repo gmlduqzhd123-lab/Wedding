@@ -1,5 +1,5 @@
-import { E, S, image } from './dom.js?v=wedding-features-71';
-import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-71';
+import { E, S, image } from './dom.js?v=wedding-features-72';
+import { formatDate, weddingDday, safeUrl } from './content.js?v=wedding-features-72';
 
 export function isKakaoInApp(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
   return /KAKAOTALK/i.test(ua || '');
@@ -426,7 +426,7 @@ async function loadImageSafe(src) {
 async function loadQrSvgImage(url) {
   if (!url) return null;
   try {
-    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-71');
+    const { renderQrSvgString } = await import('./qrcode.js?v=wedding-features-72');
     const svgMarkup = renderQrSvgString(url, { margin: 2 });
     const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);
@@ -459,12 +459,12 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
   const plaqueY = 710;
   const plaqueH = (gp && bp) ? 190 : ((gp || bp) ? 156 : 114);
 
-  ctx.font = '500 24px SUITE, sans-serif';
+  ctx.font = '400 24px SUITE, sans-serif';
   const msgLines = (info.message || '').trim()
     ? wrapCardMessageLines(t => ctx.measureText(t).width, info.message, 740, 12)
     : [];
 
-  ctx.font = '500 22px SUITE, sans-serif';
+  ctx.font = '400 22px SUITE, sans-serif';
   const addrLines = (info.address || '').trim() ? wrapCanvasLines(ctx, info.address, 740, 2) : [];
 
   const shareUrl = options.includeQr ? String(options.shareUrl || '').trim() : '';
@@ -600,7 +600,7 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
 
   // Optional invitation greeting (preserves 3-stanza paragraph breaks)
   if (msgLines.length) {
-    ctx.font = '500 24px SUITE, sans-serif';
+    ctx.font = '400 24px SUITE, sans-serif';
     ctx.fillStyle = '#44403c';
     let cursorY = msgStartY;
     for (const line of msgLines) {
@@ -652,7 +652,7 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
   ctx.fillText(info.venue || '예식 장소 준비 중', W / 2, venueBoxY + 80);
   if (addrLines.length) {
     ctx.fillStyle = '#4f554f';
-    ctx.font = '500 22px SUITE, sans-serif';
+    ctx.font = '400 22px SUITE, sans-serif';
     addrLines.forEach((line, idx) => {
       ctx.fillText(line, W / 2, venueBoxY + 120 + idx * 30);
     });
@@ -688,7 +688,7 @@ export async function renderInvitationCardCanvas(info = {}, albums = [], options
     ctx.font = '700 30px Paperlogy, SUITE, sans-serif';
     ctx.fillText('모바일 청첩장 바로가기', textX, qrBoxY + 104);
     ctx.fillStyle = '#565c56';
-    ctx.font = '500 21px SUITE, sans-serif';
+    ctx.font = '400 21px SUITE, sans-serif';
     ctx.fillText('스마트폰 카메라로 QR 코드를 스캔하면', textX, qrBoxY + 144);
     ctx.fillText('예식 일정·지도·안내를 확인하실 수 있습니다.', textX, qrBoxY + 174);
     ctx.restore();
