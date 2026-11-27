@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-73';
-import { weddingDday } from './content.js?v=wedding-features-73';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-73';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-73';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-74';
+import { weddingDday } from './content.js?v=wedding-features-74';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-74';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-74';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -312,7 +312,10 @@ function printShootDaySheet(studio, prefs = {}) {
     });
   });
 
-  const sheet = E('section', { class: 'print-only-sheet print-dayops-root', 'aria-hidden': 'true' },
+  document.querySelectorAll('.print-only-sheet').forEach(el => el.remove());
+  document.body.classList.remove('print-guest-sheet', 'print-gift-sheet', 'print-dayops-sheet', 'print-shoot-sheet');
+
+  const sheet = E('section', { class: 'print-only-sheet print-dayops-root', 'aria-label': '라크마 웨딩촬영 당일 운영표 A4 인쇄본' },
     E('h1', {}, `📸 ${studio?.name || '라크마'} 웨딩촬영 당일 운영표`),
     E('p', { class: 'small' }, `${g.schedule?.label || '2027년 2월 3일 수요일 12:00'} · 대표번호 ${g.officialInfo?.phone || studio?.contact?.phone || '062-714-1970~1'} · 당일 현금 헬퍼비 25만 원 필수`),
     visitLocations.length ? [
@@ -338,7 +341,8 @@ function printShootDaySheet(studio, prefs = {}) {
     E('h2', {}, `4. 미챙김 촬영 준비물 (${pendingPrep.length}건)`),
     pendingPrep.length
       ? E('ul', {}, pendingPrep.map(item => E('li', {}, `□ ${item}`)))
-      : E('p', { class: 'small' }, '✅ 등록된 촬영 준비물을 모두 체크했습니다.'));
+      : E('p', { class: 'small' }, '✅ 등록된 촬영 준비물을 모두 체크했습니다.'),
+    E('p', { class: 'print-sheet-foot' }, '※ 라크마 웨딩촬영 당일 신랑·신부 및 동행 도우미 전용 운영표입니다.'));
 
   document.body.append(sheet);
   document.body.classList.add('print-shoot-sheet');

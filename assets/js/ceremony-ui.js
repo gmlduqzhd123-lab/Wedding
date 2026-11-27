@@ -1,8 +1,8 @@
-import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-73';
-import { formatDate } from './content.js?v=wedding-features-73';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-73';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-73';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-73';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-74';
+import { formatDate } from './content.js?v=wedding-features-74';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-74';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-74';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-74';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
 

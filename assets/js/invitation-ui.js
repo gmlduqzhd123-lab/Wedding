@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-73';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-73';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-73';
-import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-73';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-74';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-74';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-74';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-74';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-73';
+} from './invitation-card.js?v=wedding-features-74';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();

@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-73';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-73';
+import { E, button } from './dom.js?v=wedding-features-74';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-74';
 
 const BGM_SLOT_LABELS = {
   'bgm-pre': '식전영상 · 하객 입장',

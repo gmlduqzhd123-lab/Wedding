@@ -6,25 +6,38 @@ export class StorageConflict extends Error {
     this.conflicts=conflicts;this.remoteRaw=remoteRaw;
   }
 }
+const ID_RECORD_ARRAY_PATHS=[
+  'stories','albums','honeymoon','tips',
+  'customChecklist','customPackingList','vendorSchedules',
+  'guestList','giftLedger','homeItems',
+  'weddingDayRoles','weddingDayEnvelopes','shootBrief.outfits'
+];
+const ID_SET_ARRAY_PATHS=[
+  'favorites','tripFavorites','tipFavorites',
+  'checklist','packingList','shootChecklist',
+  'ceremonyChecks','prenatalChecks','benefitChecks'
+];
 export function mergeChanges(base,local,remote,{preferLocal=false}={}) {
   const conflicts=[];
   function merge(before,next,current,path) {
     if(same(next,before))return current;
     if(same(current,before)||same(next,current))return next;
-    if(object(before)&&object(next)&&object(current)){
-      return Object.fromEntries([...new Set([...Object.keys(before),...Object.keys(next),...Object.keys(current)])]
-        .map(key=>[key,merge(before[key],next[key],current[key],path?`${path}.${key}`:key)]).filter(([,value])=>value!==undefined));
+    if((before===undefined||object(before))&&object(next)&&object(current)){
+      const prev=before??{};
+      return Object.fromEntries([...new Set([...Object.keys(prev),...Object.keys(next),...Object.keys(current)])]
+        .map(key=>[key,merge(prev[key],next[key],current[key],path?`${path}.${key}`:key)]).filter(([,value])=>value!==undefined));
     }
-    if([before,next,current].every(Array.isArray)){
-      if(['stories','albums','honeymoon','tips','customChecklist','customPackingList','vendorSchedules'].includes(path)){
+    if((before===undefined||Array.isArray(before))&&Array.isArray(next)&&Array.isArray(current)){
+      const prev=before??[];
+      if(ID_RECORD_ARRAY_PATHS.includes(path)){
         const index=items=>Object.fromEntries(items.map(item=>[item.id,item]));
-        const merged=merge(index(before),index(next),index(current),`${path}.records`);
-        const reordered=!same(next.map(item=>item.id),before.map(item=>item.id))&&same(current.map(item=>item.id),before.map(item=>item.id));
+        const merged=merge(index(prev),index(next),index(current),`${path}.records`);
+        const reordered=!same(next.map(item=>item.id),prev.map(item=>item.id))&&same(current.map(item=>item.id),prev.map(item=>item.id));
         const ordered=reordered?[...next,...current]:[...current,...next];
         return [...new Set(ordered.map(item=>item.id))].filter(id=>merged[id]).map(id=>merged[id]);
       }
-      if(['favorites','tripFavorites','tipFavorites','checklist','packingList','shootChecklist','ceremonyChecks'].includes(path)){
-        const removed=before.filter(id=>!next.includes(id)),added=next.filter(id=>!before.includes(id));
+      if(ID_SET_ARRAY_PATHS.includes(path)){
+        const removed=prev.filter(id=>!next.includes(id)),added=next.filter(id=>!prev.includes(id));
         return [...new Set([...current.filter(id=>!removed.includes(id)),...added])];
       }
     }

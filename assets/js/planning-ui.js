@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-73';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-73';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-73';
-import { quoteReview } from './travel.js?v=wedding-features-73';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-73';
+import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-74';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-74';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-74';
+import { quoteReview } from './travel.js?v=wedding-features-74';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-74';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -16,10 +16,10 @@ import {
   buildBudgetSummaryText,
   cashFlowSettlementSummary,
   buildCashFlowSummaryText
-} from './planning.js?v=wedding-features-73';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-73';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-73';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-73';
+} from './planning.js?v=wedding-features-74';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-74';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-74';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-74';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, focusHomeSearch };
 
