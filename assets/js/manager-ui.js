@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-68';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-68';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-68';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-68';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-68';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-69';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-69';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-69';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-69';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-69';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';
@@ -25,6 +25,7 @@ function conflictLabel(ctx, path) {
     transit: '교통·주차 안내', notice: '예식 안내 메모', contacts: '연락처 안내', groomAccounts: '신랑 측 계좌', brideAccounts: '신부 측 계좌', rsvpUrl: 'RSVP 설문 링크',
     notes: '스튜디오 메모', tripNotes: '여행지 개인 메모', tipNotes: '꿀팁 영상 개인 메모', favorites: '관심 스튜디오', studioSelected: '최종 선택 스튜디오',
     tripFavorites: '관심 여행지', tipFavorites: '관심 꿀팁', checklist: '결혼 준비 체크리스트', shootChecklist: '촬영 준비 체크리스트',
+    shootBrief: '라크마 촬영 시안·착장 보드', ceremonyBgm: '본식 BGM 큐시트', tripQuotes: '신혼여행 개인 실견적',
     ceremonyChecks: '본식 식순 체크리스트', prenatalChecks: '산전검사 진행 체크리스트', prenatalNote: '산전검사 개인 메모', prenatalSchedule: '산전검사 일정·지원금 기한',
     marriageRegDate: '혼인신고(예정)일', benefitChecks: '신혼부부 혜택 체크리스트', benefitNote: '혼인신고·혜택 메모', homeItems: '신혼집·혼수 품목 목록',
     weddingDayRoles: '본식 당일 역할 분담', weddingDayEnvelopes: '본식 현금 봉투 리스트', photoOrderNote: '본식 원판 촬영 순서표', checklistNotes: '체크리스트 메모',
@@ -42,7 +43,10 @@ function conflictLabel(ctx, path) {
     roadScene: '로드씬 옵션', nightShoot: '야간씬 옵션', name: '일정 이름', done: '완료 여부', note: '메모', style: '예식 진행 형태',
     mc: '사회자', song: '축가', speech: '축사·덕담·주례', banquetFloor: '연회홀 층수', vows: '혼인서약서 문안', declaration: '성혼선언문 문안',
     sdm: '스튜디오·드레스·메이크업', snap: '본식 촬영·진행', rings: '예물·예복·한복·예단', living: '혼수·가전·가구',
-    appliedDate: '지원 신청일', visitDate: '병원 예약일', examDate: '검사 완료일', claimed: '지원금 청구 완료'
+    appliedDate: '지원 신청일', visitDate: '병원 예약일', examDate: '검사 완료일', claimed: '지원금 청구 완료',
+    moodNote: '촬영 분위기·필수 컷', avoidNote: '피하고 싶은 각도·요청', outfits: '착장별 시안', milestones: '촬영 후속 일정',
+    cue: '재생 큐 메모', ready: '음원 준비 완료', total: '총 실견적', airfare: '항공 실견적', lodging: '숙박·패키지 실견적',
+    agency: '상담처·여행사', perks: '포함 특전·조건', cancelUntil: '무료 취소 마감일'
   };
   const studios = ctx.getStudiosList?.() || [];
   const content = ctx.getContent?.();
@@ -190,6 +194,68 @@ export async function sharePrivateBackup(ctx) {
   }
 }
 
+const KNOWN_UI_STORAGE_KEYS = new Set([
+  'wedding:v1:largeText',
+  'wedding:v1:theme',
+  'wedding:v1:petals',
+  'wedding:v1:backupMeta',
+  'wedding:v1:photoCallChecked'
+]);
+
+export function analyzeStorageHealth(storage, {
+  draftKey = 'wedding:v1:draft',
+  prefKey = 'wedding:v1:preferences',
+  rollbackKey = 'wedding:v1:prefRollback',
+  maxQuota = 5 * 1024 * 1024
+} = {}) {
+  const byteLen = str => (typeof str === 'string' && str ? new TextEncoder().encode(str).length : 0);
+  const safeGet = key => {
+    try { return storage?.getItem?.(key) ?? null; } catch { return null; }
+  };
+  const draftRaw = safeGet(draftKey);
+  const prefRaw = safeGet(prefKey);
+  const rollbackRaw = safeGet(rollbackKey);
+  const draftBytes = byteLen(draftRaw);
+  const prefBytes = byteLen(prefRaw);
+  const rollbackBytes = byteLen(rollbackRaw);
+  const inlineImageCount = typeof draftRaw === 'string' ? (draftRaw.match(/data:image\//g) || []).length : 0;
+
+  const coreSet = new Set([draftKey, prefKey, rollbackKey]);
+  const otherKeys = [];
+  const staleKeys = [];
+  let otherBytes = 0;
+  try {
+    const len = typeof storage?.length === 'number' ? storage.length : 0;
+    for (let i = 0; i < len; i++) {
+      const k = storage.key?.(i);
+      if (!k || coreSet.has(k) || !k.startsWith('wedding:')) continue;
+      const bytes = byteLen(safeGet(k));
+      otherBytes += bytes;
+      otherKeys.push({ key: k, bytes });
+      if (!KNOWN_UI_STORAGE_KEYS.has(k)) staleKeys.push(k);
+    }
+  } catch {}
+
+  const totalBytes = draftBytes + prefBytes + rollbackBytes + otherBytes;
+  const pct = maxQuota > 0
+    ? Math.min(100, Math.max(totalBytes > 0 ? 1 : 0, Math.round((totalBytes / maxQuota) * 100)))
+    : 0;
+  const level = pct >= 80 ? 'critical' : pct >= 55 ? 'warn' : 'ok';
+  return {
+    draftBytes,
+    prefBytes,
+    rollbackBytes,
+    otherBytes,
+    totalBytes,
+    maxQuota,
+    pct,
+    level,
+    inlineImageCount,
+    otherKeys,
+    staleKeys
+  };
+}
+
 export function openManager(ctx) {
   if (ctx.isGuestMode()) return;
   ctx.closeMobileMenu(false);
@@ -201,12 +267,12 @@ export function openManager(ctx) {
   const ROLLBACK_KEY = 'wedding:v1:prefRollback';
   const managerBase = structuredClone(content);
   const managerRaw = ctx.readStorage(ctx.DRAFT_KEY);
-  const prefRaw = ctx.readStorage(ctx.PREF_KEY);
-  const rollbackRaw = ctx.readStorage(ROLLBACK_KEY);
-  const byteLen = str => (str ? new TextEncoder().encode(str).length : 0);
-  const draftBytes = byteLen(managerRaw), prefBytes = byteLen(prefRaw), rollbackBytes = byteLen(rollbackRaw);
-  const totalBytes = draftBytes + prefBytes + rollbackBytes;
-  const maxQuota = 5 * 1024 * 1024, pct = Math.min(100, Math.max(totalBytes > 0 ? 1 : 0, Math.round((totalBytes / maxQuota) * 100)));
+  const health = analyzeStorageHealth(typeof localStorage !== 'undefined' ? localStorage : null, {
+    draftKey: ctx.DRAFT_KEY,
+    prefKey: ctx.PREF_KEY,
+    rollbackKey: ROLLBACK_KEY
+  });
+  const { draftBytes, prefBytes, rollbackBytes, otherBytes, totalBytes, pct } = health;
   const fmtSize = b => (b >= 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(2)} MB` : `${(b / 1024).toFixed(1)} KB`);
 
   const readRollback = () => {
@@ -403,17 +469,62 @@ export function openManager(ctx) {
         }, 'button quiet')))
     : null;
 
+  const healthBadgeText = health.level === 'critical'
+    ? `🚨 용량 임박 (${pct}%)`
+    : health.level === 'warn'
+      ? `⚠️ 주의 (${pct}%)`
+      : `✅ 여유 (${pct}%)`;
+  const canCleanCache = health.staleKeys.length > 0 || rollbackBytes > 0;
+  const cleanTempCache = async () => {
+    const targets = [];
+    if (health.staleKeys.length) targets.push(`구버전 임시 키 ${health.staleKeys.length}건`);
+    if (rollbackBytes > 0) targets.push(`자동 롤백 스냅샷(${fmtSize(rollbackBytes)})`);
+    const ok = await ctx.confirmAction({
+      title: '불필요 임시 캐시 정리',
+      message: `${targets.join(' 및 ')}을(를) 삭제해 브라우저 저장 공간을 확보할까요? 현재 편집 초안과 개인 설정·메모는 그대로 유지됩니다.`,
+      confirmLabel: '임시 캐시 정리'
+    });
+    if (!ok) return;
+    let removed = 0;
+    try {
+      for (const k of health.staleKeys) {
+        localStorage.removeItem(k);
+        removed++;
+      }
+      if (rollbackBytes > 0) {
+        localStorage.removeItem(ROLLBACK_KEY);
+        removed++;
+      }
+    } catch {}
+    ctx.closeDialog();
+    ctx.toast(`임시 캐시 ${removed}건을 정리했습니다.`);
+  };
+
   ctx.showDialog('내용 관리', E('div', {},
     E('p', { class: 'form-note' }, '공개본은 저장소의 콘텐츠입니다. 여기서 편집한 내용은 이 기기에만 저장되며 자동으로 공개되지 않습니다.'),
-    E('section', { class: 'manager-section storage-meter-section' },
-      E('h3', {}, '브라우저 저장 공간 현황'),
-      E('p', { class: 'small muted' }, `현재 사용량 약 ${fmtSize(totalBytes)} / 권장 한도 5.00 MB (${pct}%) · 초안 ${fmtSize(draftBytes)} · 개인 설정·메모 ${fmtSize(prefBytes)}${rollbackBytes ? ` · 롤백 스냅샷 ${fmtSize(rollbackBytes)}` : ''}`),
+    E('section', { class: 'manager-section storage-meter-section', 'data-storage-level': health.level },
+      E('div', { class: 'storage-meter-head' },
+        E('h3', {}, '브라우저 저장 공간 정밀 진단'),
+        E('span', { class: 'spec-chip' + (health.level === 'ok' ? ' direct' : ' highlight') }, healthBadgeText)),
+      E('p', { class: 'small muted' }, `현재 사용량 약 ${fmtSize(totalBytes)} / 권장 한도 5.00 MB (${pct}%)`),
       E('div', { class: 'checklist-progress-track storage-meter-track', 'aria-hidden': 'true' },
-        E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` })),
-      pct >= 70 ? E('p', { class: 'form-note warning' }, '⚠️ 저장 공간 사용량이 70%를 넘었습니다. 앨범 사진이 많다면 브라우저에 직접 넣는 대신 저장소에서 npm run photos로 웹용 사본을 만들어 연결하면 용량을 크게 줄일 수 있습니다.') : null),
+        E('span', { class: 'checklist-progress-fill' + (health.level !== 'ok' ? ' is-warn' : ''), style: `width:${pct}%` })),
+      E('div', { class: 'storage-health-chips', 'aria-label': '저장 공간 항목별 사용량' },
+        E('span', { class: 'spec-chip' }, `초안 ${fmtSize(draftBytes)}`),
+        E('span', { class: 'spec-chip' }, `개인 설정·메모 ${fmtSize(prefBytes)}`),
+        rollbackBytes ? E('span', { class: 'spec-chip' }, `롤백 스냅샷 ${fmtSize(rollbackBytes)}`) : null,
+        otherBytes ? E('span', { class: 'spec-chip' }, `기타 화면 설정·캐시 ${fmtSize(otherBytes)}`) : null,
+        health.inlineImageCount ? E('span', { class: 'spec-chip highlight' }, `🖼️ 브라우저 직접 사진 ${health.inlineImageCount}장`) : null,
+        health.staleKeys.length ? E('span', { class: 'spec-chip highlight' }, `🧹 정리 가능 임시 키 ${health.staleKeys.length}건`) : null),
+      canCleanCache ? E('div', { class: 'manager-actions' },
+        button('🧹 불필요 임시 캐시 정리', cleanTempCache, 'button quiet small-copy-btn')) : null,
+      (pct >= 55 || health.inlineImageCount >= 3) ? E('p', { class: 'form-note warning' },
+        pct >= 70
+          ? '⚠️ 저장 공간 사용량이 70%를 넘었습니다. 앨범 사진이 많다면 브라우저에 직접 넣는 대신 저장소에서 npm run photos로 웹용 사본을 만들어 연결하면 용량을 크게 줄일 수 있습니다.'
+          : '💡 브라우저에 직접 올린 사진은 기기 용량을 빠르게 차지합니다. 사진이 늘어나면 npm run photos로 웹용 사본을 만들어 저장소에 연결하는 방법을 권장합니다.') : null),
     E('section', { class: 'manager-section' },
       E('h3', {}, '개인 메모·선택 백업'),
-      E('p', {}, '라크마 스튜디오 메모·촬영 준비물 체크, 여행 관심·비교·최종 선택·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·혼수 가전 목록·혼인신고 및 신혼부부 혜택 체크·주요 업체 일정 보드·본식 식순·당일 역할/현금 봉투/원판 순서·산전검사 일정/체크/메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
+      E('p', {}, '라크마 스튜디오 메모·촬영 시안/착장/후속일정·준비물 체크, 여행 관심·비교·최종 선택·실견적·상담 메모, 관심 꿀팁·실천 메모, 결혼 준비 체크리스트·할 일 메모·통합 예산 계산기·웨딩홀/스드메 시뮬레이터·혼수 가전 목록·혼인신고 및 신혼부부 혜택 체크·주요 업체 일정 보드·본식 식순/BGM 큐시트·당일 역할/현금 봉투/원판 순서·산전검사 일정/체크/메모·하객 명단·축의금 장부·출국 짐 체크리스트를 개인 파일로 보관합니다. 콘텐츠 초안과 사진은 공개용 파일 저장으로 따로 백업하세요. 개인 백업은 공개 저장소에 올리지 마세요.'),
       E('p', { class: 'small muted' }, `마지막 개인 백업: ${ctx.formatBackupTime(ctx.readBackupMeta().lastPrivateBackupAt)}`),
       E('div', { class: 'manager-actions' },
         button('💑 카톡 3초 동기화 코드', () => ctx.openCoupleSync?.(), 'button'),

@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-68';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-68';
-import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-68';
-import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-68';
-import { multiScheduleCalendar } from './calendar.js?v=wedding-features-68';
+import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-69';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-69';
+import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-69';
+import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-69';
+import { multiScheduleCalendar } from './calendar.js?v=wedding-features-69';
 import {
   weddingBudgetSummary,
   guestListSummary,
@@ -15,7 +15,7 @@ import {
   activeVendorSchedules,
   collectMasterTimeline,
   weddingPhaseInfo
-} from './planning.js?v=wedding-features-68';
+} from './planning.js?v=wedding-features-69';
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 let checklistIncompleteOnly = false;

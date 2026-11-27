@@ -1,4 +1,4 @@
-import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-68';
+import { MAX_IMPORT_BYTES, validDate } from './content.js?v=wedding-features-69';
 
 export const BUDGET_KEYS = ['venue', 'sdm', 'snap', 'rings', 'honeymoon', 'living'];
 export const CHECKLIST_STAGES = ['D-180 이전', 'D-120 ~ D-90', 'D-60 ~ D-30', 'D-14 ~ D-Day'];
@@ -342,6 +342,105 @@ export function validatePreferences(input) {
     }
     result.budgetPlan = plan;
   }
+  if (input.shootBrief !== undefined) {
+    if (!input.shootBrief || typeof input.shootBrief !== 'object' || Array.isArray(input.shootBrief)) throw new Error('촬영 시안 보드 형식을 확인해 주세요.');
+    const moodNote = input.shootBrief.moodNote ?? '';
+    const avoidNote = input.shootBrief.avoidNote ?? '';
+    if (typeof moodNote !== 'string' || moodNote.length > 500) throw new Error('원하는 분위기·필수 컷 메모는 500자 이하로 입력해 주세요.');
+    if (typeof avoidNote !== 'string' || avoidNote.length > 500) throw new Error('피하고 싶은 각도·요청 메모는 500자 이하로 입력해 주세요.');
+    const rawOutfits = input.shootBrief.outfits ?? [];
+    if (!Array.isArray(rawOutfits) || rawOutfits.length > 10) throw new Error('촬영 착장 시안은 10벌까지 보관할 수 있습니다.');
+    const seenOutfits = new Set();
+    const outfits = rawOutfits.map(item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !id(item.id) || typeof item.label !== 'string') throw new Error('촬영 착장 시안 형식을 확인해 주세요.');
+      const label = item.label.trim();
+      if (!label || label.length > 60 || seenOutfits.has(item.id)) throw new Error('착장 이름과 중복 여부를 확인해 주세요.');
+      seenOutfits.add(item.id);
+      const hair = item.hair ?? '', props = item.props ?? '', poses = item.poses ?? '';
+      if (typeof hair !== 'string' || hair.length > 120) throw new Error('헤어·메이크업 메모는 120자 이하로 입력해 주세요.');
+      if (typeof props !== 'string' || props.length > 160) throw new Error('부케·소품 메모는 160자 이하로 입력해 주세요.');
+      if (typeof poses !== 'string' || poses.length > 240) throw new Error('원하는 포즈·포인트 메모는 240자 이하로 입력해 주세요.');
+      return {
+        id: item.id,
+        label,
+        ...(hair.trim() ? { hair: hair.trim() } : {}),
+        ...(props.trim() ? { props: props.trim() } : {}),
+        ...(poses.trim() ? { poses: poses.trim() } : {})
+      };
+    });
+    const rawMs = input.shootBrief.milestones ?? {};
+    if (!rawMs || typeof rawMs !== 'object' || Array.isArray(rawMs)) throw new Error('촬영 후속 일정 형식을 확인해 주세요.');
+    const milestones = {
+      originalDone: Boolean(rawMs.originalDone),
+      selectDone: Boolean(rawMs.selectDone),
+      retouchDone: Boolean(rawMs.retouchDone)
+    };
+    for (const dKey of ['originalDate', 'selectDate', 'retouchDate']) {
+      const val = rawMs[dKey] ?? '';
+      if (typeof val !== 'string') throw new Error('촬영 후속 일정 날짜 형식을 확인해 주세요.');
+      const trimmed = val.trim();
+      if (trimmed && !validDate(trimmed)) throw new Error('촬영 후속 일정 날짜가 올바르지 않습니다.');
+      if (trimmed) milestones[dKey] = trimmed;
+    }
+    result.shootBrief = {
+      ...(moodNote.trim() ? { moodNote: moodNote.trim() } : {}),
+      ...(avoidNote.trim() ? { avoidNote: avoidNote.trim() } : {}),
+      outfits,
+      milestones
+    };
+  }
+  if (input.ceremonyBgm !== undefined) {
+    if (!input.ceremonyBgm || typeof input.ceremonyBgm !== 'object' || Array.isArray(input.ceremonyBgm) || Object.keys(input.ceremonyBgm).length > 24) {
+      throw new Error('본식 BGM 큐시트 형식을 확인해 주세요.');
+    }
+    const bgmMap = {};
+    for (const [key, entry] of Object.entries(input.ceremonyBgm)) {
+      if (!id(key) || !entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('BGM 항목 형식을 확인해 주세요.');
+      const song = entry.song ?? '', cue = entry.cue ?? '';
+      if (typeof song !== 'string' || song.length > 120) throw new Error('곡명·아티스트는 120자 이하로 입력해 주세요.');
+      if (typeof cue !== 'string' || cue.length > 120) throw new Error('재생 구간·음향 큐 메모는 120자 이하로 입력해 주세요.');
+      if (entry.ready !== undefined && typeof entry.ready !== 'boolean') throw new Error('음원 확보 여부를 확인해 주세요.');
+      if (song.trim() || cue.trim() || entry.ready) {
+        bgmMap[key] = {
+          ...(song.trim() ? { song: song.trim() } : {}),
+          ...(cue.trim() ? { cue: cue.trim() } : {}),
+          ready: Boolean(entry.ready)
+        };
+      }
+    }
+    result.ceremonyBgm = bgmMap;
+  }
+  if (input.tripQuotes !== undefined) {
+    if (!input.tripQuotes || typeof input.tripQuotes !== 'object' || Array.isArray(input.tripQuotes) || Object.keys(input.tripQuotes).length > 80) {
+      throw new Error('신혼여행 개인 실견적 형식을 확인해 주세요.');
+    }
+    const qMap = {};
+    for (const [key, entry] of Object.entries(input.tripQuotes)) {
+      if (!id(key) || !entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('실견적 항목 형식을 확인해 주세요.');
+      if (!validMoney(entry.total) || !validMoney(entry.airfare) || !validMoney(entry.lodging)) {
+        throw new Error('실견적 금액은 0원 이상의 정수로 입력해 주세요.');
+      }
+      const agency = entry.agency ?? '', perks = entry.perks ?? '';
+      const cancelUntil = entry.cancelUntil === undefined || entry.cancelUntil === null ? '' : String(entry.cancelUntil).trim();
+      const checkedOn = entry.checkedOn === undefined || entry.checkedOn === null ? '' : String(entry.checkedOn).trim();
+      if (typeof agency !== 'string' || agency.length > 80) throw new Error('상담처·여행사명은 80자 이하로 입력해 주세요.');
+      if (typeof perks !== 'string' || perks.length > 240) throw new Error('특전·조건 메모는 240자 이하로 입력해 주세요.');
+      if (cancelUntil && !validDate(cancelUntil)) throw new Error('무료 취소 마감일을 확인해 주세요.');
+      if (checkedOn && !validDate(checkedOn)) throw new Error('견적 확인일을 확인해 주세요.');
+      if (entry.total !== null && entry.total !== undefined || entry.airfare !== null && entry.airfare !== undefined || entry.lodging !== null && entry.lodging !== undefined || agency.trim() || perks.trim() || cancelUntil) {
+        qMap[key] = {
+          total: entry.total ?? null,
+          airfare: entry.airfare ?? null,
+          lodging: entry.lodging ?? null,
+          ...(agency.trim() ? { agency: agency.trim() } : {}),
+          ...(perks.trim() ? { perks: perks.trim() } : {}),
+          ...(cancelUntil ? { cancelUntil } : {}),
+          ...(checkedOn ? { checkedOn } : {})
+        };
+      }
+    }
+    result.tripQuotes = qMap;
+  }
   if (result.tripCompare.length > 3) throw new Error('여행 비교는 세 곳까지 선택해 주세요.');
   for (const key of ['left', 'right', 'tripSelected', 'studioSelected']) {
     if (input[key] !== undefined && input[key] !== '') {
@@ -362,6 +461,7 @@ export function pruneTripPreferences(input,trips){
   const valid=validatePreferences(input),ids=new Set(trips.map(trip=>trip.id));
   const next={...valid,tripCompare:valid.tripCompare.filter(id=>ids.has(id)),tripFavorites:valid.tripFavorites.filter(id=>ids.has(id)),tripSelected:ids.has(valid.tripSelected)?valid.tripSelected:''};
   if(valid.tripNotes!==undefined)next.tripNotes=Object.fromEntries(Object.entries(valid.tripNotes).filter(([k])=>ids.has(k)));
+  if(valid.tripQuotes!==undefined)next.tripQuotes=Object.fromEntries(Object.entries(valid.tripQuotes).filter(([k])=>ids.has(k)));
   return validatePreferences(next);
 }
 export function pruneContentPreferences(input,content){
@@ -533,6 +633,62 @@ export function mergePreferences(currentInput, incomingInput) {
     }
     merged.budgetPlan = plan;
   }
+  if (cur.shootBrief !== undefined || inc.shootBrief !== undefined) {
+    const a = cur.shootBrief || {};
+    const b = inc.shootBrief || {};
+    const am = a.milestones || {};
+    const bm = b.milestones || {};
+    const moodNote = mergeTextNote(a.moodNote, b.moodNote, 500);
+    const avoidNote = mergeTextNote(a.avoidNote, b.avoidNote, 500);
+    merged.shootBrief = {
+      ...(moodNote ? { moodNote } : {}),
+      ...(avoidNote ? { avoidNote } : {}),
+      outfits: mergeRecordList(a.outfits || [], b.outfits || [], { cap: 10, dedupeKey: item => item.label }) || [],
+      milestones: {
+        ...((am.originalDate || bm.originalDate) ? { originalDate: am.originalDate || bm.originalDate } : {}),
+        ...((am.selectDate || bm.selectDate) ? { selectDate: am.selectDate || bm.selectDate } : {}),
+        ...((am.retouchDate || bm.retouchDate) ? { retouchDate: am.retouchDate || bm.retouchDate } : {}),
+        originalDone: Boolean(am.originalDone || bm.originalDone),
+        selectDone: Boolean(am.selectDone || bm.selectDone),
+        retouchDone: Boolean(am.retouchDone || bm.retouchDone)
+      }
+    };
+  }
+  if (cur.ceremonyBgm !== undefined || inc.ceremonyBgm !== undefined) {
+    const bgm = { ...(cur.ceremonyBgm || {}) };
+    for (const [k, v] of Object.entries(inc.ceremonyBgm || {})) {
+      if (!bgm[k]) {
+        bgm[k] = structuredClone(v);
+      } else {
+        bgm[k] = {
+          ...((bgm[k].song || v.song) ? { song: bgm[k].song || v.song } : {}),
+          ...((bgm[k].cue || v.cue) ? { cue: bgm[k].cue || v.cue } : {}),
+          ready: Boolean(bgm[k].ready || v.ready)
+        };
+      }
+    }
+    merged.ceremonyBgm = bgm;
+  }
+  if (cur.tripQuotes !== undefined || inc.tripQuotes !== undefined) {
+    const qMap = { ...(cur.tripQuotes || {}) };
+    for (const [k, v] of Object.entries(inc.tripQuotes || {})) {
+      if (!qMap[k]) {
+        qMap[k] = structuredClone(v);
+      } else {
+        const a = qMap[k];
+        qMap[k] = {
+          total: a.total ?? v.total ?? null,
+          airfare: a.airfare ?? v.airfare ?? null,
+          lodging: a.lodging ?? v.lodging ?? null,
+          ...((a.agency || v.agency) ? { agency: a.agency || v.agency } : {}),
+          ...((a.perks || v.perks) ? { perks: a.perks || v.perks } : {}),
+          ...((a.cancelUntil || v.cancelUntil) ? { cancelUntil: a.cancelUntil || v.cancelUntil } : {}),
+          ...((a.checkedOn || v.checkedOn) ? { checkedOn: a.checkedOn || v.checkedOn } : {})
+        };
+      }
+    }
+    merged.tripQuotes = qMap;
+  }
   for (const key of ['left', 'right', 'tripSelected', 'studioSelected']) {
     const val = cur[key] || inc[key];
     if (val) merged[key] = val;
@@ -549,7 +705,7 @@ export function summarizePreferencesMerge(currentInput, mergedInput) {
     const merObj = b || {};
     let changed = 0;
     for (const [k, v] of Object.entries(merObj)) {
-      if ((curObj[k] || '') !== (v || '')) changed++;
+      if (JSON.stringify(curObj[k] ?? '') !== JSON.stringify(v ?? '')) changed++;
     }
     return changed;
   };
@@ -560,12 +716,14 @@ export function summarizePreferencesMerge(currentInput, mergedInput) {
     homeItemsAdded: diffLen(cur.homeItems, mer.homeItems),
     dayOpsAdded: diffLen(cur.weddingDayRoles, mer.weddingDayRoles) + diffLen(cur.weddingDayEnvelopes, mer.weddingDayEnvelopes),
     checksAdded: diffLen(cur.checklist, mer.checklist) + diffLen(cur.shootChecklist, mer.shootChecklist) + diffLen(cur.ceremonyChecks, mer.ceremonyChecks) + diffLen(cur.prenatalChecks, mer.prenatalChecks) + diffLen(cur.benefitChecks, mer.benefitChecks) + diffLen(cur.packingList, mer.packingList),
-    customItemsAdded: diffLen(cur.customChecklist, mer.customChecklist) + diffLen(cur.customPackingList, mer.customPackingList),
+    customItemsAdded: diffLen(cur.customChecklist, mer.customChecklist) + diffLen(cur.customPackingList, mer.customPackingList) + diffLen(cur.shootBrief?.outfits, mer.shootBrief?.outfits),
     favoritesAdded: diffLen(cur.favorites, mer.favorites) + diffLen(cur.tripFavorites, mer.tripFavorites) + diffLen(cur.tipFavorites, mer.tipFavorites),
     notesUpdated: diffKeys(cur.notes, mer.notes) + diffKeys(cur.tripNotes, mer.tripNotes) + diffKeys(cur.tipNotes, mer.tipNotes) + diffKeys(cur.checklistNotes, mer.checklistNotes)
+      + diffKeys(cur.ceremonyBgm, mer.ceremonyBgm) + diffKeys(cur.tripQuotes, mer.tripQuotes)
       + ((cur.prenatalNote || '') !== (mer.prenatalNote || '') ? 1 : 0)
       + ((cur.benefitNote || '') !== (mer.benefitNote || '') ? 1 : 0)
       + ((cur.photoOrderNote || '') !== (mer.photoOrderNote || '') ? 1 : 0)
+      + (JSON.stringify(cur.shootBrief || {}) !== JSON.stringify(mer.shootBrief || {}) ? 1 : 0)
   };
 }
 

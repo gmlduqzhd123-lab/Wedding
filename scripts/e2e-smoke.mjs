@@ -205,6 +205,7 @@ try {
   assert.notEqual(petalsAfter, petalsBefore, 'Petals toggle must switch layer visibility');
   const dockTargets = await cdp.eval(`[...document.querySelectorAll('.guest-dock-btn[data-dock-target]')].map(b => b.dataset.dockTarget)`);
   assert(dockTargets.includes('inv-sec-schedule') && dockTargets.includes('inv-sec-location'), 'Guest quick dock must include Scroll-Spy targets');
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('.guest-quick-dock .guest-dock-text-btn'))`), true, 'Guest quick dock must always include Large Text toggle button');
   assert.equal(await cdp.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, 'Guest mobile zero overflow');
   await cdp.eval(`localStorage.removeItem('wedding:v1:theme')`);
   console.log('E2E PASS 1/8: Guest lightweight boot, font diet, dark-theme immunity, petals/text isolation, clean topbar, 390px OK');
@@ -253,11 +254,16 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main')?.dataset.renderedRoute === 'honeymoon' && !document.querySelector('.loading-state')`);
   console.log('E2E PASS 2/8: Home scroll diet, 2-group nav, Overflow menu, Couple Sync modal, Dark Theme persistence, Global Search OK');
 
-  // 3. Honeymoon Round 7+9+Guide: 4-destination spotlight guide + More Destinations drawer + 3-tool compact strip + 3-way compare + matrix + recommender + compact video + selected actions + local calc + regional packing
+  // 3. Honeymoon Round 7+9+10: 4-destination spotlight guide + 1-page table + private quick quote + More Destinations drawer + 3-tool strip + 3-way compare
   await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 3`);
   assert.equal(await cdp.eval(`document.querySelectorAll('.core-guide-tab').length`), 4, 'Core destination guide must show all 4 core regions (Cebu, Bali, Hawaii, Guam)');
   await cdp.eval(`document.querySelector('[data-guide-tab="hawaii"]').click()`);
   await cdp.waitFor(`() => document.querySelector('.core-guide-panel')?.dataset.guideRegion === 'hawaii'`);
+  // Round 10: 4-region 1-page comparison table
+  await cdp.eval(`document.querySelector('[data-guide-view="table"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.core-guide-table tbody tr').length === 6`);
+  await cdp.eval(`document.querySelector('[data-guide-view="table"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.core-guide-tab').length === 4`);
   await cdp.eval(`[...document.querySelectorAll('.core-dest-guide button')].find(b => b.textContent.includes('4곳 설명 한 번에 펼치기')).click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.core-guide-all-grid .core-guide-panel').length === 4`);
   await cdp.eval(`[...document.querySelectorAll('.core-dest-guide button')].find(b => b.textContent.includes('선택 지역만 간결히 보기')).click()`);
@@ -281,6 +287,16 @@ try {
   await cdp.eval(`(() => { const inp = document.querySelector('#trip-search'); inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await cdp.waitFor(`() => document.querySelectorAll('.travel-grid:not(.more-travel-grid) .travel-card').length === 12`);
 
+  // Round 10: 30s private real quote modal + plan-vs-quote delta box on card
+  await cdp.eval(`[...document.querySelectorAll('.travel-card')[0].querySelectorAll('button')].find(b => b.textContent.includes('실견적 기록')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#trip-quote-total'))`);
+  await cdp.eval(`(() => {
+    const t = document.querySelector('#trip-quote-total'); t.value = '5450000'; t.dispatchEvent(new Event('input', { bubbles: true }));
+    const a = document.querySelector('#trip-quote-agency'); a.value = '테스트여행사'; a.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector('#dialog-actions [type="submit"]').click();
+  })()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('.trip-private-quote-box')?.innerText.includes('5,450,000원')`);
+
   assert.equal(await cdp.eval(`document.querySelectorAll('.honeymoon-tools-strip > details').length`), 3, 'Honeymoon tools strip must group 3 top collapsible panels');
   // Smart quick filters hide redundant 100%-matching chips (direct, longstay) and expose budget/semi brackets
   assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="direct"]'))`), false, 'Redundant 100%-matching direct chip should be hidden');
@@ -288,9 +304,9 @@ try {
   // Compact card quick YouTube button
   assert.equal(await cdp.eval(`document.querySelectorAll('.compact-video-row button').length >= 1`), true, 'Compact trip card must show quick video access button');
 
-  // 3-way comparison + lowest budget highlight + diff-only toggle + copy summary
+  // 3-way comparison + lowest budget highlight + private quote row + diff-only toggle + copy summary
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[0].click()`);
-  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (1/3)') && document.body.classList.contains('has-compare-tray')`);
+  await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (1/3)') && document.body.classList.contains('has-compare-tray') && document.querySelector('.travel-comparison')?.innerText.includes('내 실견적 (개인 기록)')`);
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[1].click()`);
   await cdp.waitFor(`() => document.querySelector('.compare-floating-tray')?.innerText.includes('비교함 (2/3)')`);
   await cdp.eval(`document.querySelectorAll('[data-trip-action="tripCompare"]')[2].click()`);
@@ -372,6 +388,29 @@ try {
   assert(ceremonyText.includes('축가: 아카펠라'), 'Ceremony rundown must reflect confirmed song 아카펠라');
   assert(ceremonyText.includes('성혼선언문 낭독 및 축사 (교장선생님 진행 · 수정 예정)'), 'Ceremony rundown must reflect 교장선생님 declaration & speech with 수정 예정');
   assert(ceremonyText.includes('혼인서약서 (수정 예정)') && ceremonyText.includes('성혼선언문 (수정 예정)'), 'Vows and declaration cards must show (수정 예정) before editing');
+  assert(await cdp.eval(`[...document.querySelectorAll('.ceremony-paper-card .spec-chip')].some(el => el.textContent.includes('⏱️'))`), 'Ceremony vows/declaration cards must display live reading duration chips');
+  // Round 10: 3-role briefing pack modal
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('역할별 브리핑 팩')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelectorAll('[data-role-brief]').length === 3`);
+  await cdp.eval(`document.querySelector('[data-role-brief="speech"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-body textarea')?.value.includes('교장선생님')`);
+  await cdp.eval(`document.querySelector('[data-role-brief="song"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-body textarea')?.value.includes('아카펠라')`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
+  // Round 10: 9-slot BGM cue sheet edit & ready check
+  await cdp.eval(`document.querySelector('.ceremony-bgm-details summary').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.ceremony-bgm-row[data-bgm-slot]').length === 9`);
+  await cdp.eval(`document.querySelector('.ceremony-bgm-row[data-bgm-slot="bgm-groom"] button').click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#bgm-song-input'))`);
+  await cdp.eval(`(() => {
+    const s = document.querySelector('#bgm-song-input'); s.value = 'Bruno Mars - Marry You'; s.dispatchEvent(new Event('input', { bubbles: true }));
+    const c = document.querySelector('#bgm-cue-input'); c.value = '0:00 시작'; c.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector('#bgm-ready-input').click();
+    document.querySelector('#dialog-actions [type="submit"]').click();
+  })()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('.ceremony-bgm-row[data-bgm-slot="bgm-groom"]')?.classList.contains('is-ready')`);
+
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('라이브 큐시트 모드')).click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('.live-cue-stage')?.innerText.includes('STEP 01') && Boolean(document.querySelector('.live-cue-wake-btn')) && Boolean(document.querySelector('.live-cue-stage-badge'))`);
   await cdp.eval(`[...document.querySelectorAll('.live-cue-font-group button')].find(b => b.textContent === 'A+').click()`);
@@ -467,10 +506,15 @@ try {
   await cdp.waitFor(`() => document.querySelector('.photo-call-head')?.innerText.includes('촬영 완료 1 /')`);
 
   await cdp.eval(`location.hash = '#/studios'`);
-  await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer')) && Boolean(document.querySelector('#shoot-prep-pending-only'))`);
-  // Round 9: Shoot Day Field Ops Briefing Mode
+  await cdp.waitFor(`() => Boolean(document.querySelector('.studio-archive-drawer')) && Boolean(document.querySelector('#shoot-prep-pending-only')) && Boolean(document.querySelector('.shoot-brief-board'))`);
+  // Round 10: Lachma Shoot Brief Board 4-outfit starter template fill
+  await cdp.eval(`[...document.querySelectorAll('.shoot-brief-board button')].find(b => b.textContent.includes('기본 착장 4종 템플릿 채우기')).click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.shoot-outfit-card').length === 4`);
+  // Round 9+10: Shoot Day Field Ops Briefing Mode (2 tabs: route & outfits brief)
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('촬영 당일 현장 모드')).click()`);
-  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.field-ops-shell .field-ops-loc-row'))`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.field-ops-shell .field-ops-loc-row')) && document.querySelectorAll('[data-shoot-ops-tab]').length === 2`);
+  await cdp.eval(`document.querySelector('[data-shoot-ops-tab="brief"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.field-ops-shell')?.innerText.includes('메인 풍성')`);
   await cdp.eval(`document.querySelector('#close-dialog').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
   // Lachma shoot prep pending filter & copy button
@@ -563,6 +607,12 @@ try {
   await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.textContent.includes('오르골')`);
   await cdp.eval(`document.querySelector('.invitation-bgm-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('.invitation-bgm-preset-btn')?.hidden === true`);
+  // Round 10: 390px Mobile Invitation Phone Frame Preview modal
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('390px 폰 미리보기')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.mobile-preview-frame iframe.mobile-preview-iframe'))`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
+
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent === '예식 정보 편집').click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.kakao-og-bubble'))`);
   await cdp.eval(`(() => {
@@ -577,13 +627,21 @@ try {
   await cdp.waitFor(`() => document.querySelector('#draft-banner') && !document.querySelector('#draft-banner').hidden`);
   assert(await cdp.eval(`document.querySelector('#main').innerText.includes('브라우저 초안 검증 인사말')`), 'Draft must persist after reload');
   await cdp.eval(`document.querySelector('#manage-content').click()`);
-  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('#editor-body').innerText.includes('초대 인사')`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('#editor-body').innerText.includes('초대 인사') && document.querySelectorAll('.storage-health-chips .spec-chip').length >= 2`);
   await cdp.eval(`[...document.querySelectorAll('#editor-body button')].find(b => b.textContent === '공개본으로 돌아가기').click()`);
   await cdp.waitFor(`() => document.querySelector('#confirm-dialog').open`);
   await cdp.eval(`document.querySelector('#confirm-ok').click()`);
   await cdp.waitFor(`() => !document.querySelector('#confirm-dialog').open && !document.querySelector('#editor-dialog').open && document.querySelector('#draft-banner').hidden`);
   assert.equal(await cdp.eval(`localStorage.getItem('wedding:v1:draft')`), null, 'Draft cleared on revert to public');
-  console.log('E2E PASS 7/8: Invitation dark contrast + dark-mode print guard + BGM + OG preview + Draft revert confirm OK');
+
+  // Round 10: Story 4-prompt onboarding cards on empty story screen
+  await cdp.eval(`location.hash = '#/story'`);
+  await cdp.waitFor(`() => document.querySelectorAll('.story-prompt-card').length === 4`);
+  await cdp.eval(`document.querySelector('.story-prompt-card').click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#field-title')?.value)`);
+  await cdp.eval(`document.querySelector('#close-dialog').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
+  console.log('E2E PASS 7/8: Invitation dark contrast + print guard + 390px preview + BGM + OG preview + Storage diagnostics + Story prompts + Draft revert OK');
 
   // 8. 18-view Dark Mode bright-box + WCAG AA contrast guard + Light Mode rose label guard + zero overflow in 1280px & 390px
   const darkAuditViews = [

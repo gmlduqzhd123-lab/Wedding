@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-68';
-import { weddingDday } from './content.js?v=wedding-features-68';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-68';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-68';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-69';
+import { weddingDday } from './content.js?v=wedding-features-69';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-69';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-69';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -141,6 +141,260 @@ function openStudioMemoModal(ctx, studio) {
   }
 }
 
+export const SHOOT_OUTFIT_TEMPLATES = [
+  { label: '메인 풍성 · 실크 드레스', hair: '단정한 로우번 + 티아라·진주 헤어핀', props: '생화 화이트 부케 · 롱 베일', poses: '정면 클래식 · 베일 날림 컷 · 창가 자연광 클로즈업' },
+  { label: '슬림 · 유색 드레스', hair: '내추럴 반묶음 또는 웨이브 다운', props: '포인트 컬러 부케 · 심플 이어링', poses: '앉아서 시선 교차 · 뒷모습 라인 · 계단/로드 컷' },
+  { label: '캐주얼 커플룩', hair: '가벼운 로우 포니테일 또는 자연스러운 웨이브', props: '꽃다발 · 선글라스 · 커플링 클로즈업', poses: '함께 웃으며 걷기 · 장난스러운 자연 표정 컷' },
+  { label: '한복 (선택)', hair: '단아한 쪽머리 · 뒤꽂이', props: '한복 노리개 · 꽃신', poses: '양가 인사 느낌의 단정한 정면·측면 컷' }
+];
+
+export function buildShootBriefCopyText(brief = {}, studio = null) {
+  const b = brief && typeof brief === 'object' ? brief : {};
+  const outfits = Array.isArray(b.outfits) ? b.outfits : [];
+  const ms = b.milestones || {};
+  const lines = [`🎨 [${studio?.name || '라크마'} 스튜디오 촬영 시안 & 착장 브리핑]`, ''];
+  if (b.moodNote) lines.push(`✨ 원하는 분위기 · 필수 컷: ${b.moodNote}`);
+  if (b.avoidNote) lines.push(`🚫 피하고 싶은 각도 · 요청: ${b.avoidNote}`);
+  if (b.moodNote || b.avoidNote) lines.push('');
+  if (outfits.length) {
+    lines.push(`👗 착장별 헤어 · 소품 · 포즈 (${outfits.length}벌)`);
+    outfits.forEach((o, i) => {
+      lines.push(`${i + 1}. ${o.label}`);
+      if (o.hair) lines.push(`   · 헤어/메이크업: ${o.hair}`);
+      if (o.props) lines.push(`   · 부케/소품: ${o.props}`);
+      if (o.poses) lines.push(`   · 원하는 포즈: ${o.poses}`);
+    });
+    lines.push('');
+  }
+  const msLines = [
+    ['원본 수령', ms.originalDate, ms.originalDone],
+    ['사진 셀렉', ms.selectDate, ms.selectDone],
+    ['수정본 완료', ms.retouchDate, ms.retouchDone]
+  ].filter(([, d, done]) => d || done);
+  if (msLines.length) {
+    lines.push('🗓️ 촬영 후속 일정');
+    for (const [name, d, done] of msLines) {
+      lines.push(`- ${name}: ${done ? '완료 ✅' : '진행 예정'}${d ? ` (${d})` : ''}`);
+    }
+  }
+  return lines.join('\n').trim();
+}
+
+function emptyShootBrief() {
+  return { moodNote: '', avoidNote: '', outfits: [], milestones: { originalDone: false, selectDone: false, retouchDone: false } };
+}
+
+function openShootBriefMoodModal(ctx) {
+  if (ctx.isGuestMode()) return;
+  const cur = ctx.getPrefs().shootBrief || emptyShootBrief();
+  const ms = cur.milestones || {};
+  const form = E('form', { class: 'editor-form' });
+  const moodInput = E('textarea', { rows: '3', id: 'shoot-mood-note', maxlength: '500', placeholder: '예: 과한 보정보다 자연광 속 편안한 미소, 인물 중심 클래식 톤 위주' });
+  moodInput.value = cur.moodNote || '';
+  const avoidInput = E('textarea', { rows: '3', id: 'shoot-avoid-note', maxlength: '500', placeholder: '예: 너무 인위적인 입맞춤 포즈는 최소화, 왼쪽 얼굴 각도 선호' });
+  avoidInput.value = cur.avoidNote || '';
+  const origDate = E('input', { type: 'date', id: 'shoot-orig-date', value: ms.originalDate || '' });
+  const selDate = E('input', { type: 'date', id: 'shoot-sel-date', value: ms.selectDate || '' });
+  const retDate = E('input', { type: 'date', id: 'shoot-ret-date', value: ms.retouchDate || '' });
+  form.append(
+    E('p', { class: 'form-note' }, '촬영 당일 작가님·루나메이크업 실장님께 보여줄 핵심 요청과 촬영 후 원본·셀렉·수정본 일정을 이 기기에 기록합니다.'),
+    E('label', { class: 'field', for: moodInput.id }, '✨ 원하는 분위기 · 꼭 남기고 싶은 컷', moodInput),
+    E('label', { class: 'field', for: avoidInput.id }, '🚫 피하고 싶은 각도 · 보정/포즈 요청', avoidInput),
+    E('div', { class: 'editor-grid-3' },
+      E('label', { class: 'field', for: origDate.id }, '1. 원본 수령 예정일', origDate),
+      E('label', { class: 'field', for: selDate.id }, '2. 사진 셀렉 예정일', selDate),
+      E('label', { class: 'field', for: retDate.id }, '3. 수정본 수령 예정일', retDate)));
+  const submit = E('button', { class: 'button', type: 'submit' }, '시안·일정 저장');
+  form.append(E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit));
+  let saving = false;
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    if (saving) return;
+    saving = true;
+    submit.disabled = true;
+    try {
+      const latest = ctx.getPrefs();
+      const baseBrief = latest.shootBrief || emptyShootBrief();
+      const nextBrief = {
+        ...(moodInput.value.trim() ? { moodNote: moodInput.value.trim() } : {}),
+        ...(avoidInput.value.trim() ? { avoidNote: avoidInput.value.trim() } : {}),
+        outfits: baseBrief.outfits || [],
+        milestones: {
+          ...(origDate.value ? { originalDate: origDate.value } : {}),
+          ...(selDate.value ? { selectDate: selDate.value } : {}),
+          ...(retDate.value ? { retouchDate: retDate.value } : {}),
+          originalDone: Boolean(baseBrief.milestones?.originalDone),
+          selectDone: Boolean(baseBrief.milestones?.selectDone),
+          retouchDone: Boolean(baseBrief.milestones?.retouchDone)
+        }
+      };
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief }));
+      if (saved) { ctx.closeDialog(); ctx.render(); ctx.toast('촬영 시안과 후속 일정을 저장했습니다.'); }
+    } catch (error) { ctx.toast(error.message, true); }
+    finally { saving = false; submit.disabled = false; }
+  });
+  const snap = () => JSON.stringify([moodInput.value, avoidInput.value, origDate.value, selDate.value, retDate.value]);
+  const initial = snap();
+  if (ctx.showDialog('🎨 촬영 분위기 · 후속 일정 편집', form)) {
+    ctx.setEditorState({ isDirty: () => saving || snap() !== initial, isSaving: () => saving });
+  }
+}
+
+function openShootOutfitModal(ctx, existing = null) {
+  if (ctx.isGuestMode()) return;
+  const isEdit = Boolean(existing?.id);
+  const form = E('form', { class: 'editor-form' });
+  const labelInput = E('input', { type: 'text', id: 'outfit-label', maxlength: '60', required: true, placeholder: '예: 메인 실크 드레스 / 캐주얼 커플룩', value: existing?.label || '' });
+  const hairInput = E('input', { type: 'text', id: 'outfit-hair', maxlength: '120', placeholder: '예: 단정한 로우번 + 진주 헤어핀', value: existing?.hair || '' });
+  const propsInput = E('input', { type: 'text', id: 'outfit-props', maxlength: '160', placeholder: '예: 화이트 생화 부케 · 롱 베일', value: existing?.props || '' });
+  const posesInput = E('textarea', { rows: '3', id: 'outfit-poses', maxlength: '240', placeholder: '예: 베일 날림 컷, 창가 역광 클로즈업, 정면 클래식 포즈' });
+  posesInput.value = existing?.poses || '';
+  form.append(
+    E('label', { class: 'field', for: labelInput.id }, '👗 착장 이름 (필수)', labelInput),
+    E('label', { class: 'field', for: hairInput.id }, '💇 헤어 변형 · 메이크업 포인트', hairInput),
+    E('label', { class: 'field', for: propsInput.id }, '💐 부케 · 소품 매칭', propsInput),
+    E('label', { class: 'field', for: posesInput.id }, '📷 원하는 포즈 · 컷 메모', posesInput));
+  const submit = E('button', { class: 'button', type: 'submit' }, isEdit ? '착장 시안 수정' : '착장 시안 추가');
+  form.append(E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit));
+  let saving = false;
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    if (saving) return;
+    saving = true;
+    submit.disabled = true;
+    try {
+      const label = labelInput.value.trim();
+      if (!label) throw new Error('착장 이름을 입력해 주세요.');
+      const latest = ctx.getPrefs();
+      const baseBrief = latest.shootBrief || emptyShootBrief();
+      const curList = [...(baseBrief.outfits || [])];
+      if (!isEdit && curList.length >= 10) throw new Error('착장 시안은 10벌까지 보관할 수 있습니다.');
+      const nextItem = {
+        id: isEdit ? existing.id : 'outfit-' + crypto.randomUUID().slice(0, 8),
+        label,
+        ...(hairInput.value.trim() ? { hair: hairInput.value.trim() } : {}),
+        ...(propsInput.value.trim() ? { props: propsInput.value.trim() } : {}),
+        ...(posesInput.value.trim() ? { poses: posesInput.value.trim() } : {})
+      };
+      const nextOutfits = isEdit ? curList.map(o => (o.id === nextItem.id ? nextItem : o)) : [...curList, nextItem];
+      const nextBrief = { ...baseBrief, outfits: nextOutfits, milestones: baseBrief.milestones || emptyShootBrief().milestones };
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief }));
+      if (saved) { ctx.closeDialog(); ctx.render(); ctx.toast(isEdit ? '착장 시안을 수정했습니다.' : '착장 시안을 추가했습니다.'); }
+    } catch (error) { ctx.toast(error.message, true); }
+    finally { saving = false; submit.disabled = false; }
+  });
+  const snap = () => JSON.stringify([labelInput.value, hairInput.value, propsInput.value, posesInput.value]);
+  const initial = snap();
+  if (ctx.showDialog(isEdit ? '👗 촬영 착장 시안 수정' : '👗 촬영 착장 시안 추가', form)) {
+    ctx.setEditorState({ isDirty: () => saving || snap() !== initial, isSaving: () => saving });
+  }
+}
+
+function renderShootBriefBoard(ctx, studio) {
+  if (ctx.isGuestMode()) return null;
+  const brief = ctx.getPrefs().shootBrief || emptyShootBrief();
+  const outfits = brief.outfits || [];
+  const ms = brief.milestones || {};
+  const hasAny = Boolean(brief.moodNote || brief.avoidNote || outfits.length || ms.originalDate || ms.selectDate || ms.retouchDate || ms.originalDone || ms.selectDone || ms.retouchDone);
+
+  const applyTemplates = () => {
+    ctx.queuePreference(async () => {
+      const latest = ctx.getPrefs();
+      const baseBrief = latest.shootBrief || emptyShootBrief();
+      const existingLabels = new Set((baseBrief.outfits || []).map(o => o.label));
+      const additions = [];
+      for (const tpl of SHOOT_OUTFIT_TEMPLATES) {
+        if (existingLabels.has(tpl.label) || (baseBrief.outfits || []).length + additions.length >= 10) continue;
+        additions.push({ id: 'outfit-' + crypto.randomUUID().slice(0, 8), ...tpl });
+      }
+      if (!additions.length) { ctx.toast('이미 기본 착장 템플릿이 들어 있습니다.'); return true; }
+      const nextBrief = { ...baseBrief, outfits: [...(baseBrief.outfits || []), ...additions], milestones: baseBrief.milestones || emptyShootBrief().milestones };
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief });
+      if (saved) { ctx.render(); ctx.toast(`기본 착장 시안 ${additions.length}벌을 채웠습니다. 우리 일정에 맞게 다듬어 보세요.`); }
+      return saved;
+    });
+  };
+
+  const deleteOutfit = async outfit => {
+    if (!await ctx.confirmAction({ title: '착장 시안 삭제', message: `‘${outfit.label}’ 시안 카드를 삭제할까요?`, confirmLabel: '삭제', danger: true })) return;
+    ctx.queuePreference(async () => {
+      const latest = ctx.getPrefs();
+      const baseBrief = latest.shootBrief || emptyShootBrief();
+      const nextBrief = { ...baseBrief, outfits: (baseBrief.outfits || []).filter(o => o.id !== outfit.id), milestones: baseBrief.milestones || emptyShootBrief().milestones };
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief });
+      if (saved) { ctx.render(); ctx.toast('착장 시안을 삭제했습니다.'); }
+      return saved;
+    });
+  };
+
+  const toggleMilestone = (doneKey, checked) => {
+    ctx.queuePreference(async () => {
+      const latest = ctx.getPrefs();
+      const baseBrief = latest.shootBrief || emptyShootBrief();
+      const nextBrief = {
+        ...baseBrief,
+        outfits: baseBrief.outfits || [],
+        milestones: { ...(baseBrief.milestones || emptyShootBrief().milestones), [doneKey]: checked }
+      };
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief });
+      if (saved) ctx.render();
+      return saved;
+    });
+  };
+
+  const msDefs = [
+    ['originalDone', 'originalDate', '1. 원본 수령'],
+    ['selectDone', 'selectDate', '2. 사진 셀렉'],
+    ['retouchDone', 'retouchDate', '3. 수정본 완료']
+  ];
+  const msDoneCount = msDefs.filter(([dk]) => Boolean(ms[dk])).length;
+
+  return E('div', { class: 'lachma-section shoot-brief-board', 'aria-label': '라크마 촬영 시안 및 착장 보드' },
+    E('div', { class: 'lachma-prep-head' },
+      E('div', {},
+        E('h3', { class: 'lachma-subtitle' }, '🎨 촬영 시안 · 착장별 헤어·소품·포즈 & 후속 일정'),
+        E('p', { class: 'small muted' }, '촬영 당일 루나메이크업·라크마 작가님께 바로 보여줄 시안과 원본·셀렉·수정본 진행 상황을 이 기기에 정리해요.')),
+      E('div', { class: 'lachma-prep-controls' },
+        button('✏️ 무드·후속일정 편집', () => openShootBriefMoodModal(ctx), 'button quiet small-copy-btn'),
+        button('+ 착장 추가', () => openShootOutfitModal(ctx), 'button quiet small-copy-btn'),
+        hasAny ? button('📋 시안 브리핑 복사', () => {
+          const text = buildShootBriefCopyText(brief, studio);
+          if (text) ctx.copyTextToClipboard(text, '라크마 촬영 시안·착장 브리핑을 복사했습니다.', '촬영 시안 복사');
+        }, 'button quiet small-copy-btn') : null)),
+    (brief.moodNote || brief.avoidNote) ? E('div', { class: 'shoot-brief-notes-grid' },
+      brief.moodNote ? E('div', { class: 'pros-box' }, E('strong', { class: 'pros-title' }, '✨ 원하는 분위기 · 필수 컷'), E('p', { class: 'small record-body' }, brief.moodNote)) : null,
+      brief.avoidNote ? E('div', { class: 'cons-box' }, E('strong', { class: 'cons-title' }, '🚫 피하고 싶은 각도 · 요청'), E('p', { class: 'small record-body' }, brief.avoidNote)) : null) : null,
+    outfits.length
+      ? E('div', { class: 'shoot-outfit-grid' }, outfits.map((o, idx) => E('article', { class: 'shoot-outfit-card', 'data-outfit-id': o.id },
+        E('div', { class: 'shoot-outfit-head' },
+          E('strong', {}, `${idx + 1}. ${o.label}`),
+          E('div', { class: 'shoot-outfit-actions' },
+            button('수정', () => openShootOutfitModal(ctx, o), 'text-button small'),
+            button('삭제', () => deleteOutfit(o), 'text-button small danger-link'))),
+        o.hair ? E('p', { class: 'small' }, E('strong', {}, '💇 헤어·메이크업: '), o.hair) : null,
+        o.props ? E('p', { class: 'small' }, E('strong', {}, '💐 부케·소품: '), o.props) : null,
+        o.poses ? E('p', { class: 'small' }, E('strong', {}, '📷 포즈·포인트: '), o.poses) : null)))
+      : E('div', { class: 'shoot-brief-empty' },
+        E('p', { class: 'small muted' }, '아직 착장별 시안이 비어 있어요. 드레스·캐주얼·한복별 헤어변형과 소품을 적어 두면 ‘촬영 당일 현장 모드’에서 작가님께 바로 보여드릴 수 있어요.'),
+        E('div', { class: 'page-actions' },
+          button('✨ 기본 착장 4종 템플릿 채우기', applyTemplates, 'button quiet small-copy-btn'),
+          button('+ 첫 착장 직접 추가', () => openShootOutfitModal(ctx), 'button small-copy-btn'))),
+    E('div', { class: 'shoot-milestone-bar', 'aria-label': '촬영 후속 일정 진행' },
+      E('div', { class: 'shoot-milestone-head' },
+        E('strong', { class: 'small' }, `🗓️ 촬영 후속 일정 (${msDoneCount}/3 완료)`),
+        button('날짜 입력·수정', () => openShootBriefMoodModal(ctx), 'text-button small')),
+      E('div', { class: 'shoot-milestone-grid' }, msDefs.map(([doneKey, dateKey, label]) => {
+        const box = E('input', { type: 'checkbox', id: `ms-${doneKey}` });
+        box.checked = Boolean(ms[doneKey]);
+        box.addEventListener('change', () => toggleMilestone(doneKey, box.checked));
+        return E('label', { class: 'shoot-milestone-item' + (box.checked ? ' is-done' : ''), for: box.id },
+          box,
+          E('span', {},
+            E('strong', { class: 'small' }, label),
+            E('span', { class: 'small muted shoot-ms-date' }, ms[dateKey] ? ` · ${ms[dateKey]}` : ' · 일정 미정')));
+      }))));
+}
+
 function renderLachmaDeepGuide(ctx, studio, compact = false) {
   const g = studio?.deepGuide;
   if (!g) return null;
@@ -276,6 +530,7 @@ function renderLachmaDeepGuide(ctx, studio, compact = false) {
                 E('label', { class: 'checklist-label' }, box, E('span', { class: 'small' }, e.label)));
             })))))
         : E('p', { class: 'small muted' }, '🎉 모든 촬영 준비물을 챙겼습니다! ‘미챙긴 항목만 보기’를 해제하면 전체 목록을 볼 수 있어요.')) : null,
+    !compact ? renderShootBriefBoard(ctx, studio) : null,
     (g.timetable || []).length ? E('div', { class: 'lachma-section' },
       E('h3', { class: 'lachma-subtitle' }, '⏰ 2월 3일 (수) 12:00 촬영 당일 동선 타임테이블'),
       E('ol', { class: 'timetable-list lachma-timetable' }, g.timetable.map(row => E('li', { class: 'timetable-row' + (row.time.includes('12:00') ? ' highlight' : '') },

@@ -1,4 +1,4 @@
-import { validatePreferences } from './preferences.js?v=wedding-features-68';
+import { validatePreferences } from './preferences.js?v=wedding-features-69';
 
 export const SYNC_CODE_PREFIX = 'WEDDING-SYNC-V1:';
 const MAX_ENCODED_CHARS = 524288;
@@ -71,7 +71,7 @@ export function summarizePreferenceCounts(prefs = {}) {
   const gifts = (p.giftLedger || []).length;
   const homeItems = (p.homeItems || []).length;
   const checks = (p.checklist || []).length + (p.shootChecklist || []).length + (p.ceremonyChecks || []).length + (p.prenatalChecks || []).length + (p.packingList || []).length + (p.benefitChecks || []).length;
-  const notes = Object.keys(p.notes || {}).length + Object.keys(p.tripNotes || {}).length + Object.keys(p.tipNotes || {}).length + Object.keys(p.checklistNotes || {}).length;
+  const notes = Object.keys(p.notes || {}).length + Object.keys(p.tripNotes || {}).length + Object.keys(p.tipNotes || {}).length + Object.keys(p.checklistNotes || {}).length + Object.keys(p.tripQuotes || {}).length + Object.keys(p.ceremonyBgm || {}).length + (p.shootBrief?.outfits?.length || 0);
   const schedules = (p.vendorSchedules || []).length;
   const dayOps = (p.weddingDayRoles || []).length + (p.weddingDayEnvelopes || []).length;
   const hasBudget = Object.keys(p.budgetPlan || {}).length > 0;

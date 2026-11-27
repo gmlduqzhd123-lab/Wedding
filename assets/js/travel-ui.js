@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-68';
-import { safeUrl, validDate } from './content.js?v=wedding-features-68';
-import { pruneContentPreferences } from './preferences.js?v=wedding-features-68';
-import { scheduleCalendar } from './calendar.js?v=wedding-features-68';
+import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-69';
+import { safeUrl, validDate } from './content.js?v=wedding-features-69';
+import { pruneContentPreferences } from './preferences.js?v=wedding-features-69';
+import { scheduleCalendar } from './calendar.js?v=wedding-features-69';
 import {
   CORE_REGION_KEYS,
   MORE_DESTINATION_NOTES,
@@ -24,7 +24,7 @@ import {
   isSemiPackageTrip,
   buildTripComparisonText,
   buildSelectedTripSummaryText
-} from './travel.js?v=wedding-features-68';
+} from './travel.js?v=wedding-features-69';
 import {
   isPackingExpanded,
   setPackingExpanded,
@@ -34,7 +34,7 @@ import {
   renderTripRecommenderSection,
   renderLocalSpendingSimulator,
   renderHoneymoonPackingList
-} from './travel-tools-ui.js?v=wedding-features-68';
+} from './travel-tools-ui.js?v=wedding-features-69';
 
 export { tripFlightBadge };
 
@@ -254,16 +254,62 @@ export function youtubeThumbBanner(rawUrl, title) {
     E('span', { class: 'yt-badge', 'aria-hidden': 'true' }, 'YouTube ↗'));
 }
 
+export function formatTripQuoteDelta(item, pq) {
+  if (!pq || typeof pq !== 'object') {
+    return { effectiveTotal: null, diff: null, deltaLabel: '', deltaKind: 'none', summaryText: '미기록' };
+  }
+  const effectiveTotal = pq.total !== null && pq.total !== undefined
+    ? pq.total
+    : (pq.airfare !== null && pq.airfare !== undefined || pq.lodging !== null && pq.lodging !== undefined)
+      ? (pq.airfare || 0) + (pq.lodging || 0)
+      : null;
+  let diff = null;
+  let deltaLabel = '';
+  let deltaKind = 'same';
+  if (effectiveTotal !== null && typeof item?.budget === 'number' && Number.isFinite(item.budget)) {
+    diff = effectiveTotal - item.budget;
+    const absMan = Math.round(Math.abs(diff) / 10000).toLocaleString('ko-KR');
+    if (diff < 0) {
+      deltaLabel = `계획 대비 -${absMan}만 원 절감`;
+      deltaKind = 'cheaper';
+    } else if (diff > 0) {
+      deltaLabel = `계획 대비 +${absMan}만 원 초과`;
+      deltaKind = 'over';
+    } else {
+      deltaLabel = '계획예산과 동일';
+      deltaKind = 'same';
+    }
+  }
+  const parts = [];
+  if (effectiveTotal !== null) parts.push(`${effectiveTotal.toLocaleString('ko-KR')}원`);
+  if (deltaLabel) parts.push(`(${deltaLabel})`);
+  if (pq.agency) parts.push(`· ${pq.agency}`);
+  if (pq.perks) parts.push(`· ${pq.perks}`);
+  if (pq.cancelUntil) parts.push(`· 무료취소 ${pq.cancelUntil}`);
+  return {
+    effectiveTotal,
+    diff,
+    deltaLabel,
+    deltaKind,
+    summaryText: parts.length ? parts.join(' ') : '상담 정보 기록됨'
+  };
+}
+
 function tripQuickSpecs(ctx, item) {
   const flight = tripFlightBadge(item);
   const style = tripStyleInfo(item);
-  const hasNote = !ctx.isGuestMode() && Boolean(ctx.getPrefs().tripNotes?.[item.id]?.trim());
+  const prefs = ctx.getPrefs();
+  const hasNote = !ctx.isGuestMode() && Boolean(prefs.tripNotes?.[item.id]?.trim());
+  const pq = !ctx.isGuestMode() ? prefs.tripQuotes?.[item.id] : null;
+  const pqInfo = pq ? formatTripQuoteDelta(item, pq) : null;
   return E('div', { class: 'trip-spec-chips', 'aria-label': `${item.title} 핵심 조건 요약` },
     E('span', { class: 'spec-chip' + (style.isPackage ? ' highlight' : '') }, style.shortBadge),
     E('span', { class: 'spec-chip' + (flight.direct ? ' direct' : '') }, flight.detail),
     E('span', { class: 'spec-chip' }, '🏨 ' + staySummary(item)),
     E('span', { class: 'spec-chip' }, tripClimateBadge(item)),
     E('span', { class: 'spec-chip highlight' }, '💰 2인 계획예산 ' + won(item.budget)),
+    pqInfo ? E('span', { class: 'spec-chip' + (pqInfo.deltaKind === 'cheaper' ? ' direct' : ' highlight') },
+      pqInfo.effectiveTotal !== null ? `🧾 내 실견적 ${Math.round(pqInfo.effectiveTotal / 10000).toLocaleString('ko-KR')}만` : '🧾 실견적 기록됨') : null,
     hasNote ? E('span', { class: 'spec-chip highlight' }, '📝 메모 있음') : null);
 }
 
@@ -339,22 +385,26 @@ function selectedTripSummary(ctx) {
   const item = content.honeymoon.find(trip => trip.id === prefs.tripSelected);
   if (!item) return E('p', { class: 'form-note' }, '최종 선택한 여행지가 없습니다. 후보의 최종 선택 버튼으로 이 기기에 저장할 수 있어요.');
   const note = prefs.tripNotes?.[item.id] || '';
+  const pq = prefs.tripQuotes?.[item.id] || null;
+  const pqInfo = pq ? formatTripQuoteDelta(item, pq) : null;
   const qReview = quoteReview(item);
   const syncTripToBudget = () => {
     const curPlan = structuredClone(ctx.getPrefs().budgetPlan || {});
     const curHoney = curPlan.honeymoon || { planned: null, actual: null, note: '' };
     const plannedVal = Number.isFinite(item.budget) && item.budget > 0 ? item.budget : curHoney.planned;
-    const actualVal = (qReview.complete && qReview.total !== null) ? qReview.total : curHoney.actual;
+    const actualVal = (pqInfo?.effectiveTotal !== null && pqInfo?.effectiveTotal !== undefined)
+      ? pqInfo.effectiveTotal
+      : ((qReview.complete && qReview.total !== null) ? qReview.total : curHoney.actual);
     curPlan.honeymoon = {
       planned: plannedVal,
       actual: actualVal,
-      note: `${item.title}${item.startDate && item.endDate ? ` (${item.startDate}~${item.endDate})` : ''}`
+      note: `${item.title}${item.startDate && item.endDate ? ` (${item.startDate}~${item.endDate})` : ''}${pq?.agency ? ` · ${pq.agency}` : ''}`
     };
     ctx.queuePreference(async () => {
       const saved = await ctx.savePrefs({ ...ctx.getPrefs(), budgetPlan: curPlan });
       if (saved) {
         ctx.render();
-        ctx.toast(`최종 선택 신혼여행(${item.title} · ${won(plannedVal)})을 통합 예산 계산기에 반영했습니다.`);
+        ctx.toast(`최종 선택 신혼여행(${item.title} · ${won(plannedVal)}${actualVal ? ` / 실견적 ${won(actualVal)}` : ''})을 통합 예산 계산기에 반영했습니다.`);
       }
       return saved;
     });
@@ -380,6 +430,7 @@ function selectedTripSummary(ctx) {
     E('h2', {}, '최종 선택 · ' + item.title),
     E('p', {}, `${item.startDate || '미정'} 한국 출발 → ${item.endDate || '미정'} 한국 도착 · 2인 계획예산 ${won(item.budget)}`),
     E('div', { class: 'selected-trip-status' }, tripBudgetStatus(item), tripQuoteStatus(item), tripStayStatus(item)),
+    pqInfo ? E('p', { class: 'checklist-item-note small' }, `🧾 내 실견적(개인 기록): ${pqInfo.summaryText}`) : null,
     note ? E('p', { class: 'checklist-item-note small' }, `📝 우리의 상담 메모: ${note}`) : null,
     E('p', { class: 'small muted' }, '이 기기에 저장한 선택입니다. 예약 확정을 의미하지 않습니다.'),
     E('div', { class: 'page-actions' },
@@ -410,11 +461,13 @@ function tripComparison(ctx) {
   if (!items.length) return null;
   const numericBudgets = items.map(it => it.budget).filter(b => typeof b === 'number' && Number.isFinite(b));
   const minBudget = items.length >= 2 && numericBudgets.length >= 2 ? Math.min(...numericBudgets) : null;
+  const hasPrivateQuotes = items.some(it => Boolean(prefs.tripQuotes?.[it.id]));
   const fields = [
     ['여행 형태·구분', item => tripStyleInfo(item).badge],
     ['나라·지역', item => item.country || '미정'],
     ['한국 출발·도착', item => [item.startDate, item.endDate].filter(Boolean).join(' ~ ') || '미정'],
     ['2인 계획예산', item => won(item.budget)],
+    ...(hasPrivateQuotes ? [['내 실견적 (개인 기록)', item => formatTripQuoteDelta(item, prefs.tripQuotes?.[item.id]).summaryText]] : []),
     ['비용 배분 합계', item => { const state = budgetSummary(item); return state.known === null ? '입력된 배분 없음' : won(state.known); }],
     ['실제 견적·귀국 확인', item => quoteReview(item).message],
     ['숙박 가안', staySummary],
@@ -550,6 +603,118 @@ function openTripNoteModal(ctx, item) {
   }
 }
 
+function parseQuickMoney(raw, label) {
+  const cleaned = String(raw || '').replace(/[,\s원]/g, '').trim();
+  if (!cleaned) return null;
+  if (!/^\d+$/.test(cleaned)) throw new Error(`${label}은(는) 0원 이상의 숫자만 입력해 주세요.`);
+  const num = Number(cleaned);
+  if (!Number.isSafeInteger(num) || num < 0 || num > 1000000000) throw new Error(`${label} 금액 범위를 확인해 주세요.`);
+  return num;
+}
+
+function openQuickTripQuoteModal(ctx, item) {
+  if (ctx.isGuestMode()) return;
+  const cur = ctx.getPrefs().tripQuotes?.[item.id] || null;
+  const todayKst = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+  const form = E('form', { class: 'editor-form' });
+  const totalInput = E('input', { type: 'text', inputmode: 'numeric', id: 'trip-quote-total', value: cur?.total != null ? String(cur.total) : '', placeholder: '예: 5450000 (2인 합계 원)' });
+  const airInput = E('input', { type: 'text', inputmode: 'numeric', id: 'trip-quote-airfare', value: cur?.airfare != null ? String(cur.airfare) : '', placeholder: '선택 · 항공 2인 실견적' });
+  const lodgeInput = E('input', { type: 'text', inputmode: 'numeric', id: 'trip-quote-lodging', value: cur?.lodging != null ? String(cur.lodging) : '', placeholder: '선택 · 숙박/패키지 실견적' });
+  const agencyInput = E('input', { type: 'text', id: 'trip-quote-agency', maxlength: '80', value: cur?.agency || '', placeholder: '예: 하나투어 직판 / 스카이스캐너 + 아고다' });
+  const perksInput = E('input', { type: 'text', id: 'trip-quote-perks', maxlength: '240', value: cur?.perks || '', placeholder: '예: 플로팅 조식 + 스파 90분 + 레이트 체크아웃' });
+  const cancelInput = E('input', { type: 'date', id: 'trip-quote-cancel', value: cur?.cancelUntil || '' });
+  const checkedInput = E('input', { type: 'date', id: 'trip-quote-checked', value: cur?.checkedOn || todayKst });
+
+  const snapshot = () => JSON.stringify([totalInput.value, airInput.value, lodgeInput.value, agencyInput.value, perksInput.value, cancelInput.value, checkedInput.value]);
+  const initialSnap = snapshot();
+
+  const liveDelta = E('p', { class: 'small muted', role: 'status', 'aria-live': 'polite' });
+  const refreshLiveDelta = () => {
+    try {
+      const t = parseQuickMoney(totalInput.value, '2인 총액');
+      const a = parseQuickMoney(airInput.value, '항공');
+      const l = parseQuickMoney(lodgeInput.value, '숙박·패키지');
+      const info = formatTripQuoteDelta(item, { total: t, airfare: a, lodging: l });
+      liveDelta.textContent = info.effectiveTotal !== null
+        ? `현재 입력 기준: ${info.effectiveTotal.toLocaleString('ko-KR')}원${info.deltaLabel ? ` · ${info.deltaLabel}` : ''}`
+        : `계획예산 참고: ${won(item.budget)} (총액 또는 항공+숙박 입력 시 차액을 자동 계산해요)`;
+    } catch {
+      liveDelta.textContent = '금액은 쉼표 없이 숫자(원)로 입력해 주세요.';
+    }
+  };
+  refreshLiveDelta();
+  totalInput.addEventListener('input', refreshLiveDelta);
+  airInput.addEventListener('input', refreshLiveDelta);
+  lodgeInput.addEventListener('input', refreshLiveDelta);
+
+  form.append(
+    E('p', { class: 'form-note' }, `여행사 상담가나 실시간 항공+숙박 조회 금액을 30초 만에 이 기기에 기록합니다. 공개 저장소(data/site.json)나 방문자 화면에는 노출되지 않으며, 카톡 동기화 코드·개인 백업에 포함됩니다.`),
+    E('div', { class: 'editor-grid-3' },
+      E('label', { class: 'field', for: totalInput.id }, '💰 2인 총 실견적 (원)', totalInput),
+      E('label', { class: 'field', for: airInput.id }, '✈️ 항공 실견적 (선택)', airInput),
+      E('label', { class: 'field', for: lodgeInput.id }, '🏨 숙박·패키지 (선택)', lodgeInput)),
+    liveDelta,
+    E('div', { class: 'editor-grid-2' },
+      E('label', { class: 'field', for: agencyInput.id }, '상담처 · 예약 채널', agencyInput),
+      E('label', { class: 'field', for: perksInput.id }, '포함 특전 · 조건 요약', perksInput)),
+    E('div', { class: 'editor-grid-2' },
+      E('label', { class: 'field', for: cancelInput.id }, '무료 취소 마감일 (선택)', cancelInput),
+      E('label', { class: 'field', for: checkedInput.id }, '견적 확인일', checkedInput)));
+
+  const submit = E('button', { class: 'button', type: 'submit' }, cur ? '실견적 수정 저장' : '실견적 저장');
+  const deleteBtn = cur ? button('실견적 삭제', async () => {
+    const nextQuotes = { ...(ctx.getPrefs().tripQuotes || {}) };
+    delete nextQuotes[item.id];
+    const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), tripQuotes: nextQuotes }));
+    if (saved) { ctx.closeDialog(); ctx.render(); ctx.toast('기록한 실견적을 삭제했습니다.'); }
+  }, 'button danger') : null;
+  form.append(E('div', { class: 'form-actions' }, deleteBtn, button('취소', ctx.requestClose, 'button quiet'), submit));
+
+  let saving = false;
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (saving) return;
+    saving = true;
+    submit.disabled = true;
+    try {
+      const total = parseQuickMoney(totalInput.value, '2인 총 실견적');
+      const airfare = parseQuickMoney(airInput.value, '항공 실견적');
+      const lodging = parseQuickMoney(lodgeInput.value, '숙박·패키지 실견적');
+      const agency = agencyInput.value.trim();
+      const perks = perksInput.value.trim();
+      const cancelUntil = cancelInput.value.trim();
+      const checkedOn = checkedInput.value.trim();
+      if (total === null && airfare === null && lodging === null && !agency && !perks && !cancelUntil) {
+        throw new Error('총 실견적 금액이나 상담 정보를 하나 이상 입력해 주세요.');
+      }
+      const nextQuotes = { ...(ctx.getPrefs().tripQuotes || {}) };
+      nextQuotes[item.id] = {
+        total,
+        airfare,
+        lodging,
+        ...(agency ? { agency } : {}),
+        ...(perks ? { perks } : {}),
+        ...(cancelUntil ? { cancelUntil } : {}),
+        ...(checkedOn ? { checkedOn } : {})
+      };
+      const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), tripQuotes: nextQuotes }));
+      if (saved) {
+        ctx.closeDialog();
+        ctx.render();
+        ctx.toast(`‘${item.title}’ 실견적을 이 기기에 기록했습니다.`);
+      }
+    } catch (error) {
+      ctx.toast(error.message, true);
+    } finally {
+      saving = false;
+      submit.disabled = false;
+    }
+  });
+  if (ctx.showDialog(`${item.title} · 30초 실견적 기록`, form)) {
+    ctx.setEditorState({ isDirty: () => saving || snapshot() !== initialSnap, isSaving: () => saving });
+  }
+}
+
 function tripControls(ctx, item) {
   if (ctx.isGuestMode()) return null;
   const prefs = ctx.getPrefs();
@@ -568,6 +733,7 @@ function tripControls(ctx, item) {
     return saved;
   });
   const hasNote = Boolean(prefs.tripNotes?.[item.id]?.trim());
+  const hasQuote = Boolean(prefs.tripQuotes?.[item.id]);
   return E('div', { class: 'trip-controls' }, ...[
     ...[['tripFavorites', '관심 여행지'], ['tripCompare', '비교 선택'], ['tripSelected', '최종 선택']].map(([key, label]) =>
       E('button', {
@@ -577,6 +743,7 @@ function tripControls(ctx, item) {
         'aria-pressed': String(key === 'tripSelected' ? prefs.tripSelected === item.id : Boolean(prefs[key]?.includes(item.id))),
         onclick: () => toggle(key)
       }, label)),
+    button(hasQuote ? '💰 실견적 수정' : '💰 실견적 기록', () => openQuickTripQuoteModal(ctx, item), 'button quiet'),
     button(hasNote ? '📝 메모 수정' : '📝 개인 메모', () => openTripNoteModal(ctx, item), 'button quiet')
   ]);
 }
@@ -984,6 +1151,27 @@ function tripCompactVideoButton(ctx, item) {
     }, 'text-button small') : null);
 }
 
+function renderTripPrivateQuoteBox(ctx, item) {
+  if (ctx.isGuestMode()) return null;
+  const pq = ctx.getPrefs().tripQuotes?.[item.id];
+  if (!pq) return null;
+  const info = formatTripQuoteDelta(item, pq);
+  const subParts = [];
+  if (pq.airfare != null) subParts.push(`항공 ${won(pq.airfare)}`);
+  if (pq.lodging != null) subParts.push(`숙박·패키지 ${won(pq.lodging)}`);
+  if (pq.perks) subParts.push(`특전: ${pq.perks}`);
+  if (pq.cancelUntil) subParts.push(`무료취소 ~${pq.cancelUntil}`);
+  if (pq.checkedOn) subParts.push(`확인 ${pq.checkedOn}`);
+  return E('div', { class: 'trip-private-quote-box' + (info.deltaKind === 'cheaper' ? ' is-cheaper' : info.deltaKind === 'over' ? ' is-over' : '') },
+    E('div', { class: 'trip-private-quote-head' },
+      E('div', { class: 'trip-private-quote-title' },
+        E('strong', { class: 'small' }, `🧾 내 실견적 ${info.effectiveTotal !== null ? won(info.effectiveTotal) : '(상담 기록)'}`),
+        pq.agency ? E('span', { class: 'badge' }, pq.agency) : null,
+        info.deltaLabel ? E('span', { class: 'spec-chip' + (info.deltaKind === 'cheaper' ? ' direct' : info.deltaKind === 'over' ? ' highlight' : '') }, info.deltaLabel) : null),
+      button('수정', () => openQuickTripQuoteModal(ctx, item), 'text-button small')),
+    subParts.length ? E('p', { class: 'small muted trip-private-quote-meta' }, subParts.join(' · ')) : null);
+}
+
 function renderTripCard(ctx, item) {
   const guestMode = ctx.isGuestMode();
   const prefs = ctx.getPrefs();
@@ -999,6 +1187,7 @@ function renderTripCard(ctx, item) {
     tripCompactMode ? null : tripQuoteStatus(item),
     tripCompactMode ? null : tripStayStatus(item),
     tripProsCons(item),
+    renderTripPrivateQuoteBox(ctx, item),
     !guestMode && prefs.tripNotes?.[item.id] ? E('p', { class: 'checklist-item-note small trip-private-note' }, `📝 우리의 상담 메모: ${prefs.tripNotes[item.id]}`) : null,
     E('dl', { class: 'trip-meta-dl' },
       E('dt', {}, '한국 출발'), E('dd', {}, item.startDate || '미정'),

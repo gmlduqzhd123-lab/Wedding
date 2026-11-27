@@ -4706,9 +4706,402 @@ body.has-compare-tray .scroll-top-btn {
   }
 }
 
+/* ===== Round 10: Shoot Brief Board, Ceremony BGM Sheet, 390px Phone Preview, Story Prompts, 4-Region Table, Private Quote Box & Storage Diagnostics ===== */
+.editor-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
 
+/* Pillar 1: Lachma Shoot Brief & Outfit Board */
+.shoot-brief-board {
+  display: grid;
+  gap: 14px;
+}
+.shoot-brief-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.shoot-outfit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.shoot-outfit-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.shoot-outfit-card p {
+  margin: 0;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+.shoot-outfit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+}
+.shoot-outfit-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.shoot-brief-empty {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px dashed var(--olive-line);
+}
+.shoot-brief-empty p {
+  margin: 0;
+}
+.shoot-milestone-bar {
+  display: grid;
+  gap: 9px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.shoot-milestone-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.shoot-milestone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.shoot-milestone-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.shoot-milestone-item.is-done {
+  background: var(--olive-soft);
+  border-color: var(--olive-line);
+}
+.shoot-ms-date {
+  font-variant-numeric: tabular-nums;
+}
 
+/* Pillar 2: Ceremony 9-Slot BGM Cue Sheet */
+.ceremony-bgm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ceremony-bgm-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.ceremony-bgm-row.is-ready {
+  background: var(--olive-soft);
+  border-color: var(--olive-line);
+}
+.ceremony-bgm-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ceremony-bgm-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ceremony-bgm-info p {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 
+/* Pillar 3: 390px Mobile Invitation Preview & Story Prompt Cards */
+.mobile-preview-modal {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+.mobile-preview-modal > p {
+  margin: 0;
+  width: 100%;
+}
+.mobile-preview-frame {
+  position: relative;
+  width: min(390px, 100%);
+  height: min(720px, 68vh);
+  padding: 16px 8px 10px;
+  border-radius: 34px;
+  background: #1c241f;
+  border: 3px solid #303d35;
+  box-shadow: 0 20px 44px -18px rgba(20, 30, 24, 0.42);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mobile-preview-notch {
+  width: 96px;
+  height: 14px;
+  border-radius: 999px;
+  background: #0d120f;
+  margin: 0 auto 10px;
+  flex-shrink: 0;
+}
+.mobile-preview-iframe {
+  width: 100%;
+  flex: 1 1 auto;
+  border: 0;
+  border-radius: 22px;
+  background: var(--paper);
+}
+.story-prompts-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.story-prompts-section h3 {
+  margin: 0;
+  color: var(--green-dark);
+}
+.story-prompts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.story-prompt-card {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.12s ease;
+}
+.story-prompt-card:hover,
+.story-prompt-card:focus-visible {
+  background: var(--olive-soft);
+  border-color: var(--green-solid);
+  transform: translateY(-1px);
+}
+.story-prompt-card strong {
+  font-size: 14px;
+  color: var(--green-dark);
+}
 
+/* Pillar 4: 4-Region 1-Page Table & Private Real Quote Box */
+.core-guide-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.core-guide-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.core-guide-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.core-guide-table th,
+.core-guide-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  word-break: keep-all;
+}
+.core-guide-table th:last-child,
+.core-guide-table td:last-child {
+  border-right: 0;
+}
+.core-guide-table tbody tr:last-child th,
+.core-guide-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.core-guide-table thead th {
+  background: var(--surface-tint);
+  color: var(--ink);
+}
+.core-guide-table tbody th {
+  width: 128px;
+  background: var(--surface-tint);
+  color: var(--green-dark);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.core-table-col-head {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.trip-private-quote-box {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--olive-line);
+}
+.trip-private-quote-box.is-cheaper {
+  background: var(--olive-soft);
+  border-color: var(--olive-line);
+}
+.trip-private-quote-box.is-over {
+  background: var(--rose-soft);
+  border-color: var(--rose-line);
+}
+.trip-private-quote-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+.trip-private-quote-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.trip-private-quote-meta {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 
+/* Pillar 5: Storage Precision Diagnostics */
+.storage-meter-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.storage-meter-head h3 {
+  margin: 0;
+}
+.storage-health-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.checklist-progress-fill.is-warn {
+  background: var(--rose-accent);
+}
 
+@media (max-width: 720px) {
+  .editor-grid-3,
+  .shoot-brief-notes-grid,
+  .shoot-outfit-grid,
+  .shoot-milestone-grid,
+  .story-prompts-grid {
+    grid-template-columns: 1fr;
+  }
+  .ceremony-bgm-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .ceremony-bgm-row > .button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media screen {
+  html.is-dark-theme:not(.is-guest-mode) .shoot-outfit-card,
+  body.is-dark-theme:not(.is-guest-mode) .shoot-outfit-card,
+  html.is-dark-theme:not(.is-guest-mode) .shoot-milestone-item,
+  body.is-dark-theme:not(.is-guest-mode) .shoot-milestone-item,
+  html.is-dark-theme:not(.is-guest-mode) .ceremony-bgm-row,
+  body.is-dark-theme:not(.is-guest-mode) .ceremony-bgm-row,
+  html.is-dark-theme:not(.is-guest-mode) .story-prompts-section,
+  body.is-dark-theme:not(.is-guest-mode) .story-prompts-section,
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-table-wrap,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-table-wrap {
+    background: #18201b;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .shoot-brief-empty,
+  body.is-dark-theme:not(.is-guest-mode) .shoot-brief-empty,
+  html.is-dark-theme:not(.is-guest-mode) .shoot-milestone-bar,
+  body.is-dark-theme:not(.is-guest-mode) .shoot-milestone-bar,
+  html.is-dark-theme:not(.is-guest-mode) .story-prompt-card,
+  body.is-dark-theme:not(.is-guest-mode) .story-prompt-card,
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-table thead th,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-table thead th,
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-table tbody th,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-table tbody th,
+  html.is-dark-theme:not(.is-guest-mode) .trip-private-quote-box,
+  body.is-dark-theme:not(.is-guest-mode) .trip-private-quote-box {
+    background: #1c241f;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .shoot-milestone-item.is-done,
+  body.is-dark-theme:not(.is-guest-mode) .shoot-milestone-item.is-done,
+  html.is-dark-theme:not(.is-guest-mode) .ceremony-bgm-row.is-ready,
+  body.is-dark-theme:not(.is-guest-mode) .ceremony-bgm-row.is-ready,
+  html.is-dark-theme:not(.is-guest-mode) .story-prompt-card:hover,
+  body.is-dark-theme:not(.is-guest-mode) .story-prompt-card:hover,
+  html.is-dark-theme:not(.is-guest-mode) .trip-private-quote-box.is-cheaper,
+  body.is-dark-theme:not(.is-guest-mode) .trip-private-quote-box.is-cheaper {
+    background: #213026;
+    border-color: #3d5d48;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .trip-private-quote-box.is-over,
+  body.is-dark-theme:not(.is-guest-mode) .trip-private-quote-box.is-over {
+    background: #2d2020;
+    border-color: #5b3a38;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-table tbody th,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-table tbody th,
+  html.is-dark-theme:not(.is-guest-mode) .story-prompts-section h3,
+  body.is-dark-theme:not(.is-guest-mode) .story-prompts-section h3,
+  html.is-dark-theme:not(.is-guest-mode) .story-prompt-card strong,
+  body.is-dark-theme:not(.is-guest-mode) .story-prompt-card strong {
+    color: #9ad4ab;
+  }
+}

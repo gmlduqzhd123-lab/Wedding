@@ -1,6 +1,6 @@
-import { E, button, externalLink } from './dom.js?v=wedding-features-68';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-68';
-import { computeCashDenominations } from './planning.js?v=wedding-features-68';
+import { E, button, externalLink } from './dom.js?v=wedding-features-69';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-69';
+import { computeCashDenominations } from './planning.js?v=wedding-features-69';
 
 const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
 const DEFAULT_PHOTO_LINES = [
@@ -64,11 +64,14 @@ export function openShootDayMode(ctx) {
 
   const wake = createWakeLockController();
   let fontZoom = 100;
+  let shootTab = 'ops';
   const root = E('div', { class: 'field-ops-shell' });
 
   const renderBody = () => {
     const prefs = ctx.getPrefs();
     const checked = new Set(prefs.shootChecklist || []);
+    const brief = prefs.shootBrief || {};
+    const outfits = brief.outfits || [];
     const visitLocs = (g.locations || []).filter(loc => !loc.isReference);
     const pendingItems = [];
     (g.prepChecklist || []).forEach((grp, gi) => {
@@ -95,14 +98,19 @@ export function openShootDayMode(ctx) {
       });
     };
 
-    root.style.fontSize = `${fontZoom}%`;
-    root.replaceChildren(
-      E('div', { class: 'field-ops-bar' },
-        E('span', { class: 'spec-chip highlight' }, `🗓️ ${g.schedule?.label || '2027-02-03(수) 12:00'}`),
-        E('div', { class: 'field-ops-controls' },
-          wakeBtn,
-          button('A−', () => { fontZoom = Math.max(90, fontZoom - 10); renderBody(); }, 'button quiet small-copy-btn'),
-          button('A+', () => { fontZoom = Math.min(130, fontZoom + 10); renderBody(); }, 'button quiet small-copy-btn'))),
+    const tabBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '촬영 현장 모드 보기 전환' },
+      [
+        ['ops', `🗺️ 동선 · 준비물 (${pendingItems.length})`],
+        ['brief', `🎨 착장별 시안 카드 (${outfits.length})`]
+      ].map(([key, label]) => E('button', {
+        type: 'button',
+        class: 'button quiet trip-filter-chip',
+        'data-shoot-ops-tab': key,
+        'aria-pressed': String(shootTab === key),
+        onclick: () => { shootTab = key; renderBody(); }
+      }, label)));
+
+    const opsContent = [
       g.officialNotices?.cashBanner ? E('div', { class: 'lachma-cash-banner' }, g.officialNotices.cashBanner) : null,
       E('section', { class: 'field-ops-card' },
         E('h3', {}, '🗺️ 당일 방문 동선 (루나메이크업 → 라크마 스튜디오)'),
@@ -133,7 +141,37 @@ export function openShootDayMode(ctx) {
         E('h3', {}, '⏰ 촬영 당일 타임테이블'),
         E('ol', { class: 'timetable-list lachma-timetable' }, (g.timetable || []).map(row => E('li', { class: 'timetable-row' + (row.time.includes('12:00') ? ' highlight' : '') },
           E('strong', { class: 'timetable-time' }, row.time),
-          E('div', { class: 'timetable-detail' }, E('strong', {}, row.stage), E('p', { class: 'small muted' }, row.detail)))))));
+          E('div', { class: 'timetable-detail' }, E('strong', {}, row.stage), E('p', { class: 'small muted' }, row.detail))))))
+    ];
+
+    const briefContent = [
+      E('section', { class: 'field-ops-card' },
+        E('h3', {}, '🎨 작가님 · 루나메이크업 공유용 촬영 시안'),
+        (brief.moodNote || brief.avoidNote) ? E('div', { class: 'shoot-brief-notes-grid' },
+          brief.moodNote ? E('div', { class: 'pros-box' }, E('strong', { class: 'pros-title' }, '✨ 원하는 분위기 · 필수 컷'), E('p', { class: 'small record-body' }, brief.moodNote)) : null,
+          brief.avoidNote ? E('div', { class: 'cons-box' }, E('strong', { class: 'cons-title' }, '🚫 피하고 싶은 각도 · 요청'), E('p', { class: 'small record-body' }, brief.avoidNote)) : null) : null,
+        outfits.length
+          ? E('div', { class: 'field-ops-loc-list' }, outfits.map((o, idx) => E('div', { class: 'field-ops-loc-row' },
+            E('div', {},
+              E('strong', {}, `${idx + 1}. ${o.label}`),
+              o.hair ? E('p', { class: 'small' }, `💇 헤어·메이크업: ${o.hair}`) : null,
+              o.props ? E('p', { class: 'small' }, `💐 부케·소품: ${o.props}`) : null,
+              o.poses ? E('p', { class: 'small' }, `📷 포즈·포인트: ${o.poses}`) : null))))
+          : E('p', { class: 'small muted' }, '등록된 착장 시안이 아직 없습니다. 스튜디오 탭의 ‘촬영 시안 · 착장 보드’에서 드레스·헤어·소품을 미리 적어 두면 촬영 현장에서 바로 보여줄 수 있어요.'),
+        E('div', { class: 'page-actions' },
+          button('📸 스튜디오 시안 편집하러 가기 →', () => { ctx.closeDialog(); location.hash = '#/studios'; }, 'button quiet small-copy-btn')))
+    ];
+
+    root.style.fontSize = `${fontZoom}%`;
+    root.replaceChildren(
+      E('div', { class: 'field-ops-bar' },
+        E('span', { class: 'spec-chip highlight' }, `🗓️ ${g.schedule?.label || '2027-02-03(수) 12:00'}`),
+        E('div', { class: 'field-ops-controls' },
+          wakeBtn,
+          button('A−', () => { fontZoom = Math.max(90, fontZoom - 10); renderBody(); }, 'button quiet small-copy-btn'),
+          button('A+', () => { fontZoom = Math.min(130, fontZoom + 10); renderBody(); }, 'button quiet small-copy-btn'))),
+      tabBar,
+      ...(shootTab === 'brief' ? briefContent : opsContent));
   };
 
   renderBody();

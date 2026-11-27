@@ -1,8 +1,8 @@
-import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-68';
-import { formatDate } from './content.js?v=wedding-features-68';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-68';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-68';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-68';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-69';
+import { formatDate } from './content.js?v=wedding-features-69';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-69';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-69';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-69';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
 
@@ -208,6 +208,139 @@ export function buildAmorMcSteps(inv = {}, cPlan = {}) {
   ];
 }
 
+export const CEREMONY_BGM_SLOTS = [
+  ['bgm-pre', '식전영상 · 하객 입장', '예식 20분 전 ~ 개식 전 잔잔한 배경음'],
+  ['bgm-candle', 'STEP 03 · 화촉점화', '양가 어머님 입장 및 점화'],
+  ['bgm-groom', 'STEP 04 · 신랑 입장', '활기차고 밝은 신랑 입장곡'],
+  ['bgm-bride', 'STEP 05 · 신부 입장', '신부 2단계 등장·입장 하이라이트 구간'],
+  ['bgm-vow', 'STEP 07 · 혼인서약서', '잔잔한 피아노·현악 연주곡 (선택)'],
+  ['bgm-speech', 'STEP 08 · 성혼선언·축사', '등단·퇴장 브릿지 또는 무음'],
+  ['bgm-song', 'STEP 09 · 축가', '아카펠라 라이브 마이크·MR 유무 체크'],
+  ['bgm-parents', 'STEP 10 · 양가·내빈 인사', '따뜻하고 감동적인 연주곡'],
+  ['bgm-march', 'STEP 11 · 신랑·신부 행진', '경쾌한 피날레 행진곡 (박수 타이밍)']
+];
+
+export function estimateSpeechDuration(text = '') {
+  const clean = String(text || '').replace(/\s+/g, '');
+  const chars = clean.length;
+  if (!chars) return { chars: 0, seconds: 0, label: '0자' };
+  // Calm Korean ceremony reading pace: ~260 non-space characters per minute (~4.33 chars/sec)
+  const seconds = Math.max(10, Math.round((chars / 260) * 60));
+  const mins = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  const timeText = mins > 0 ? (rem > 0 ? `약 ${mins}분 ${rem}초` : `약 ${mins}분`) : `약 ${rem}초`;
+  return { chars, seconds, label: `${timeText} · ${chars.toLocaleString('ko-KR')}자` };
+}
+
+export function ceremonyBgmSummary(bgmMap = {}) {
+  const map = bgmMap && typeof bgmMap === 'object' ? bgmMap : {};
+  let assigned = 0;
+  let ready = 0;
+  for (const [id] of CEREMONY_BGM_SLOTS) {
+    const entry = map[id];
+    if (entry?.song?.trim()) assigned++;
+    if (entry?.ready) ready++;
+  }
+  return { total: CEREMONY_BGM_SLOTS.length, assigned, ready };
+}
+
+export function buildBgmCueSheetText(bgmMap = {}, inv = {}, cPlan = {}) {
+  const plan = resolveCeremonyPlan(cPlan);
+  const map = bgmMap && typeof bgmMap === 'object' ? bgmMap : {};
+  const lines = [
+    `🎼 [${inv.venue || '순천아모르웨딩컨벤션'} 본식 BGM · 음향 큐시트]`,
+    `• 예식 일시: ${inv.date ? formatDate(inv.date) : '2027년 6월 5일'} ${inv.time || '15:00'}`,
+    `• 사회자: ${plan.mc} · 축가: ${plan.song} · 성혼선언/축사: ${plan.speech}`,
+    ''
+  ];
+  for (const [id, title, hint] of CEREMONY_BGM_SLOTS) {
+    const entry = map[id] || {};
+    const status = entry.ready ? '음원 확보 ✅' : '준비 중';
+    const song = entry.song?.trim() || `(미정 · ${hint})`;
+    lines.push(`- ${title}: ${song}${entry.cue ? ` [${entry.cue}]` : ''} (${status})`);
+  }
+  return lines.join('\n');
+}
+
+export function buildRoleBriefingPack(roleKey, inv = {}, cPlan = {}, bgmMap = {}) {
+  const plan = resolveCeremonyPlan(cPlan);
+  const groom = ceremonyCleanName(inv.partner1, '신랑');
+  const bride = ceremonyCleanName(inv.partner2, '신부');
+  const baseTime = inv.time || '15:00';
+  const dateLabel = inv.date ? formatDate(inv.date) : '2027년 6월 5일 토요일';
+  const venue = inv.venue || '순천아모르웨딩컨벤션';
+  const address = inv.address || '전라남도 순천시 서면 압곡길 94';
+  const arriveTime = shiftTime(baseTime, -30) || '14:30';
+  const map = bgmMap && typeof bgmMap === 'object' ? bgmMap : {};
+
+  if (roleKey === 'speech') {
+    const declText = (plan.declaration || '').trim() || defaultAmorDeclarationText(inv, plan);
+    const declStatus = plan.declaration ? '확정 문안' : '수정 예정 · 기본 예문';
+    return [
+      `📜 [${groom} ♥ ${bride} 결혼식 · 성혼선언문 낭독 및 축사 안내 (${plan.speech})]`,
+      `• 예식 일시: ${dateLabel} ${baseTime} (권장 도착: ${arriveTime})`,
+      `• 예식 장소: ${venue} (${address})`,
+      `• 진행 순서: STEP 08 · 신랑·신부 혼인서약서 낭독 직후 사회자(${plan.mc}) 안내에 따라 등단`,
+      `• 예상 소요: 성혼선언문 낭독(${estimateSpeechDuration(declText).label}) + 따뜻한 축사 말씀`,
+      '',
+      `[성혼선언문 (${declStatus})]`,
+      declText
+    ].join('\n');
+  }
+
+  if (roleKey === 'song') {
+    const songBgm = map['bgm-song'] || {};
+    return [
+      `🎵 [${groom} ♥ ${bride} 결혼식 · 축가(${plan.song}) 현장 브리핑]`,
+      `• 예식 일시: ${dateLabel} ${baseTime} (음향·마이크 체크 권장 도착: ${arriveTime})`,
+      `• 예식 장소: ${venue} (${address})`,
+      `• 진행 순서: STEP 09 · 성혼선언문·축사(${plan.speech}) 및 양가 혼주·내빈 인사 직후 진행`,
+      `• 음향·마이크 메모: ${songBgm.song ? `곡명 ${songBgm.song}` : '곡명/선곡 최종 확인'}${songBgm.cue ? ` · ${songBgm.cue}` : ' · 아카펠라용 핸드/스탠드 마이크 수량·하울링 사전 체크'}`,
+      `• 사회자 연락·큐: ${plan.mc} 소개 멘트 후 무대 중앙 입장 → 축가 종료 후 바로 신랑·신부 행진 이어집니다.`
+    ].join('\n');
+  }
+
+  // Default: MC briefing pack
+  const steps = buildAmorMcSteps(inv, plan);
+  const bgmSummaryLines = CEREMONY_BGM_SLOTS
+    .map(([id, label]) => (map[id]?.song ? `  · ${label}: ${map[id].song}${map[id].cue ? ` (${map[id].cue})` : ''}` : ''))
+    .filter(Boolean);
+  return [
+    `🎤 [${groom} ♥ ${bride} 결혼식 · 사회자(${plan.mc}) 현장 브리핑 팩]`,
+    `• 예식 일시: ${dateLabel} ${baseTime} (리허설·음향 체크 권장 도착: ${arriveTime})`,
+    `• 예식 장소: ${venue} (${address})${plan.banquetFloor ? ` · 피로연 ${plan.banquetFloor}` : ' · 연회홀 층수 당일 확인'}`,
+    `• 핵심 포인트: 단상 쪽 = 신랑 측 / 반대쪽 = 신부 측 · 신부 입장 2단계(등장 콜 → 아버님 손잡고 입장)`,
+    `• 확정 순서: 07 혼인서약서 → 08 성혼선언·축사(${plan.speech}) → 09 축가(${plan.song}) → 10 양가·내빈 인사 → 11 행진`,
+    ...(bgmSummaryLines.length ? ['', '🎼 확정 BGM 메모', ...bgmSummaryLines] : []),
+    '',
+    '📋 12단계 핵심 멘트',
+    ...steps.map(([no, title, cue, lines]) => `${no}. ${title} (${cue})\n${lines.map(l => `   "${l}"`).join('\n')}`)
+  ].join('\n');
+}
+
+function alternatingVowsTemplate(inv = {}) {
+  const groom = ceremonyCleanName(inv.partner1, '신랑');
+  const bride = ceremonyCleanName(inv.partner2, '신부');
+  return [
+    '혼 인 서 약 서 (신랑·신부 교대 낭독)',
+    '',
+    '[함께]',
+    '양가 부모님과 소중한 하객 여러분 앞에서 두 사람이 부부가 되는 오늘, 서로에게 진심을 담아 약속합니다.',
+    '',
+    `[신랑 ${groom}]`,
+    '첫째, 언제나 당신의 편이 되어 기쁜 날은 두 배로 웃고, 힘든 날에는 가장 먼저 손을 잡아주는 든든한 남편이 되겠습니다.',
+    '',
+    `[신부 ${bride}]`,
+    '둘째, 서로의 다름을 존중하고 다정한 말과 배려로 하루하루를 따뜻하게 채워 가는 아내가 되겠습니다.',
+    '',
+    '[함께]',
+    '셋째, 오늘 이 자리에서 축복해 주신 감사한 마음을 오래도록 기억하며, 서로를 아끼고 행복하게 살겠습니다.',
+    '',
+    ceremonyDateLabel(inv.date),
+    `신랑 ${groom}   ·   신부 ${bride}`
+  ].join('\n');
+}
+
 export function openCeremonyEditor(ctx, focusField = '') {
   if (ctx.isGuestMode()) return;
   const inv = ctx.getContent().invitation || {};
@@ -234,24 +367,39 @@ export function openCeremonyEditor(ctx, focusField = '') {
   vowsInput.value = current.vows || '';
   const declInput = E('textarea', { rows: '7', maxlength: '2000', id: 'ceremony-declaration', placeholder: defaultAmorDeclarationText(inv, current) });
   declInput.value = current.declaration || '';
-  const fillVowsBtn = button('↺ 아모르 기본 혼인서약서 예문 채우기', async () => {
+  const vowsTimeEl = E('span', { class: 'spec-chip' }, `⏱️ ${estimateSpeechDuration(vowsInput.value || defaultAmorVowsText(inv)).label}`);
+  const declTimeEl = E('span', { class: 'spec-chip' }, `⏱️ ${estimateSpeechDuration(declInput.value || defaultAmorDeclarationText(inv, current)).label}`);
+  vowsInput.addEventListener('input', () => { vowsTimeEl.textContent = `⏱️ ${estimateSpeechDuration(vowsInput.value || defaultAmorVowsText(inv)).label}`; });
+  declInput.addEventListener('input', () => { declTimeEl.textContent = `⏱️ ${estimateSpeechDuration(declInput.value || defaultAmorDeclarationText(inv, current)).label}`; });
+  const fillVowsBtn = button('↺ 아모르 기본 예문', async () => {
     if (vowsInput.value.trim() && !await ctx.confirmAction({ title: '혼인서약서 예문 채우기', message: '현재 작성된 혼인서약서 문구를 기본 예문으로 바꿀까요?', confirmLabel: '기본 예문으로 변경' })) return;
     vowsInput.value = defaultAmorVowsText(inv);
+    vowsTimeEl.textContent = `⏱️ ${estimateSpeechDuration(vowsInput.value).label}`;
     vowsInput.focus({ preventScroll: true });
-    ctx.toast('기본 혼인서약서(4가지 약속) 예문을 채웠습니다. 두 분의 말투로 자유롭게 다듬어 보세요.');
+    ctx.toast('기본 혼인서약서(4가지 약속) 예문을 채웠습니다.');
+  }, 'button quiet small-copy-btn');
+  const fillAltVowsBtn = button('💑 신랑·신부 교대 예문', async () => {
+    if (vowsInput.value.trim() && !await ctx.confirmAction({ title: '신랑·신부 교대 서약서 채우기', message: '현재 작성된 혼인서약서를 신랑·신부·함께 교대 낭독 템플릿으로 바꿀까요?', confirmLabel: '교대 템플릿 채우기' })) return;
+    vowsInput.value = alternatingVowsTemplate(inv);
+    vowsTimeEl.textContent = `⏱️ ${estimateSpeechDuration(vowsInput.value).label}`;
+    vowsInput.focus({ preventScroll: true });
+    ctx.toast('신랑·신부 교대 낭독 서약서 템플릿을 채웠습니다. 두 분의 말투로 다듬어 보세요.');
   }, 'button quiet small-copy-btn');
   const clearVowsBtn = button('기본값 자동 연동으로 비우기', () => {
     vowsInput.value = '';
+    vowsTimeEl.textContent = `⏱️ ${estimateSpeechDuration(defaultAmorVowsText(inv)).label}`;
     ctx.toast('기본 서약서 자동 연동 상태로 되돌렸습니다.');
   }, 'checklist-note-btn');
   const fillDeclBtn = button('↺ 아모르 기본 성혼선언문 채우기', async () => {
     if (declInput.value.trim() && !await ctx.confirmAction({ title: '성혼선언문 예문 채우기', message: '현재 작성된 성혼선언문 문구를 기본 예문으로 바꿀까요?', confirmLabel: '기본 예문으로 변경' })) return;
     declInput.value = defaultAmorDeclarationText(inv, { ...current, style: styleSelect.value === 'officiant' ? 'officiant' : 'noOfficiant', mc: mcInput.value.trim(), speech: speechInput.value.trim() });
+    declTimeEl.textContent = `⏱️ ${estimateSpeechDuration(declInput.value).label}`;
     declInput.focus({ preventScroll: true });
     ctx.toast('기본 성혼선언문 예문을 채웠습니다.');
   }, 'button quiet small-copy-btn');
   const clearDeclBtn = button('기본값 자동 연동으로 비우기', () => {
     declInput.value = '';
+    declTimeEl.textContent = `⏱️ ${estimateSpeechDuration(defaultAmorDeclarationText(inv, current)).label}`;
     ctx.toast('기본 성혼선언문 자동 연동 상태로 되돌렸습니다.');
   }, 'checklist-note-btn');
   form.append(
@@ -265,13 +413,13 @@ export function openCeremonyEditor(ctx, focusField = '') {
     E('label', { class: 'field', for: noteInput.id }, '식순·BGM·입장곡 특이사항 메모 (선택)', noteInput),
     E('div', { class: 'ceremony-editor-doc-block' },
       E('div', { class: 'ceremony-editor-doc-head' },
-        E('strong', { class: 'small' }, '💍 혼인서약서 문안 (수정 예정 · 비워 두면 아모르 기본 4가지 서약 예문 자동 적용)'),
-        E('div', { class: 'lachma-official-links' }, fillVowsBtn, clearVowsBtn)),
+        E('strong', { class: 'small' }, '💍 혼인서약서 문안 (수정 예정 · 비워 두면 기본 예문 자동 적용)'),
+        E('div', { class: 'lachma-official-links' }, vowsTimeEl, fillVowsBtn, fillAltVowsBtn, clearVowsBtn)),
       vowsInput),
     E('div', { class: 'ceremony-editor-doc-block' },
       E('div', { class: 'ceremony-editor-doc-head' },
         E('strong', { class: 'small' }, '📜 성혼선언문 문안 (수정 예정 · 비워 두면 교장선생님 기본 예문 자동 적용)'),
-        E('div', { class: 'lachma-official-links' }, fillDeclBtn, clearDeclBtn)),
+        E('div', { class: 'lachma-official-links' }, declTimeEl, fillDeclBtn, clearDeclBtn)),
       declInput),
     E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), E('button', { class: 'button', type: 'submit' }, '식순 플래너 저장'))
   );
@@ -622,9 +770,102 @@ export function renderCeremony(ctx) {
     }
   };
 
+  const bgmMap = prefs.ceremonyBgm || {};
+  const bgmStats = ceremonyBgmSummary(bgmMap);
+
+  const openRoleBriefingModal = () => {
+    const roles = [
+      ['mc', `🎤 사회자 (${cPlan.mc})`],
+      ['speech', `📜 성혼선언·축사 (${cPlan.speech})`],
+      ['song', `🎵 축가 (${cPlan.song})`]
+    ];
+    let activeRole = 'mc';
+    const ta = E('textarea', { rows: '14', class: 'share-msg-textarea', 'aria-label': '역할별 공유 브리핑 문안' }, buildRoleBriefingPack(activeRole, inv, cPlan, bgmMap));
+    const tabs = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '역할별 브리핑 대상 선택' });
+    const selectRole = key => {
+      activeRole = key;
+      ta.value = buildRoleBriefingPack(key, inv, cPlan, bgmMap);
+      for (const b of tabs.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.roleBrief === key));
+    };
+    for (const [key, label] of roles) {
+      tabs.append(E('button', {
+        type: 'button',
+        class: 'button quiet trip-filter-chip',
+        'data-role-brief': key,
+        'aria-pressed': String(key === activeRole),
+        onclick: () => selectRole(key)
+      }, label));
+    }
+    const body = E('div', { class: 'share-msg-modal' },
+      E('p', { class: 'small muted' }, '각 담당자(사회자·성혼선언/축사·축가)에게 꼭 필요한 순서와 대본·도착 시각·음향 체크만 추렸습니다. 필요하면 문구를 다듬어 카톡으로 바로 보내세요.'),
+      tabs,
+      ta,
+      E('div', { class: 'page-actions' },
+        button('📋 선택한 브리핑 복사', () => ctx.copyTextToClipboard(ta.value, '역할별 본식 브리핑 팩을 복사했습니다.', '역할별 브리핑 복사'), 'button'),
+        button('닫기', ctx.closeDialog, 'button quiet')));
+    ctx.showDialog('📤 본식 역할별 맞춤 브리핑 팩', body);
+  };
+
+  const openBgmSlotEditor = (slotId, slotTitle, slotHint) => {
+    const curEntry = (ctx.getPrefs().ceremonyBgm || {})[slotId] || { song: '', cue: '', ready: false };
+    const form = E('form', { class: 'editor-form' });
+    const songInput = E('input', { type: 'text', id: 'bgm-song-input', maxlength: '120', placeholder: `예: 곡명 - 아티스트 (${slotHint})`, value: curEntry.song || '' });
+    const cueInput = E('input', { type: 'text', id: 'bgm-cue-input', maxlength: '120', placeholder: '예: 0:45 후렴부터 재생 / 페이드아웃 / 마이크 4대 체크', value: curEntry.cue || '' });
+    const readyBox = E('input', { type: 'checkbox', id: 'bgm-ready-input' });
+    readyBox.checked = Boolean(curEntry.ready);
+    form.append(
+      E('p', { class: 'form-note' }, `${slotTitle} 구간의 선곡·재생 시작 지점·음원 파일 확보 여부를 이 기기에 저장합니다.`),
+      E('label', { class: 'field', for: songInput.id }, '🎵 곡명 · 아티스트', songInput),
+      E('label', { class: 'field', for: cueInput.id }, '🎚️ 재생 구간 · 음향 큐 메모', cueInput),
+      E('label', { class: 'check-label', for: readyBox.id }, readyBox, '음원 파일(USB/MP3) 확보 · 테스트 완료'));
+    const submit = E('button', { class: 'button', type: 'submit' }, 'BGM 저장');
+    form.append(E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit));
+    let saving = false;
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      if (saving) return;
+      saving = true;
+      submit.disabled = true;
+      try {
+        const nextMap = { ...(ctx.getPrefs().ceremonyBgm || {}) };
+        if (songInput.value.trim() || cueInput.value.trim() || readyBox.checked) {
+          nextMap[slotId] = {
+            ...(songInput.value.trim() ? { song: songInput.value.trim() } : {}),
+            ...(cueInput.value.trim() ? { cue: cueInput.value.trim() } : {}),
+            ready: readyBox.checked
+          };
+        } else {
+          delete nextMap[slotId];
+        }
+        const saved = await ctx.queuePreference(() => ctx.savePrefs({ ...ctx.getPrefs(), ceremonyBgm: nextMap }));
+        if (saved) { ctx.closeDialog(); ctx.render(); ctx.toast(`${slotTitle} BGM 설정을 저장했습니다.`); }
+      } catch (error) { ctx.toast(error.message, true); }
+      finally { saving = false; submit.disabled = false; }
+    });
+    const snap = () => JSON.stringify([songInput.value, cueInput.value, readyBox.checked]);
+    const initial = snap();
+    if (ctx.showDialog(`🎼 ${slotTitle} BGM 편집`, form)) {
+      ctx.setEditorState({ isDirty: () => saving || snap() !== initial, isSaving: () => saving });
+    }
+  };
+
+  const toggleBgmReady = (slotId, checked) => {
+    ctx.queuePreference(async () => {
+      const nextMap = { ...(ctx.getPrefs().ceremonyBgm || {}) };
+      const prev = nextMap[slotId] || {};
+      if (!checked && !prev.song && !prev.cue) delete nextMap[slotId];
+      else nextMap[slotId] = { ...prev, ready: checked };
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), ceremonyBgm: nextMap });
+      if (saved) ctx.render();
+      return saved;
+    });
+  };
+
   const declSpeakerLabel = isNoOfficiant
     ? (cPlan.speech ? `${cPlan.speech} 진행` : '사회자용')
     : '주례·사회자용';
+  const vowsDuration = estimateSpeechDuration(vowsText);
+  const declDuration = estimateSpeechDuration(declText);
 
   const rundownPanel = E('section', { class: 'ceremony-planner', 'aria-label': '순천아모르 본식 타임테이블 및 낭독 보드' },
     E('div', { class: 'ceremony-top-bar' },
@@ -634,9 +875,11 @@ export function renderCeremony(ctx) {
         E('span', { class: 'spec-chip direct' }, `📜 성혼선언·축사: ${cPlan.speech} 진행`),
         E('span', { class: 'spec-chip direct' }, `🎵 축가: ${cPlan.song}`),
         E('span', { class: 'spec-chip' + (cPlan.banquetFloor ? ' direct' : ' highlight') }, `🍽️ 연회홀: ${cPlan.banquetFloor || '층수 확인 필요'}`),
+        E('span', { class: 'spec-chip' }, `🎼 BGM 준비: ${bgmStats.ready}/${bgmStats.total}`),
         E('span', { class: 'spec-chip direct' }, `✅ 식순 준비 체크: ${prepDone}/${CEREMONY_PREP_ITEMS.length}`)),
       E('div', { class: 'page-actions ceremony-action-bar' },
         button('🎙️ 라이브 큐시트 모드', openLiveCueSheetModal, 'button'),
+        button('📤 역할별 브리핑 팩', openRoleBriefingModal, 'button quiet'),
         button('📋 타임테이블·식순 복사', () => copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant), 'button quiet'),
         button('🎤 사회자 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet'),
         button('🖨️ 서약서·선언문 인쇄', printCeremonyPapersOnly, 'button quiet'),
@@ -674,6 +917,25 @@ export function renderCeremony(ctx) {
           E('p', { class: 'small record-body' }, cPlan.note)) :
           E('p', { class: 'small muted' }, '‘식순·사회·낭독문 편집’ 버튼에서 사회자·축가·성혼선언·축사 세부 성함, 연회홀 층수, BGM과 서약서 문구를 다듬을 수 있어요.'))),
     E('div', { class: 'ceremony-docs-stack' },
+      E('details', { class: 'disclosure ceremony-doc-details ceremony-bgm-details' },
+        E('summary', {}, `🎼 [본식 BGM · 음향 큐시트] 9개 핵심 구간 선곡·재생 타이밍 (선곡 ${bgmStats.assigned}/${bgmStats.total} · 음원 확보 ${bgmStats.ready}/${bgmStats.total})`),
+        E('div', { class: 'ceremony-doc-body' },
+          E('div', { class: 'ceremony-doc-toolbar' },
+            E('span', { class: 'small muted' }, '구간별 선곡·하이라이트 재생 시작 시각·음원 확보 여부를 정리해 예식장 음향 담당자와 사회자에게 바로 전달하세요.'),
+            button('📋 음향 기사님용 BGM 큐시트 복사', () => ctx.copyTextToClipboard(buildBgmCueSheetText(bgmMap, inv, cPlan), '본식 BGM·음향 큐시트를 복사했습니다.', 'BGM 큐시트 복사'), 'button quiet small-copy-btn')),
+          E('ul', { class: 'ceremony-bgm-list' }, CEREMONY_BGM_SLOTS.map(([slotId, slotTitle, slotHint]) => {
+            const entry = bgmMap[slotId] || {};
+            const box = E('input', { type: 'checkbox', 'aria-label': `${slotTitle} 음원 확보 완료` });
+            box.checked = Boolean(entry.ready);
+            box.addEventListener('change', () => toggleBgmReady(slotId, box.checked));
+            return E('li', { class: 'ceremony-bgm-row' + (entry.ready ? ' is-ready' : ''), 'data-bgm-slot': slotId },
+              E('label', { class: 'ceremony-bgm-check' }, box),
+              E('div', { class: 'ceremony-bgm-info' },
+                E('strong', { class: 'small' }, slotTitle),
+                E('p', { class: 'small' }, entry.song ? entry.song : E('span', { class: 'muted' }, `선곡 미정 · ${slotHint}`)),
+                entry.cue ? E('p', { class: 'small muted' }, `🎚️ ${entry.cue}`) : null),
+              button(entry.song || entry.cue ? '수정' : '+ 선곡 입력', () => openBgmSlotEditor(slotId, slotTitle, slotHint), 'button quiet small-copy-btn'));
+          })))),
       E('details', { class: 'disclosure ceremony-doc-details' },
         E('summary', {}, `🎤 [사회자 진행 대본] ${isNoOfficiant ? '주례 없는 결혼식순 12단계 멘트 & 동선 큐시트' : '일반 예식(주례사 중심) 사회자 멘트 & 아모르 동선 큐시트'} (${inv.partner1 || '신랑'} · ${inv.partner2 || '신부'} 자동 반영)`),
         E('div', { class: 'ceremony-doc-body' },
@@ -692,7 +954,9 @@ export function renderCeremony(ctx) {
         E('article', { class: 'ceremony-paper-card' },
           E('div', { class: 'ceremony-paper-head' },
             E('div', {},
-              E('span', { class: 'lachma-step-badge' }, cPlan.vows ? '직접 다듬은 문안' : '신랑·신부 함께 낭독 · 기본 예문'),
+              E('div', { class: 'region-matrix-tags' },
+                E('span', { class: 'lachma-step-badge' }, cPlan.vows ? '직접 다듬은 문안' : '신랑·신부 함께 낭독 · 기본 예문'),
+                E('span', { class: 'spec-chip' }, `⏱️ ${vowsDuration.label}`)),
               E('h3', {}, cPlan.vows ? '💍 혼인서약서 (신랑·신부 함께 낭독)' : '💍 혼인서약서 (수정 예정)')),
             E('div', { class: 'lachma-official-links' },
               button('📋 복사', () => ctx.copyTextToClipboard(vowsText, '혼인서약서 문안을 복사했습니다.'), 'button quiet small-copy-btn'),
@@ -701,7 +965,9 @@ export function renderCeremony(ctx) {
         E('article', { class: 'ceremony-paper-card' },
           E('div', { class: 'ceremony-paper-head' },
             E('div', {},
-              E('span', { class: 'lachma-step-badge' }, cPlan.declaration ? '직접 다듬은 문안' : `${declSpeakerLabel} · 기본 예문`),
+              E('div', { class: 'region-matrix-tags' },
+                E('span', { class: 'lachma-step-badge' }, cPlan.declaration ? '직접 다듬은 문안' : `${declSpeakerLabel} · 기본 예문`),
+                E('span', { class: 'spec-chip' }, `⏱️ ${declDuration.label}`)),
               E('h3', {}, cPlan.declaration ? `📜 성혼선언문 (${declSpeakerLabel})` : '📜 성혼선언문 (수정 예정)')),
             E('div', { class: 'lachma-official-links' },
               button('📋 복사', () => ctx.copyTextToClipboard(declText, '성혼선언문 문안을 복사했습니다.'), 'button quiet small-copy-btn'),

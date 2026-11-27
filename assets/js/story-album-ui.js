@@ -1,6 +1,6 @@
-import { formatDate } from './content.js?v=wedding-features-68';
-import { dateSpan } from './travel.js?v=wedding-features-68';
-import { $, E, button, image, searchBox } from './dom.js?v=wedding-features-68';
+import { formatDate } from './content.js?v=wedding-features-69';
+import { dateSpan } from './travel.js?v=wedding-features-69';
+import { $, E, button, image, searchBox } from './dom.js?v=wedding-features-69';
 
 let storySort = 'asc';
 let storyYearFilter = 'all';
@@ -33,6 +33,13 @@ export function buildStoriesSummaryText(stories = [], invitation = {}) {
   });
   return lines.join('\n');
 }
+
+export const STORY_PROMPT_CARDS = [
+  { icon: '🌱', title: '우리가 처음 만난 날', hint: '첫 만남의 장소와 첫인상, 그때 나눈 대화를 떠올려 보세요.', starter: '처음 마주했던 순간과 첫인상, 그때 나눈 대화를 기록해 보아요.' },
+  { icon: '✈️', title: '가장 기억에 남는 여행', hint: '함께 떠나 웃었던 계절과 풍경, 잊지 못할 장면을 남겨 보세요.', starter: '함께 떠났던 여행 중 가장 오래 마음에 남은 순간을 남겨 보아요.' },
+  { icon: '💍', title: '결혼을 결심한 순간', hint: '이 사람과 평생을 함께하고 싶다고 느낀 계기를 담아 보세요.', starter: '서로의 일상이 당연해지고 평생을 약속하게 된 순간을 기록해 보아요.' },
+  { icon: '🌿', title: '앞으로 함께 그릴 미래', hint: '2027년 6월 결혼식 이후 둘이 꿈꾸는 계절과 다짐을 적어 보세요.', starter: '결혼식 이후 함께 만들어 갈 우리의 계절과 소소한 다짐을 담아 보아요.' }
+];
 
 export function renderStoriesView(ctx) {
   const content = ctx.getContent();
@@ -108,11 +115,25 @@ export function renderStoriesView(ctx) {
     ctx.editButton('이야기 추가', () => ctx.openEditor('stories')),
     allOrdered.length ? button('📋 일대기 요약 복사', () => ctx.copyTextToClipboard(buildStoriesSummaryText(allOrdered, content.invitation), '우리의 일대기 요약을 복사했습니다.', '일대기 요약 복사'), 'button quiet') : null);
 
+  const emptyStateNode = [
+    ctx.empty(guestMode ? '두 사람의 이야기를 정성껏 담고 있습니다.' : '첫 번째 이야기를 남겨 볼까요?', guestMode ? '첫 만남부터 결혼을 결심한 순간까지, 곧 따뜻한 이야기로 찾아뵙겠습니다.' : '처음 만난 날도, 함께 웃었던 평범한 날도 우리의 일대기가 됩니다.', '첫 이야기 쓰기', () => ctx.openEditor('stories')),
+    !guestMode ? E('section', { class: 'story-prompts-section', 'aria-label': '이야기 작성 추천 질문' },
+      E('h3', { class: 'small' }, '✨ 어떤 이야기부터 적을지 고민된다면 눌러서 시작해 보세요'),
+      E('div', { class: 'story-prompts-grid' }, STORY_PROMPT_CARDS.map(card => E('button', {
+        type: 'button',
+        class: 'story-prompt-card',
+        'data-story-prompt': card.title,
+        onclick: () => ctx.openEditor('stories', { title: card.title, body: card.starter })
+      },
+        E('strong', {}, `${card.icon} ${card.title}`),
+        E('span', { class: 'small muted' }, card.hint))))) : null
+  ];
+
   return [
     ctx.pageHeader('우리가 함께 걸어온 시간', '첫 만남, 기억하고 싶은 날, 함께 내린 결심을 기록해요.', allOrdered.length || !guestMode ? headerActions : null, 'OUR STORY'),
     sortBar,
-    allOrdered.length
-      ? (records.length
+    ...(allOrdered.length
+      ? [records.length
         ? E('section', { class: 'timeline' }, records.map(item => {
           const badges = [];
           if (item.date && firstDate && item.date === firstDate) badges.push(E('span', { class: 'spec-chip direct' }, '🌱 첫 기록'));
@@ -136,8 +157,8 @@ export function renderStoriesView(ctx) {
         }))
         : E('div', { class: 'no-results-box' },
           E('p', { class: 'no-results' }, '검색 조건에 맞는 이야기가 없습니다.'),
-          button('모든 필터 초기화', resetFilters, 'button quiet')))
-      : ctx.empty(guestMode ? '두 사람의 이야기를 정성껏 담고 있습니다.' : '첫 번째 이야기를 남겨 볼까요?', guestMode ? '첫 만남부터 결혼을 결심한 순간까지, 곧 따뜻한 이야기로 찾아뵙겠습니다.' : '처음 만난 날도, 함께 웃었던 평범한 날도 우리의 일대기가 됩니다.', '첫 이야기 쓰기', () => ctx.openEditor('stories'))
+          button('모든 필터 초기화', resetFilters, 'button quiet'))]
+      : emptyStateNode)
   ];
 }
 

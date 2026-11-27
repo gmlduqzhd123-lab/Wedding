@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-68';
-import { PACKING_CATEGORIES } from './preferences.js?v=wedding-features-68';
+import { E, button } from './dom.js?v=wedding-features-69';
+import { PACKING_CATEGORIES } from './preferences.js?v=wedding-features-69';
 import {
   CORE_REGION_KEYS,
   CORE_DESTINATION_GUIDES,
@@ -15,13 +15,13 @@ import {
   recommendHoneymoonTrips,
   calculateLocalSpending,
   stayReview
-} from './travel.js?v=wedding-features-68';
+} from './travel.js?v=wedding-features-69';
 
 const won = value => (value === null || value === undefined ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 const man = value => (value === null || value === undefined ? '미정' : `${Math.round(value / 10000).toLocaleString('ko-KR')}만`);
 
 let selectedGuideRegion = 'cebu';
-let guideShowAll = false;
+let guideViewMode = 'single';
 let lastSyncedFilterRegion = 'all';
 
 let matrixExpanded = false;
@@ -111,6 +111,34 @@ export function renderCoreDestinationGuide(ctx, { activeRegion = 'all', onSelect
           E('p', { class: 'core-guide-caution' }, E('strong', {}, '유의: '), g.caution))));
   };
 
+  const renderGuideComparisonTable = () => {
+    const rows = [
+      ['✈️ 비행 · 시차', reg => CORE_DESTINATION_GUIDES[reg.key]?.flightTime || '—'],
+      ['🛏️ 현지 숙박', reg => CORE_DESTINATION_GUIDES[reg.key]?.stayPattern || '—'],
+      ['🌤️ 6월 공식 날씨', reg => CORE_DESTINATION_GUIDES[reg.key]?.juneWeather || '—'],
+      ['🛂 입국 · 통화', reg => CORE_DESTINATION_GUIDES[reg.key]?.entryRule || '—'],
+      ['💰 2인 계획예산', reg => `${man(reg.minBudget)}~${man(reg.maxBudget)}원 (후보 ${reg.count}곳)`],
+      ['💑 추천 커플', reg => CORE_DESTINATION_GUIDES[reg.key]?.bestFor || '—']
+    ];
+    return E('div', { class: 'core-guide-table-wrap', role: 'region', 'aria-label': '4대 핵심 신혼여행지 1장 비교표' },
+      E('table', { class: 'core-guide-table' },
+        E('thead', {},
+          E('tr', {},
+            E('th', { scope: 'col' }, '비교 항목'),
+            ...coreMatrix.map(reg => E('th', { scope: 'col' },
+              E('div', { class: 'core-table-col-head' },
+                E('strong', {}, `${reg.flag} ${reg.label}`),
+                onSelectRegion ? button(
+                  activeRegion === reg.key ? '필터 해제' : `${reg.count}곳 보기 ↓`,
+                  () => onSelectRegion(activeRegion === reg.key ? 'all' : reg.key),
+                  activeRegion === reg.key ? 'button small-copy-btn' : 'button quiet small-copy-btn'
+                ) : null))))),
+        E('tbody', {}, rows.map(([label, getter]) =>
+          E('tr', {},
+            E('th', { scope: 'row' }, label),
+            ...coreMatrix.map(reg => E('td', {}, getter(reg))))))));
+  };
+
   const activeReg = coreMatrix.find(r => r.key === selectedGuideRegion) || coreMatrix[0];
 
   return E('section', { class: 'core-dest-guide', 'aria-label': '4대 핵심 신혼여행지 가이드' },
@@ -118,37 +146,50 @@ export function renderCoreDestinationGuide(ctx, { activeRegion = 'all', onSelect
       E('div', {},
         E('h2', { class: 'core-guide-title' }, '✨ 세부 · 발리 · 하와이 · 괌 핵심 가이드'),
         E('p', { class: 'small muted' }, '4대 주력 여행지의 분위기·숙소 권역·6월 날씨·추천 포인트를 먼저 비교해 보세요. 나머지 여행지는 아래 더보기란에 정리해 두었어요.')),
-      button(guideShowAll ? '선택 지역만 간결히 보기' : '4곳 설명 한 번에 펼치기', () => {
-        guideShowAll = !guideShowAll;
-        ctx.render();
-      }, 'button quiet small-copy-btn')),
-    guideShowAll
-      ? E('div', { class: 'core-guide-all-grid' }, coreMatrix.map(reg => renderGuideCard(reg, true)))
-      : [
-        E('div', { class: 'core-guide-tabs', role: 'group', 'aria-label': '핵심 여행지 4곳 선택' },
-          coreMatrix.map(reg => {
-            const g = CORE_DESTINATION_GUIDES[reg.key];
-            const isSelected = reg.key === activeReg.key;
-            const weatherShort = reg.key === 'bali' ? '☀️ 6월 건기' : reg.key === 'hawaii' ? '🌴 6월 여름' : '🌦️ 6월 전환기';
-            const flightShort = reg.key === 'hawaii' ? '✈️ 8~9시간' : reg.key === 'bali' ? '✈️ 7시간' : '✈️ 4.5시간';
-            return E('button', {
-              type: 'button',
-              class: 'core-guide-tab' + (isSelected ? ' is-active' : ''),
-              'data-guide-tab': reg.key,
-              'aria-pressed': String(isSelected),
-              onclick: () => { selectedGuideRegion = reg.key; ctx.render(); }
-            },
-              E('div', { class: 'core-guide-tab-head' },
-                E('strong', {}, `${reg.flag} ${reg.label}`),
-                E('span', { class: 'badge' }, `${reg.count}곳`)),
-              E('span', { class: 'core-guide-tab-price' }, `${man(reg.minBudget)}~${man(reg.maxBudget)}원`),
-              E('span', { class: 'core-guide-tab-tag' }, g?.tagline || ''),
-              E('div', { class: 'core-guide-tab-chips' },
-                E('span', { class: 'spec-chip' }, flightShort),
-                E('span', { class: 'spec-chip' + (reg.key === 'bali' ? ' direct' : '') }, weatherShort)));
-          })),
-        renderGuideCard(activeReg, false)
-      ]);
+      E('div', { class: 'core-guide-header-actions' },
+        E('button', {
+          type: 'button',
+          class: guideViewMode === 'table' ? 'button small-copy-btn' : 'button quiet small-copy-btn',
+          'data-guide-view': 'table',
+          'aria-pressed': String(guideViewMode === 'table'),
+          onclick: () => {
+            guideViewMode = guideViewMode === 'table' ? 'single' : 'table';
+            ctx.render();
+          }
+        }, '📊 4곳 1장 비교표'),
+        button(guideViewMode === 'all' ? '선택 지역만 간결히 보기' : '4곳 설명 한 번에 펼치기', () => {
+          guideViewMode = guideViewMode === 'all' ? 'single' : 'all';
+          ctx.render();
+        }, guideViewMode === 'all' ? 'button small-copy-btn' : 'button quiet small-copy-btn'))),
+    guideViewMode === 'table'
+      ? renderGuideComparisonTable()
+      : guideViewMode === 'all'
+        ? E('div', { class: 'core-guide-all-grid' }, coreMatrix.map(reg => renderGuideCard(reg, true)))
+        : [
+          E('div', { class: 'core-guide-tabs', role: 'group', 'aria-label': '핵심 여행지 4곳 선택' },
+            coreMatrix.map(reg => {
+              const g = CORE_DESTINATION_GUIDES[reg.key];
+              const isSelected = reg.key === activeReg.key;
+              const weatherShort = reg.key === 'bali' ? '☀️ 6월 건기' : reg.key === 'hawaii' ? '🌴 6월 여름' : '🌦️ 6월 전환기';
+              const flightShort = reg.key === 'hawaii' ? '✈️ 8~9시간' : reg.key === 'bali' ? '✈️ 7시간' : '✈️ 4.5시간';
+              return E('button', {
+                type: 'button',
+                class: 'core-guide-tab' + (isSelected ? ' is-active' : ''),
+                'data-guide-tab': reg.key,
+                'aria-pressed': String(isSelected),
+                onclick: () => { selectedGuideRegion = reg.key; ctx.render(); }
+              },
+                E('div', { class: 'core-guide-tab-head' },
+                  E('strong', {}, `${reg.flag} ${reg.label}`),
+                  E('span', { class: 'badge' }, `${reg.count}곳`)),
+                E('span', { class: 'core-guide-tab-price' }, `${man(reg.minBudget)}~${man(reg.maxBudget)}원`),
+                E('span', { class: 'core-guide-tab-tag' }, g?.tagline || ''),
+                E('div', { class: 'core-guide-tab-chips' },
+                  E('span', { class: 'spec-chip' }, flightShort),
+                  E('span', { class: 'spec-chip' + (reg.key === 'bali' ? ' direct' : '') }, weatherShort)));
+            })),
+          renderGuideCard(activeReg, false)
+        ]);
 }
 
 export function openAgencyQuestionsModal(ctx, item = null) {

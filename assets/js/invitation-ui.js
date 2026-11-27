@@ -1,7 +1,7 @@
-import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-68';
-import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-68';
-import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-68';
-import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-68';
+import { formatDate, weddingDday, invitationCountdownInfo, extractPhoneNumber, extractAccountNumber, parseAccountLine, safeUrl } from './content.js?v=wedding-features-69';
+import { invitationCalendar, googleCalendarUrl } from './calendar.js?v=wedding-features-69';
+import { E, S, button, linkButton, externalLink, image, downloadText } from './dom.js?v=wedding-features-69';
+import { renderInvitationBgmControls } from './bgm.js?v=wedding-features-69';
 import {
   formatKoreanTimeLabel,
   buildInvitationShareMessages,
@@ -13,7 +13,7 @@ import {
   downloadInvitationCardPng,
   triggerBlobDownload,
   isKakaoInApp
-} from './invitation-card.js?v=wedding-features-68';
+} from './invitation-card.js?v=wedding-features-69';
 
 function renderInvitationParents(info) {
   const gp = (info.groomParents || '').trim();
@@ -329,6 +329,62 @@ function renderInvitationReadiness(ctx, info) {
       }, `${ok ? '✓' : '+'} ${label}`)))));
 }
 
+export function parseStructuredGuideLines(raw = '') {
+  const lines = String(raw || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (lines.length < 2) return { structured: false, items: [], raw: String(raw || '').trim() };
+  const iconFor = label => {
+    if (/KTX|기차|열차|순천역/i.test(label)) return '🚆';
+    if (/버스|터미널|대중교통|셔틀/i.test(label)) return '🚌';
+    if (/주차/i.test(label)) return '🅿️';
+    if (/자가용|내비|차량|오시는/i.test(label)) return '🚗';
+    if (/식사|연회|피로연|뷔페/i.test(label)) return '🍽️';
+    if (/하객석|좌석|예식홀/i.test(label)) return '🪑';
+    if (/화환|축화/i.test(label)) return '💐';
+    if (/포토|사진/i.test(label)) return '📷';
+    return '📌';
+  };
+  const items = [];
+  for (const line of lines) {
+    const cleaned = line.replace(/^[·•\-*▪︎]+\s*/, '').trim();
+    const m = /^([^:：]{2,20})\s*[:：]\s*(.+)$/.exec(cleaned);
+    if (!m) return { structured: false, items: [], raw: String(raw || '').trim() };
+    items.push({ icon: iconFor(m[1]), label: m[1].trim(), detail: m[2].trim() });
+  }
+  return { structured: items.length >= 2, items, raw: String(raw || '').trim() };
+}
+
+function renderInvitationGuideBox(title, rawText) {
+  if (!rawText) return null;
+  const parsed = parseStructuredGuideLines(rawText);
+  return E('div', { class: 'invitation-guide-box' },
+    E('strong', {}, title),
+    parsed.structured
+      ? E('ul', { class: 'invitation-guide-list' }, parsed.items.map(it => E('li', { class: 'invitation-guide-item' },
+        E('span', { class: 'invitation-guide-badge' }, `${it.icon} ${it.label}`),
+        E('span', { class: 'invitation-guide-detail' }, it.detail))))
+      : E('p', { class: 'record-body' }, rawText));
+}
+
+function openMobilePreviewModal(ctx) {
+  if (ctx.isGuestMode()) return;
+  const guestUrl = new URL('./?view=guest#/invitation', location.href).href;
+  const iframe = E('iframe', {
+    class: 'mobile-preview-iframe',
+    src: guestUrl,
+    title: '390px 모바일 청첩장 하객 화면 미리보기',
+    loading: 'eager'
+  });
+  const body = E('div', { class: 'mobile-preview-modal' },
+    E('p', { class: 'small muted' }, '하객이 스마트폰(390px 폭)에서 보게 되는 실제 공개 모바일 청첩장 화면입니다. 이 기기의 미반영 초안은 data/site.json 배포 후 반영됩니다.'),
+    E('div', { class: 'mobile-preview-frame' },
+      E('div', { class: 'mobile-preview-notch', 'aria-hidden': 'true' }),
+      iframe),
+    E('div', { class: 'page-actions' },
+      externalLink('새 창으로 열기 ↗', guestUrl, 'button quiet'),
+      button('닫기', ctx.closeDialog, 'button')));
+  ctx.showDialog('📱 390px 모바일 청첩장 미리보기', body);
+}
+
 function renderGuestQuickDock(ctx, info, hasGallery) {
   if (!ctx.isGuestMode()) return null;
   const jumpTo = id => {
@@ -345,24 +401,28 @@ function renderGuestQuickDock(ctx, info, hasGallery) {
   const largeTextMode = ctx.isLargeTextMode();
   const hasAccounts = Boolean((info.groomAccounts || '').trim() || (info.brideAccounts || '').trim());
   const hasContacts = Boolean((info.contacts || '').trim());
-  const thirdAction = hasAccounts
-    ? makeJumpBtn('💌 마음 전하기', 'inv-sec-accounts')
+  const extraJump = hasAccounts
+    ? makeJumpBtn('💌 마음', 'inv-sec-accounts')
     : hasContacts
       ? makeJumpBtn('📞 연락처', 'inv-sec-contacts')
       : hasGallery
         ? makeJumpBtn('🖼️ 갤러리', 'inv-sec-gallery')
-        : E('button', {
-          type: 'button',
-          class: 'guest-dock-btn guest-dock-text-btn' + (largeTextMode ? ' is-active' : ''),
-          'aria-pressed': String(largeTextMode),
-          'aria-label': '청첩장 글씨 크기 전환',
-          onclick: ctx.toggleLargeTextMode
-        }, largeTextMode ? '가- 보통' : '🔍 크게');
-  return E('nav', { class: 'guest-quick-dock', 'aria-label': '모바일 청첩장 빠른 이동' },
+        : null;
+  const largeTextBtn = E('button', {
+    type: 'button',
+    class: 'guest-dock-btn guest-dock-text-btn' + (largeTextMode ? ' is-active' : ''),
+    'aria-pressed': String(largeTextMode),
+    'aria-label': '청첩장 글씨 크기 전환',
+    onclick: ctx.toggleLargeTextMode
+  }, largeTextMode ? '가- 보통' : '🔍 크게');
+  const buttons = [
     makeJumpBtn('📅 일정', 'inv-sec-schedule'),
     makeJumpBtn('📍 오시는 길', 'inv-sec-location'),
-    thirdAction,
-    button('🔗 공유', ctx.shareInvitationLink, 'guest-dock-btn is-primary'));
+    ...(extraJump ? [extraJump] : []),
+    largeTextBtn,
+    button('🔗 공유', ctx.shareInvitationLink, 'guest-dock-btn is-primary')
+  ];
+  return E('nav', { class: 'guest-quick-dock' + (buttons.length >= 5 ? ' has-5-items' : ''), 'aria-label': '모바일 청첩장 빠른 이동' }, ...buttons);
 }
 
 export function renderInvitationView(ctx) {
@@ -409,6 +469,7 @@ export function renderInvitationView(ctx) {
   const headerActions = guestMode ? null : E('div', { class: 'page-actions' },
     ctx.editButton('예식 정보 편집', () => ctx.openEditor('invitation')),
     button('👀 하객 미리보기', () => ctx.toggleGuestPreview(true), 'button quiet'),
+    button('📱 390px 폰 미리보기', () => openMobilePreviewModal(ctx), 'button quiet'),
     button('💬 초대 문구', () => openInvitationMessageModal(ctx), 'button quiet'),
     button('📱 QR · 공유', () => openInvitationQrModal(ctx), 'button quiet'));
   const topHeader = guestMode && hasContent
@@ -471,8 +532,8 @@ export function renderInvitationView(ctx) {
         venueMapNode,
         mapActions.length ? E('div', { class: 'invitation-actions invitation-map-actions' }, ...mapActions) : null),
       (info.transit || info.notice) ? E('div', { class: 'invitation-extra-guides reveal-section' },
-        info.transit ? E('div', { class: 'invitation-guide-box' }, E('strong', {}, '🚗 오시는 길 · 교통 및 주차 안내'), E('p', { class: 'record-body' }, info.transit)) : null,
-        info.notice ? E('div', { class: 'invitation-guide-box' }, E('strong', {}, '📌 예식 안내'), E('p', { class: 'record-body' }, info.notice)) : null) : null,
+        renderInvitationGuideBox('🚗 오시는 길 · 교통 및 주차 안내', info.transit),
+        renderInvitationGuideBox('📌 예식 안내', info.notice)) : null,
       contactNodes,
       rsvpNode,
       E('div', { class: 'invitation-closing reveal-section' },
