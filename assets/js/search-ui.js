@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-67';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-67';
+import { E, button } from './dom.js?v=wedding-features-68';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-68';
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },
@@ -7,7 +7,7 @@ const STATIC_COMMANDS = [
   { id: 'nav-story', category: '메뉴', icon: '📖', title: '우리의 일대기', subtitle: '첫 만남부터 결혼까지 타임라인 기록', keywords: '일대기 스토리 이야기 연애 기록', route: 'story' },
   { id: 'nav-albums', category: '메뉴', icon: '📷', title: '포토 앨범', subtitle: '웨딩 사진 앨범·대표 커버 지정', keywords: '포토 앨범 사진 갤러리 대표 커버 웨딩사진', route: 'albums' },
   { id: 'nav-studios', category: '스튜디오', icon: '📸', title: '라크마 스튜디오 촬영 안내 (2027-02-03 12:00)', subtitle: '루나메이크업(천변좌로 432) → 중앙로 117 · 헬퍼비 현금 25만 원 · 위약금', keywords: '스튜디오 라크마 lacma 촬영 루나메이크업 헬퍼비 25만원 현금 위약금 야간촬영 누브라 준비물 062-714-1970', route: 'studios' },
-  { id: 'nav-honeymoon', category: '메뉴', icon: '✈️', title: '신혼여행 후보 24곳 비교 (세부·발리·하와이·괌)', subtitle: '2027-06-06~13 인천 직항 세부·발리·하와이·괌 · 출국 짐', keywords: '신혼여행 허니문 세부 막탄 발리 하와이 괌 하나투어 모두투어 노랑풍선 여행이지 짐 체크리스트 출국', route: 'honeymoon' },
+  { id: 'nav-honeymoon', category: '메뉴', icon: '✈️', title: '신혼여행 핵심 4곳 가이드 · 후보 비교 (세부·발리·하와이·괌 + 더보기)', subtitle: '세부·발리·하와이·괌 24곳 + 더보기(나트랑·다낭) 12곳 · 출국 짐', keywords: '신혼여행 허니문 세부 막탄 발리 하와이 괌 나트랑 다낭 호이안 하나투어 모두투어 노랑풍선 여행이지 짐 체크리스트 출국', route: 'honeymoon' },
   { id: 'nav-ceremony-rundown', category: '본식', icon: '💍', title: '본식 식순 · 사회자 대본 · 서약서/선언문', subtitle: '순천아모르 12단계 주례 없는 식순 · 라이브 큐시트', keywords: '본식 식순 사회자 대본 혼인서약서 성혼선언문 큐시트 축가 연회홀 아모르', route: 'ceremony', subTab: 'rundown' },
   { id: 'nav-ceremony-guests', category: '본식', icon: '👥', title: '하객 명단 · RSVP CSV 동기화', subtitle: '청첩장 발송·참석 확정·식권 집계·축의대 명부 인쇄', keywords: '하객 명단 rsvp csv 구글폼 청첩장 발송 식권 예상인원 인쇄', route: 'ceremony', subTab: 'guests' },
   { id: 'nav-ceremony-gifts', category: '본식', icon: '⚡', title: '축의금 장부 · 축의대 빠른 연속 입력', subtitle: '현금/계좌 축의금·식권·답례품·감사문자 정산', keywords: '축의금 장부 축의대 빠른입력 정산 답례품 감사문자 감사인사 식권', route: 'ceremony', subTab: 'gifts' },

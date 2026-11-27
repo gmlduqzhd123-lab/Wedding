@@ -4427,6 +4427,283 @@ body.has-compare-tray .scroll-top-btn {
   .action-more-menu {
     display: none !important;
   }
+  body.print-honeymoon-summary .core-dest-guide,
+  body.print-honeymoon-summary .more-destinations-section {
+    display: none !important;
+  }
+}
+
+/* ===== Honeymoon Core 4 Destination Guide & More Destinations Drawer ===== */
+.core-dest-guide {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px -18px rgba(34, 48, 39, 0.25);
+}
+.core-guide-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+.core-guide-title {
+  margin: 0 0 4px;
+  font-family: var(--display);
+  font-size: 1.12rem;
+  color: var(--ink);
+}
+.core-guide-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.core-guide-tab {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  text-align: left;
+  padding: 12px 13px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-tint);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.14s ease;
+}
+.core-guide-tab:hover {
+  border-color: var(--olive);
+  transform: translateY(-1px);
+}
+.core-guide-tab.is-active {
+  border-color: var(--green-solid);
+  background: var(--olive-soft);
+  box-shadow: 0 0 0 2px rgba(59, 89, 68, 0.14);
+}
+.core-guide-tab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.core-guide-tab-price {
+  font-family: var(--display);
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.core-guide-tab-tag {
+  font-size: 12.5px;
+  line-height: 1.42;
+  color: var(--ink-soft);
+  word-break: keep-all;
+}
+.core-guide-tab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.core-guide-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.core-guide-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 12px;
+}
+.core-guide-panel-title h3 {
+  margin: 0 0 3px;
+  font-family: var(--display);
+  font-size: 1.06rem;
+  color: var(--ink);
+}
+.core-guide-tagline {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+.core-guide-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.core-guide-vibe {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.core-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.core-guide-cell {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+}
+.core-guide-cell h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.core-guide-cell p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.58;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.core-guide-caution {
+  color: var(--ink-soft);
+}
+.core-guide-list,
+.core-guide-meta-list {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.52;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.core-guide-all-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.core-guide-panel.is-all-card .core-guide-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.matrix-intro-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+.matrix-intro-row p {
+  margin: 0;
+}
+.trip-more-jump {
+  border-style: dashed;
+}
+.more-destinations-section {
+  margin: 18px 0 20px;
+}
+.more-destinations-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  font-weight: 700;
+}
+.more-destinations-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.more-destinations-body > p {
+  margin: 0;
+}
+.more-region-notes {
+  margin: 0;
+  padding: 10px 14px 10px 26px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+  color: var(--ink);
+}
+.more-travel-grid {
+  margin-top: 2px;
+}
+
+@media (max-width: 960px) {
+  .core-guide-tabs,
+  .core-guide-all-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .core-dest-guide {
+    padding: 14px 14px;
+  }
+  .core-guide-grid,
+  .core-guide-all-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .core-guide-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .core-guide-tab {
+    padding: 10px 10px;
+    gap: 4px;
+  }
+  .core-guide-tab-tag {
+    display: none;
+  }
+  .core-guide-tab-price {
+    font-size: 0.86rem;
+  }
+}
+
+@media screen {
+  html.is-dark-theme:not(.is-guest-mode) .core-dest-guide,
+  body.is-dark-theme:not(.is-guest-mode) .core-dest-guide {
+    background: #18201b;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-tab,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-tab,
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-panel,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-panel,
+  html.is-dark-theme:not(.is-guest-mode) .more-region-notes,
+  body.is-dark-theme:not(.is-guest-mode) .more-region-notes {
+    background: #1c241f;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-tab.is-active,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-tab.is-active {
+    background: #213026;
+    border-color: #3d5d48;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-tab-price,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-tab-price,
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-tagline,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-tagline,
+  html.is-dark-theme:not(.is-guest-mode) .core-guide-cell h4,
+  body.is-dark-theme:not(.is-guest-mode) .core-guide-cell h4 {
+    color: #9ad4ab;
+  }
 }
 
 

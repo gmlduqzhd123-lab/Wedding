@@ -5,14 +5,20 @@ import {validateContent,parseContent} from '../assets/js/content.js';
 import {budgetSummary,stayReview} from '../assets/js/travel.js';
 const raw=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 
-test('twenty-four Incheon direct-flight beach candidates (4 FIT + 20 packages across Cebu, Bali, Hawaii, Guam) satisfy the confirmed June dates and complete budget allocations',()=>{
+test('thirty-six Incheon direct-flight beach candidates (24 core Cebu/Bali/Hawaii/Guam + 12 More Destinations Nha Trang/Da Nang) satisfy confirmed June dates and complete budget allocations',()=>{
   const data=validateContent(raw);
-  assert.equal(data.honeymoon.length,24);assert.equal(new Set(data.honeymoon.map(t=>t.id)).size,24);
-  assert.deepEqual(data.honeymoon.slice(0,4).map(t=>t.id),['cebu','bali','hawaii','guam']);
-  const expectedPkgIds=['cebu','bali','hawaii','guam'].flatMap(dest=>['hanatour','modetour','interpark','ybtour','kyowon'].map(ag=>`pkg-${dest}-${ag}`));
-  assert.deepEqual(data.honeymoon.slice(4).map(t=>t.id),expectedPkgIds);
+  assert.equal(data.honeymoon.length,36);assert.equal(new Set(data.honeymoon.map(t=>t.id)).size,36);
+  const expectedCoreIds=[
+    'cebu','bali','hawaii','guam',
+    ...['cebu','bali','hawaii','guam'].flatMap(dest=>['hanatour','modetour','interpark','ybtour','kyowon'].map(ag=>`pkg-${dest}-${ag}`))
+  ];
+  const expectedMoreIds=[
+    'nhatrang','danang',
+    ...['nhatrang','danang'].flatMap(dest=>['hanatour','modetour','interpark','ybtour','kyowon'].map(ag=>`pkg-${dest}-${ag}`))
+  ];
+  assert.deepEqual(data.honeymoon.map(t=>t.id),[...expectedCoreIds,...expectedMoreIds]);
   for(const trip of data.honeymoon){
-    const isSevenNights=trip.id==='guam'||/^pkg-guam-/.test(trip.id);
+    const isSevenNights=trip.id==='guam'||trip.id==='danang'||/^pkg-(guam|danang)-/.test(trip.id);
     const isCebu=trip.id==='cebu'||/^pkg-cebu-/.test(trip.id);
     assert.equal(trip.startDate,'2027-06-06');assert.equal(trip.endDate,'2027-06-13');
     assert.match(trip.plan.transport,/직항/);assert.doesNotMatch(trip.plan.transport.split(/\r?\n/)[0],/경유/);

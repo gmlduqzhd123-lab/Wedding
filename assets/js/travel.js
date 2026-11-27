@@ -160,12 +160,16 @@ export function tripFlightBadge(item){
   return {direct:false,short:'✈️ 항공 미정',detail:'✈️ 항공편 별도 확인'};
 }
 
+export const CORE_REGION_KEYS = ['cebu', 'bali', 'hawaii', 'guam'];
+
 export const REGION_DEFS = [
-  { key: 'cebu', label: '세부', flag: '🇵🇭', currencyCode: 'PHP', currencyUnit: 1, rateHint: '예: 1 PHP ≈ 24.5원 (직접 입력)' },
-  { key: 'bali', label: '발리', flag: '🇮🇩', currencyCode: 'IDR', currencyUnit: 100, rateHint: '예: 100 IDR ≈ 8.5원 (직접 입력)' },
-  { key: 'hawaii', label: '하와이', flag: '🇺🇸', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
-  { key: 'guam', label: '괌', flag: '🇬🇺', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
-  { key: 'other', label: '기타 지역', flag: '✈️', currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' }
+  { key: 'cebu', label: '세부', flag: '🇵🇭', core: true, currencyCode: 'PHP', currencyUnit: 1, rateHint: '예: 1 PHP ≈ 24.5원 (직접 입력)' },
+  { key: 'bali', label: '발리', flag: '🇮🇩', core: true, currencyCode: 'IDR', currencyUnit: 100, rateHint: '예: 100 IDR ≈ 8.5원 (직접 입력)' },
+  { key: 'hawaii', label: '하와이', flag: '🇺🇸', core: true, currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
+  { key: 'guam', label: '괌', flag: '🇬🇺', core: true, currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' },
+  { key: 'nhatrang', label: '나트랑', flag: '🇻🇳', core: false, currencyCode: 'VND', currencyUnit: 1000, rateHint: '예: 1,000 VND ≈ 55원 (직접 입력)' },
+  { key: 'danang', label: '다낭·호이안', flag: '🇻🇳', core: false, currencyCode: 'VND', currencyUnit: 1000, rateHint: '예: 1,000 VND ≈ 55원 (직접 입력)' },
+  { key: 'other', label: '기타 지역', flag: '✈️', core: false, currencyCode: 'USD', currencyUnit: 1, rateHint: '예: 1 USD ≈ 1,380원 (직접 입력)' }
 ];
 
 export function tripRegionInfo(item = {}) {
@@ -174,8 +178,98 @@ export function tripRegionInfo(item = {}) {
   if (/bali|발리|짐바란|누사두아|우붓|스미냑/i.test(text)) return REGION_DEFS[1];
   if (/hawaii|하와이|와이키키|오아후/i.test(text)) return REGION_DEFS[2];
   if (/guam|괌|투몬/i.test(text)) return REGION_DEFS[3];
-  return REGION_DEFS[4];
+  if (/nhatrang|나트랑|깜라인|깜란/i.test(text)) return REGION_DEFS[4];
+  if (/danang|다낭|호이안|미케/i.test(text)) return REGION_DEFS[5];
+  return REGION_DEFS[6];
 }
+
+export function isCoreRegionTrip(item = {}) {
+  return CORE_REGION_KEYS.includes(tripRegionInfo(item).key);
+}
+
+export const CORE_DESTINATION_GUIDES = {
+  cebu: {
+    key: 'cebu',
+    name: '세부 · 막탄',
+    flag: '🇵🇭',
+    tagline: '4.5시간 직항 · 가성비 최강 프라이빗 비치 & 스파 휴양',
+    flightTime: '인천 직항 약 4시간 30분 · 시차 -1시간',
+    stayPattern: '현지 6박 (6/6 저녁 출발 → 6/13 새벽 귀국)',
+    juneWeather: '🌦️ 6월 전환기 · PAGASA 제3기후형(오후·저녁 스콜 유의)',
+    entryRule: '30일 무비자 · 공식 eTravel(etravel.gov.ph, 무료) · PHP',
+    vibe: '예식 직후 피로를 줄여 주는 짧은 비행과 막탄 공항에서 차량 20~30분 거리의 대형 5성 비치 리조트들이 강점입니다. 460만~640만 원대 예산으로도 샹그릴라·크림슨 풀빌라·쉐라톤 등 수준 높은 리조트 휴양과 호핑·커플 스파·씨푸드 미식을 넉넉하게 누릴 수 있습니다.',
+    areas: '막탄 섬 푼타엔가뇨(샹그릴라·쉐라톤·두짓타니 — 조용한 프라이빗 비치)와 마리바고/라푸라푸(크림슨 풀빌라·플랜테이션 베이 라군 — 맛집·마사지 접근성 우수) 두 축이 대표적입니다.',
+    highlights: [
+      '리조트 전용 산호초 해변 스노클링 & 올랑고·날루수안 프라이빗 호핑투어',
+      'CHI 스파·아움 스파·모감보 스프링스 등 5성급 커플 트리트먼트',
+      '선셋 씨푸드 디너·아쥬르/부히 바 칵테일 및 세부 시티·보홀 선택 일정'
+    ],
+    bestFor: '비행·이동 피로를 최소화하면서 500만 원 전후 예산으로 5성 리조트·호핑·마사지를 알차게 즐기고 싶은 커플',
+    caution: '6월 스콜성 소나기에 대비해 호핑투어는 오전 출발이 유리하며, 심야 귀국편(예: KE602 00:15) 이용 시 마지막 날 레이트 체크아웃·마사지 귀국 동선을 미리 확보하세요.'
+  },
+  bali: {
+    key: 'bali',
+    name: '발리 · 누사두아·짐바란·우붓',
+    flag: '🇮🇩',
+    tagline: '6월 최적 건기 · 프라이빗 풀빌라 & 선셋 미식의 정석',
+    flightTime: '인천 직항 약 7시간 · 시차 -1시간',
+    stayPattern: '현지 6박 (6/6 출발 → 6/13 오전 도착)',
+    juneWeather: '☀️ 6월 최적 건기 · BMKG 기준 4~10월 건기 한가운데',
+    entryRule: '도착비자(e-VOA) + Love Bali 관광세 · IDR',
+    vibe: '4대 핵심 여행지 중 6월 날씨 만족도가 가장 높은 대표 건기 휴양지입니다. 오션뷰 대형 리조트와 숲·절벽 프라이빗 풀빌라를 조합해 플로팅 조식, 짐바란 일몰 씨푸드, 발리 전통 스파, 우붓 정글 감성까지 허니문 로망을 균형 있게 채울 수 있습니다.',
+    areas: '누사두아(조용한 5성 해변 리조트), 짐바란·울루와뚜(절벽 풀빌라·선셋 명소), 우붓(정글 인피니티풀·발리 스윙) 중 1~2개 권역을 믹스하는 동선이 인기입니다.',
+    highlights: [
+      '프라이빗 풀빌라 플로팅 조식 & 인피니티풀 여유 휴양',
+      '짐바란 비치 씨푸드 선셋 디너 & 울루와뚜 절벽 사원·비치클럽',
+      '발리 전통 아로마 커플 스파 & 우붓 정글 카페·논뷰 인생샷'
+    ],
+    bestFor: '6월 가장 쾌적한 건기 속에서 프라이빗 풀빌라·스파·감성 미식을 고루 누리고 싶은 커플',
+    caution: '꾸따·스미냑·우붓 간 차량 정체가 잦아 하루 1개 권역 중심으로 동선을 짜고, 발리밸리 대비 생수 음용·샤워기 필터 및 도착비자·관광부담금을 챙겨 두세요.'
+  },
+  hawaii: {
+    key: 'hawaii',
+    name: '하와이 · 오아후 와이키키',
+    flag: '🇺🇸',
+    tagline: '6월 맑은 여름 · 와이키키 휴양·쇼핑·드라이브 허니문 로망',
+    flightTime: '인천 직항 약 8~9시간 · 시차 -19시간',
+    stayPattern: '현지 6박 (6/6 출발·당일 오전 도착 → 6/13 오후 귀국)',
+    juneWeather: '🌴 6월 맑은 여름철 · HTA 기준 5~10월 무역풍 여름 시즌',
+    entryRule: '미국 ESTA 사전 승인 필수 · USD (팁 15~20%)',
+    vibe: '평생 한 번뿐인 허니문 로망으로 꾸준히 꼽히는 종합 휴양·도시 여행지입니다. 6월 무역풍이 불어 쾌적한 와이키키 해변을 거점으로 도보 쇼핑과 파인다이닝, 에메랄드빛 동부·노스쇼어 해안 드라이브까지 한 섬(오아후) 안에서 모두 누릴 수 있습니다.',
+    areas: '와이키키 비치 중심(해변·레스토랑·알라모아나 접근성 최고)이 기본이며, 여유로운 휴양을 원하면 카할라·코올리나 권역을 연계합니다. 6박 일정은 섬 간 이동 없이 오아후 집중이 효율적입니다.',
+    highlights: [
+      '와이키키 비치 선셋 산책 & 다이아몬드 헤드 아침 전망 트레킹',
+      '카일루아·라니카이·노스쇼어 오픈카 해안 드라이브 & 새우트럭',
+      '알라모아나 센터·와이켈레 아울렛 쇼핑 & 스테이크·포케 미식'
+    ],
+    bestFor: '휴양만 하기보다 바다·도시 미식·쇼핑·해안 드라이브를 한 번에 즐기고 싶은 허니문 로망파 커플',
+    caution: '숙박 세금·리조트피(1박 $40~$55+ 별도 확인)·식비·팁 부담이 커 820만~980만 원 이상 예산 여유가 필요하며, 렌터카 시 국제+국내면허증 원본을 지참해야 합니다.'
+  },
+  guam: {
+    key: 'guam',
+    name: '괌 · 투몬 비치',
+    flag: '🇬🇺',
+    tagline: '4.5시간 최단거리 · 공항 15분 투몬 비치 & 여유로운 7박',
+    flightTime: '인천 직항 약 4시간 30분 · 시차 +1시간',
+    stayPattern: '현지 7박 가능 (6/6 낮 출발 → 6/13 저녁 한국 도착)',
+    juneWeather: '🌦️ 6월 전환기 · GVB 기준 건기→우기 초입(짧은 소나기 유의)',
+    entryRule: 'G-CNMI ETA(무료) 또는 ESTA + 전자세관신고(EDF) · USD',
+    vibe: '비행 4시간 30분·시차 +1시간·공항에서 투몬 비치 호텔까지 차로 10~15분으로 4대 핵심 지역 중 이동 피로가 가장 적습니다. 깔끔한 미국령 인프라 속에서 에메랄드빛 투몬 베이 휴양, 남부 해안 드라이브, 면세 쇼핑을 여유롭게 7박 일정으로 즐길 수 있습니다.',
+    areas: '투몬 비치 한 권역(더 츠바키 타워·두짓타니·롯데호텔·하얏트 등)에 5성 호텔·레스토랑·면세 쇼핑몰이 모여 있어 도보 및 단거리 이동만으로 쾌적하게 지낼 수 있습니다.',
+    highlights: [
+      '투몬 베이 맑은 바다 스노클링 & 5성 호텔 인피니티풀 선셋',
+      '사랑의 절벽·세티베이·메리조 부두 남부 해안 1일 렌터카 드라이브',
+      '돌핀 크루즈·별빛 투어 & T갤러리아·마이크로네시아몰·GPO 면세 쇼핑'
+    ],
+    bestFor: '장거리 비행·시차 부담 없이 짧은 동선으로 깔끔한 리조트 휴양·면세 쇼핑·여유로운 7박을 원하는 커플',
+    caution: '6월 전환기 소나기·바람에 대비해 쇼핑몰·스파 등 실내 대안을 함께 두고, 객실 세금(약 11%)·리조트피·미국령 식비·팁·렌터카 보험료를 총예산에 미리 반영하세요.'
+  }
+};
+
+export const MORE_DESTINATION_NOTES = {
+  nhatrang: '🇻🇳 나트랑 (깜라인 6박) — 6월 덥고 맑은 시기 · 480만~610만 원대 가성비 풀빌라 중심',
+  danang: '🇻🇳 다낭·호이안 (7박) — 418만~780만 원대 · 해변 리조트 + 호이안 야경·올인클루시브 스파'
+};
 
 export function isPoolvillaTrip(item = {}) {
   return /풀빌라/.test(`${item.title || ''} ${(item.plan?.stays || []).map(s => s.region).join(' ')} ${item.plan?.lodgingNotes || ''}`);
@@ -189,11 +283,12 @@ export function isSemiPackageTrip(item = {}) {
   return isBundledPackageTrip(item) && /세미패키지|반자유|우리끼리/.test(`${item.title || ''} ${item.pros || ''}`);
 }
 
-export function buildRegionMatrix(trips = []) {
+export function buildRegionMatrix(trips = [], { coreOnly = false } = {}) {
   const list = Array.isArray(trips) ? trips : [];
   const groups = new Map();
   for (const trip of list) {
     const info = tripRegionInfo(trip);
+    if (coreOnly && !info.core) continue;
     if (!groups.has(info.key)) groups.set(info.key, { ...info, items: [] });
     groups.get(info.key).items.push(trip);
   }
@@ -214,6 +309,7 @@ export function buildRegionMatrix(trips = []) {
       key: group.key,
       label: group.label,
       flag: group.flag,
+      core: Boolean(group.core),
       currencyCode: group.currencyCode,
       count: items.length,
       minBudget,
@@ -232,7 +328,11 @@ export function buildRegionMatrix(trips = []) {
 }
 
 export function recommendHoneymoonTrips(trips = [], { maxBudget = 10000000, style = 'any', priority = 'balanced', region = 'all' } = {}) {
-  const pool = (Array.isArray(trips) ? trips : []).filter(t => region === 'all' || tripRegionInfo(t).key === region);
+  const pool = (Array.isArray(trips) ? trips : []).filter(t => {
+    if (region === 'all') return true;
+    if (region === 'core') return isCoreRegionTrip(t);
+    return tripRegionInfo(t).key === region;
+  });
   const scored = pool.map(trip => {
     let score = 50;
     const reasons = [];
@@ -332,6 +432,24 @@ export const REGION_PACKING_SUGGESTIONS = {
       { category: '📄 필수 서류·결제', title: '국제운전면허증 + 한국 면허증 원본 (렌터카 픽업 필수)' },
       { category: '🔌 전자기기·통신', title: '110V 돼지코 어댑터 (미국 A타입) 및 차량용 스마트폰 거치대' },
       { category: '🏖️ 의류·해변 용품', title: '산호 친화 선크림 · 팁용 소액 달러 ($1·$5) 및 방수 파우치' }
+    ]
+  },
+  nhatrang: {
+    label: '🇻🇳 나트랑 맞춤 필수 준비물',
+    items: [
+      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치·카드 등록 및 현지 eSIM' },
+      { category: '📄 필수 서류·결제', title: '트래블카드(VND 환전) + 팁·야시장용 소액 동(VND) 현금' },
+      { category: '💊 상비약·세면·기타', title: '샤워기 필터 여분 및 모기기피제·수딩젤 (강한 자외선 대비)' },
+      { category: '🏖️ 의류·해변 용품', title: '호핑투어·머드스파용 여분 수영복 및 스마트폰 방수팩' }
+    ]
+  },
+  danang: {
+    label: '🇻🇳 다낭·호이안 맞춤 필수 준비물',
+    items: [
+      { category: '🔌 전자기기·통신', title: '그랩(Grab) 앱 사전 설치 및 바나힐·호이안 이동용 보조배터리' },
+      { category: '🏖️ 의류·해변 용품', title: '바나힐 고지대(서늘함) 대비 얇은 긴팔 겉옷 및 호이안 스냅 의상' },
+      { category: '📄 필수 서류·결제', title: '트래블카드(VND) 및 호이안 야시장·팁용 소액 동(VND) 현금' },
+      { category: '💊 상비약·세면·기타', title: '여행용 샤워기 필터 및 우양산 (갑작스러운 소나기·햇볕 대비)' }
     ]
   }
 };

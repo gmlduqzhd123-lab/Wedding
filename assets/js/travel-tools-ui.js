@@ -1,6 +1,8 @@
-import { E, button } from './dom.js?v=wedding-features-67';
-import { PACKING_CATEGORIES } from './preferences.js?v=wedding-features-67';
+import { E, button } from './dom.js?v=wedding-features-68';
+import { PACKING_CATEGORIES } from './preferences.js?v=wedding-features-68';
 import {
+  CORE_REGION_KEYS,
+  CORE_DESTINATION_GUIDES,
   REGION_DEFS,
   REGION_PACKING_SUGGESTIONS,
   HONEYMOON_AGENCY_QUESTIONS,
@@ -13,18 +15,23 @@ import {
   recommendHoneymoonTrips,
   calculateLocalSpending,
   stayReview
-} from './travel.js?v=wedding-features-67';
+} from './travel.js?v=wedding-features-68';
 
 const won = value => (value === null || value === undefined ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 const man = value => (value === null || value === undefined ? '미정' : `${Math.round(value / 10000).toLocaleString('ko-KR')}만`);
 
+let selectedGuideRegion = 'cebu';
+let guideShowAll = false;
+let lastSyncedFilterRegion = 'all';
+
 let matrixExpanded = false;
+let matrixIncludeMore = false;
 let selectedMatrixRegion = 'cebu';
 let recommenderExpanded = false;
 let recMaxBudget = 8000000;
 let recStyle = 'any';
 let recPriority = 'balanced';
-let recRegion = 'all';
+let recRegion = 'core';
 
 let localCalcExpanded = false;
 const localSpendState = {
@@ -45,6 +52,104 @@ let packingPendingOnly = false;
 
 export function isPackingExpanded() { return packingExpanded; }
 export function setPackingExpanded(val) { packingExpanded = Boolean(val); }
+
+export function renderCoreDestinationGuide(ctx, { activeRegion = 'all', onSelectRegion, onCompareTrips } = {}) {
+  if (ctx.isGuestMode()) return null;
+  const trips = ctx.getContent()?.honeymoon || [];
+  const coreMatrix = buildRegionMatrix(trips, { coreOnly: true });
+  if (!coreMatrix.length) return null;
+
+  if (activeRegion !== lastSyncedFilterRegion) {
+    lastSyncedFilterRegion = activeRegion;
+    if (CORE_REGION_KEYS.includes(activeRegion)) selectedGuideRegion = activeRegion;
+  }
+  if (!coreMatrix.some(r => r.key === selectedGuideRegion)) selectedGuideRegion = coreMatrix[0].key;
+
+  const renderGuideCard = (reg, compact = false) => {
+    const g = CORE_DESTINATION_GUIDES[reg.key];
+    if (!g) return null;
+    const isFiltered = activeRegion === reg.key;
+    const picks = [];
+    if (reg.fitTrip) picks.push(reg.fitTrip.id);
+    for (const p of reg.pkgTrips) {
+      if (picks.length >= 3) break;
+      if (!picks.includes(p.id)) picks.push(p.id);
+    }
+    return E('article', { class: 'core-guide-panel' + (compact ? ' is-all-card' : ''), 'data-guide-region': reg.key },
+      E('div', { class: 'core-guide-panel-head' },
+        E('div', { class: 'core-guide-panel-title' },
+          E('h3', {}, `${g.flag} ${g.name}`),
+          E('p', { class: 'core-guide-tagline' }, g.tagline)),
+        E('div', { class: 'core-guide-panel-actions' },
+          E('span', { class: 'spec-chip highlight' }, `💰 ${man(reg.minBudget)}~${man(reg.maxBudget)}원 · ${reg.count}곳`),
+          onSelectRegion ? button(
+            isFiltered ? `${reg.label} 필터 적용 중 (전체 보기)` : `${reg.label} 후보 ${reg.count}곳 보기 ↓`,
+            () => onSelectRegion(isFiltered ? 'all' : reg.key),
+            isFiltered ? 'button small-copy-btn' : 'button quiet small-copy-btn'
+          ) : null,
+          !compact && onCompareTrips && picks.length ? button(`대표 ${picks.length}곳 비교함 담기`, () => {
+            onCompareTrips(picks, `${reg.label} 대표 ${picks.length}곳을 비교함에 담았습니다.`);
+          }, 'button quiet small-copy-btn') : null)),
+      E('p', { class: 'core-guide-vibe' }, g.vibe),
+      E('div', { class: 'core-guide-grid' },
+        E('div', { class: 'core-guide-cell' },
+          E('h4', {}, '🏖️ 주요 숙소 권역 · 동선'),
+          E('p', {}, g.areas)),
+        E('div', { class: 'core-guide-cell' },
+          E('h4', {}, '✨ 추천 핵심 경험 · 미식'),
+          E('ul', { class: 'core-guide-list' }, g.highlights.map(item => E('li', {}, item)))),
+        E('div', { class: 'core-guide-cell' },
+          E('h4', {}, '✈️ 비행 · 6월 날씨 · 입국'),
+          E('ul', { class: 'core-guide-meta-list' },
+            E('li', {}, g.flightTime),
+            E('li', {}, g.stayPattern),
+            E('li', {}, g.juneWeather),
+            E('li', {}, g.entryRule))),
+        E('div', { class: 'core-guide-cell' },
+          E('h4', {}, '💡 추천 커플 · 출발 전 체크'),
+          E('p', {}, E('strong', {}, '추천: '), g.bestFor),
+          E('p', { class: 'core-guide-caution' }, E('strong', {}, '유의: '), g.caution))));
+  };
+
+  const activeReg = coreMatrix.find(r => r.key === selectedGuideRegion) || coreMatrix[0];
+
+  return E('section', { class: 'core-dest-guide', 'aria-label': '4대 핵심 신혼여행지 가이드' },
+    E('div', { class: 'core-guide-header' },
+      E('div', {},
+        E('h2', { class: 'core-guide-title' }, '✨ 세부 · 발리 · 하와이 · 괌 핵심 가이드'),
+        E('p', { class: 'small muted' }, '4대 주력 여행지의 분위기·숙소 권역·6월 날씨·추천 포인트를 먼저 비교해 보세요. 나머지 여행지는 아래 더보기란에 정리해 두었어요.')),
+      button(guideShowAll ? '선택 지역만 간결히 보기' : '4곳 설명 한 번에 펼치기', () => {
+        guideShowAll = !guideShowAll;
+        ctx.render();
+      }, 'button quiet small-copy-btn')),
+    guideShowAll
+      ? E('div', { class: 'core-guide-all-grid' }, coreMatrix.map(reg => renderGuideCard(reg, true)))
+      : [
+        E('div', { class: 'core-guide-tabs', role: 'group', 'aria-label': '핵심 여행지 4곳 선택' },
+          coreMatrix.map(reg => {
+            const g = CORE_DESTINATION_GUIDES[reg.key];
+            const isSelected = reg.key === activeReg.key;
+            const weatherShort = reg.key === 'bali' ? '☀️ 6월 건기' : reg.key === 'hawaii' ? '🌴 6월 여름' : '🌦️ 6월 전환기';
+            const flightShort = reg.key === 'hawaii' ? '✈️ 8~9시간' : reg.key === 'bali' ? '✈️ 7시간' : '✈️ 4.5시간';
+            return E('button', {
+              type: 'button',
+              class: 'core-guide-tab' + (isSelected ? ' is-active' : ''),
+              'data-guide-tab': reg.key,
+              'aria-pressed': String(isSelected),
+              onclick: () => { selectedGuideRegion = reg.key; ctx.render(); }
+            },
+              E('div', { class: 'core-guide-tab-head' },
+                E('strong', {}, `${reg.flag} ${reg.label}`),
+                E('span', { class: 'badge' }, `${reg.count}곳`)),
+              E('span', { class: 'core-guide-tab-price' }, `${man(reg.minBudget)}~${man(reg.maxBudget)}원`),
+              E('span', { class: 'core-guide-tab-tag' }, g?.tagline || ''),
+              E('div', { class: 'core-guide-tab-chips' },
+                E('span', { class: 'spec-chip' }, flightShort),
+                E('span', { class: 'spec-chip' + (reg.key === 'bali' ? ' direct' : '') }, weatherShort)));
+          })),
+        renderGuideCard(activeReg, false)
+      ]);
+}
 
 export function openAgencyQuestionsModal(ctx, item = null) {
   const titleLabel = item ? `${item.title}` : '신혼여행 후보';
@@ -67,11 +172,14 @@ export function openAgencyQuestionsModal(ctx, item = null) {
 export function renderRegionMatrixSection(ctx, { onSelectRegion, onCompareTrips, onFocusTrip }) {
   if (ctx.isGuestMode()) return null;
   const trips = ctx.getContent()?.honeymoon || [];
-  const matrix = buildRegionMatrix(trips);
+  const allMatrix = buildRegionMatrix(trips, { coreOnly: false });
+  const hasMoreRegions = allMatrix.some(r => !r.core);
+  const matrix = buildRegionMatrix(trips, { coreOnly: !matrixIncludeMore });
   if (matrix.length < 2) return null;
   if (!matrix.some(r => r.key === selectedMatrixRegion)) selectedMatrixRegion = matrix[0].key;
   const active = matrix.find(r => r.key === selectedMatrixRegion) || matrix[0];
   const maxRegionBudget = Math.max(...active.items.map(t => t.budget || 0), 1);
+  const shownTripCount = matrix.reduce((sum, r) => sum + r.count, 0);
 
   const shortProvider = item => {
     if (!isBundledPackageTrip(item)) return '🧳 자유여행';
@@ -80,15 +188,30 @@ export function renderRegionMatrixSection(ctx, { onSelectRegion, onCompareTrips,
     return '📦 ' + m[1].replace(/\s*(허니문|시그니처|세미패키지|패키지|직판|특전|단독|TOP\s*PICK).*$/i, '').trim();
   };
 
+  const moreToggleCheck = hasMoreRegions ? E('input', {
+    type: 'checkbox',
+    id: 'matrix-include-more',
+    checked: matrixIncludeMore,
+    onchange: ev => {
+      matrixIncludeMore = ev.target.checked;
+      matrixExpanded = true;
+      ctx.render();
+    }
+  }) : null;
+
   return E('details', {
     class: 'disclosure honeymoon-matrix-section',
     open: matrixExpanded,
     ontoggle: ev => { if (ev.currentTarget.isConnected) matrixExpanded = ev.currentTarget.open; }
   },
     E('summary', {},
-      `🗺️ ${matrix.length}개 핵심 지역(세부·발리·하와이·괌) 한눈에 비교 (${trips.length}곳)`),
+      matrixIncludeMore
+        ? `🗺️ 전체 ${matrix.length}개 지역 한눈에 비교 (${shownTripCount}곳)`
+        : `🗺️ ${matrix.length}개 핵심 지역(세부·발리·하와이·괌) 한눈에 비교 (${shownTripCount}곳)`),
     E('div', { class: 'matrix-body' },
-      E('p', { class: 'small muted' }, '지역 카드를 누르면 해당 지역의 자유여행 가안과 5대 여행사 패키지의 2인 계획예산·특전을 가로 막대로 바로 비교할 수 있습니다.'),
+      E('div', { class: 'matrix-intro-row' },
+        E('p', { class: 'small muted' }, '지역 카드를 누르면 해당 지역의 자유여행 가안과 5대 여행사 패키지의 2인 계획예산·특전을 가로 막대로 바로 비교할 수 있습니다.'),
+        moreToggleCheck ? E('label', { class: 'check-label small', for: 'matrix-include-more' }, moreToggleCheck, '나머지 지역(나트랑·다낭) 함께 비교') : null),
       E('div', { class: 'region-matrix-cards', role: 'group', 'aria-label': '신혼여행 핵심 지역 요약' },
         matrix.map(reg => {
           const isCurrent = reg.key === active.key;
@@ -152,7 +275,8 @@ export function renderTripRecommenderSection(ctx, { onFocusTrip, onCompareTrips 
   if (ctx.isGuestMode()) return null;
   const trips = ctx.getContent()?.honeymoon || [];
   if (trips.length < 3) return null;
-  const coreRegions = REGION_DEFS.filter(r => r.key !== 'other');
+  const coreRegions = REGION_DEFS.filter(r => r.core);
+  const moreRegions = REGION_DEFS.filter(r => !r.core && r.key !== 'other' && trips.some(t => tripRegionInfo(t).key === r.key));
 
   const top3 = recommendHoneymoonTrips(trips, {
     maxBudget: recMaxBudget,
@@ -168,6 +292,15 @@ export function renderTripRecommenderSection(ctx, { onFocusTrip, onCompareTrips 
     return E('label', { class: 'rec-field', for: id }, E('span', { class: 'small muted' }, label), sel);
   };
 
+  const regionOptions = [
+    ['core', `🌏 핵심 ${coreRegions.length}개 지역 (세부·발리·하와이·괌)`],
+    ...coreRegions.map(r => [r.key, `${r.flag} ${r.label}`]),
+    ...(moreRegions.length ? [
+      ['all', `🌏 나머지 포함 전체 ${coreRegions.length + moreRegions.length}개 지역`],
+      ...moreRegions.map(r => [r.key, `${r.flag} ${r.label} (더보기)`])
+    ] : [])
+  ];
+
   return E('details', {
     class: 'disclosure honeymoon-recommender',
     open: recommenderExpanded,
@@ -179,7 +312,7 @@ export function renderTripRecommenderSection(ctx, { onFocusTrip, onCompareTrips 
         makeSelect('rec-budget', '2인 예산 상한', [[6000000, '600만 원 이하'], [8000000, '800만 원 이하'], [10000000, '1,000만 원 이하']], recMaxBudget, v => { recMaxBudget = Number(v); }),
         makeSelect('rec-style', '선호 여행 형태', [['any', '상관없음'], ['fit', '🧳 자유여행'], ['semi', '✨ 반자유·세미패키지'], ['package', '📦 패키지 전체']], recStyle, v => { recStyle = v; }),
         makeSelect('rec-priority', '가장 중요한 조건', [['balanced', '⚖️ 균형 추천'], ['poolvilla', '🏡 풀빌라 우선'], ['noshopping', '🚫 노쇼핑·노옵션'], ['dry', '☀️ 6월 건기 우선'], ['value', '💸 가성비 우선']], recPriority, v => { recPriority = v; }),
-        makeSelect('rec-region', '희망 지역', [['all', `🌏 전체 ${coreRegions.length}개 지역`], ...coreRegions.map(r => [r.key, `${r.flag} ${r.label}`])], recRegion, v => { recRegion = v; })),
+        makeSelect('rec-region', '희망 지역', regionOptions, recRegion, v => { recRegion = v; })),
       top3.length ? E('div', { class: 'recommender-results' },
         E('div', { class: 'recommender-results-head' },
           E('strong', { class: 'small' }, `✨ 조건에 가장 잘 맞는 추천 후보 TOP ${top3.length}`),
@@ -198,14 +331,14 @@ export function renderTripRecommenderSection(ctx, { onFocusTrip, onCompareTrips 
 
 export function renderLocalSpendingSimulator(ctx, selectedTrip = null) {
   if (ctx.isGuestMode()) return null;
-  const coreRegions = REGION_DEFS.filter(r => r.key !== 'other');
+  const knownRegions = REGION_DEFS.filter(r => r.key !== 'other');
   if (selectedTrip && selectedTrip.id !== lastSyncedTripId) {
     lastSyncedTripId = selectedTrip.id;
     const nights = stayReview(selectedTrip).nights;
     if (nights >= 1 && nights <= 30) localSpendState.nights = nights;
     localSpendState.regionKey = tripRegionInfo(selectedTrip).key;
   }
-  const regionDef = coreRegions.find(r => r.key === localSpendState.regionKey) || coreRegions[0];
+  const regionDef = knownRegions.find(r => r.key === localSpendState.regionKey) || knownRegions[0];
   const calc = calculateLocalSpending({ ...localSpendState, currencyUnit: regionDef.currencyUnit });
   const poolBudget = selectedTrip?.plan?.costs
     ? (selectedTrip.plan.costs.other || 0) + (selectedTrip.plan.costs.reserve || 0)
@@ -223,7 +356,7 @@ export function renderLocalSpendingSimulator(ctx, selectedTrip = null) {
   };
 
   const regionSel = E('select', { id: 'local-calc-region', 'aria-label': '현지 통화 지역 선택' },
-    coreRegions.map(r => E('option', { value: r.key }, `${r.flag} ${r.label} (${r.currencyCode})`)));
+    knownRegions.map(r => E('option', { value: r.key }, `${r.flag} ${r.label} (${r.currencyCode})${r.core ? '' : ' · 더보기'}`)));
   regionSel.value = regionDef.key;
   regionSel.addEventListener('change', () => {
     localSpendState.regionKey = regionSel.value;

@@ -7,12 +7,13 @@ import {validateContent,parseContent} from '../assets/js/content.js';
 const raw=JSON.parse(await readFile(new URL('../data/site.json',import.meta.url),'utf8'));
 test('climate badges and dry filters use reviewed month categories rather than negated or unrelated season words',()=>{
  const trips=validateContent(raw).honeymoon;
- const expectedDry=trips.filter(t=>/^(bali|pkg-bali-)/.test(t.id)).map(t=>t.id);
- assert.equal(expectedDry.length,6);
+ const expectedDry=trips.filter(t=>/^(bali|nhatrang|pkg-(bali|nhatrang)-)/.test(t.id)).map(t=>t.id);
+ assert.equal(expectedDry.length,12);
  assert.deepEqual(trips.filter(t=>climateBadgeInfo(t).dry).map(t=>t.id),expectedDry);
  const find=id=>climateBadgeInfo(trips.find(t=>t.id===id));
  assert.match(find('cebu').label,/전환기/);assert.match(find('bali').label,/건기/);
  assert.match(find('hawaii').label,/여름철/);assert.match(find('guam').label,/전환기/);
+ assert.match(find('nhatrang').label,/덥고 맑은/);assert.match(find('danang').label,/더위 유의/);
  const t=structuredClone(trips[0]);
  t.plan.climateSummary={month:6,category:'variable'};assert.match(climateBadgeInfo(t).label,/산발적 비/);
  t.plan.climate='우기라는 말과 건기라는 말이 있어도 분류를 추측하지 않음';t.plan.climateSummary=null;

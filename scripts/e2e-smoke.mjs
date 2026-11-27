@@ -253,8 +253,34 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main')?.dataset.renderedRoute === 'honeymoon' && !document.querySelector('.loading-state')`);
   console.log('E2E PASS 2/8: Home scroll diet, 2-group nav, Overflow menu, Couple Sync modal, Dark Theme persistence, Global Search OK');
 
-  // 3. Honeymoon Round 7+9: 3-tool compact strip + 3-way compare + diff toggle + best budget + matrix + recommender + compact video + selected actions + local calc + regional packing
+  // 3. Honeymoon Round 7+9+Guide: 4-destination spotlight guide + More Destinations drawer + 3-tool compact strip + 3-way compare + matrix + recommender + compact video + selected actions + local calc + regional packing
   await cdp.waitFor(`() => document.querySelectorAll('[data-trip-action="tripCompare"]').length >= 3`);
+  assert.equal(await cdp.eval(`document.querySelectorAll('.core-guide-tab').length`), 4, 'Core destination guide must show all 4 core regions (Cebu, Bali, Hawaii, Guam)');
+  await cdp.eval(`document.querySelector('[data-guide-tab="hawaii"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.core-guide-panel')?.dataset.guideRegion === 'hawaii'`);
+  await cdp.eval(`[...document.querySelectorAll('.core-dest-guide button')].find(b => b.textContent.includes('4곳 설명 한 번에 펼치기')).click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.core-guide-all-grid .core-guide-panel').length === 4`);
+  await cdp.eval(`[...document.querySelectorAll('.core-dest-guide button')].find(b => b.textContent.includes('선택 지역만 간결히 보기')).click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.core-guide-tab').length === 4`);
+
+  // Primary grid focuses strictly on core 4 regions; More Destinations (Nha Trang / Da Nang) lives collapsed in drawer
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('.travel-grid:not(.more-travel-grid) [data-trip-id="nhatrang"]'))`), false, 'Vietnam destinations must not mix into primary core grid');
+  assert.equal(await cdp.eval(`document.querySelector('.more-destinations-section')?.open`), false, 'More Destinations drawer must be collapsed by default');
+  await cdp.eval(`document.querySelector('.more-destinations-summary').click()`);
+  await cdp.waitFor(`() => document.querySelector('.more-destinations-section')?.open === true && document.querySelectorAll('.more-travel-grid .travel-card').length === 12`);
+  await cdp.eval(`document.querySelector('[data-more-region="nhatrang"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.more-travel-grid .travel-card').length === 6`);
+  await cdp.eval(`document.querySelector('[data-more-region="all"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.more-travel-grid .travel-card').length === 12`);
+  await cdp.eval(`document.querySelector('.more-destinations-summary').click()`);
+  await cdp.waitFor(`() => document.querySelector('.more-destinations-section')?.open === false`);
+
+  // Searching a non-core destination automatically expands More Destinations drawer
+  await cdp.eval(`(() => { const inp = document.querySelector('#trip-search'); inp.value = '나트랑'; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await cdp.waitFor(`() => document.querySelector('.more-destinations-section')?.open === true && document.querySelectorAll('.more-travel-grid .travel-card').length === 6`);
+  await cdp.eval(`(() => { const inp = document.querySelector('#trip-search'); inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.travel-grid:not(.more-travel-grid) .travel-card').length === 12`);
+
   assert.equal(await cdp.eval(`document.querySelectorAll('.honeymoon-tools-strip > details').length`), 3, 'Honeymoon tools strip must group 3 top collapsible panels');
   // Smart quick filters hide redundant 100%-matching chips (direct, longstay) and expose budget/semi brackets
   assert.equal(await cdp.eval(`Boolean(document.querySelector('[data-trip-filter="direct"]'))`), false, 'Redundant 100%-matching direct chip should be hidden');

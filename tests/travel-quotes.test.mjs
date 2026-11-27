@@ -8,15 +8,17 @@ const source=JSON.parse(await readFile(new URL('../data/site.json',import.meta.u
 const checked={
  bali:[2603400,1584721,'07:55','06-06','06-12'],
  hawaii:[2671800,2206721+983196,'17:45','06-06','06-12'],
- guam:[1450000,1658027+182383,'21:00','06-06','06-13']
+ guam:[1450000,1658027+182383,'21:00','06-06','06-13'],
+ nhatrang:[1610600,1435786,'07:25','06-06','06-12'],
+ danang:[1159000,830097,'22:30','06-06','06-13']
 };
-test('published FIT research matches verified quotes for Bali/Hawaii/Guam and honest date-specific search links for Cebu',()=>{
+test('published FIT research matches verified quotes for Bali/Hawaii/Guam/Nha Trang/Da Nang and honest date-specific search links for Cebu',()=>{
  const data=validateContent(source);
  const fitTrips=data.honeymoon.filter(t=>!t.id.startsWith('pkg-'));
- assert.deepEqual(fitTrips.map(t=>t.id),['cebu','bali','hawaii','guam']);
+ assert.deepEqual(fitTrips.map(t=>t.id),['cebu','bali','hawaii','guam','nhatrang','danang']);
  for(const trip of fitTrips){
   const p=trip.plan,q=p.quote;
-  const cin='06-06',cout=trip.id==='guam'?'06-13':'06-12';
+  const cin='06-06',cout=(trip.id==='guam'||trip.id==='danang')?'06-13':'06-12';
   assert.equal(p.stays.length,1);assert.equal(p.stays[0].checkIn,'2027-'+cin);assert.equal(p.stays[0].checkOut,'2027-'+cout);
   assert.equal(p.stays[0].nights,dateSpan('2027-'+cin,'2027-'+cout));
   const flight=new URL(p.references.find(r=>r.title.startsWith('날짜 지정 항공사')).url);
@@ -42,7 +44,7 @@ test('unknown costs, taxes and agency package planning allocations remain incomp
  const data=validateContent(source);
  const fitTrips=data.honeymoon.filter(t=>!t.id.startsWith('pkg-'));
  const pkgTrips=data.honeymoon.filter(t=>t.id.startsWith('pkg-'));
- assert.equal(pkgTrips.length,20);
+ assert.equal(pkgTrips.length,30);
  for(const trip of fitTrips){
   const q=trip.plan.quote;
   if(checked[trip.id]){
