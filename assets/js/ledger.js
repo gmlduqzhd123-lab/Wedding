@@ -536,6 +536,267 @@ export function syncGuestsFromCsv(existingList = [], incomingRecords = [], mode 
   return { nextList: list, addedCount, updatedCount: 0, skippedCount, overCap: list.length > 500 };
 }
 
+function normalizeGiftChannel(raw, fallback = '축의대(현금)') {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '').toLowerCase();
+  if (!s) return fallback;
+  if (s.includes('계좌') || s.includes('이체') || s.includes('송금') || s.includes('토스') || s.includes('카카오페이') || s.includes('입금')) return '계좌이체';
+  if (s.includes('현금') || s.includes('축의대') || s.includes('봉투')) return '축의대(현금)';
+  if (s.includes('모바일') || s.includes('선물') || s.includes('기타') || s.includes('화환')) return '모바일·기타';
+  return fallback;
+}
+
+function normalizeDoneFlag(raw) {
+  const s = unescapeExcelCell(raw).replace(/\s+/g, '').toLowerCase();
+  if (!s) return false;
+  if (s.includes('미완료') || s.includes('안함') || s === 'x' || s === 'n' || s === 'no' || s === 'false' || s === '0') return false;
+  if (s.includes('완료') || s === 'o' || s === 'y' || s === 'yes' || s === 'true' || s === '1' || s === '예' || s === '네') return true;
+  return false;
+}
+
+function parseGiftAmountToken(raw) {
+  const s = unescapeExcelCell(raw).replace(/,/g, '').replace(/\s+/g, '');
+  if (!s) return null;
+  const manMatch = s.match(/^(\d+(?:\.\d+)?)\s*만(?:원)?$/);
+  if (manMatch) {
+    const val = Math.round(Number(manMatch[1]) * 10000);
+    return Number.isSafeInteger(val) && val >= 0 && val <= 1000000000 ? val : null;
+  }
+  const wonMatch = s.match(/^(\d+)(?:원)?$/);
+  if (wonMatch) {
+    const val = Number.parseInt(wonMatch[1], 10);
+    return Number.isSafeInteger(val) && val >= 0 && val <= 1000000000 ? val : null;
+  }
+  return null;
+}
+
+export function parseGiftsCsv(csvText) {
+  const rows = parseCsvRows(csvText);
+  if (rows.length < 2) throw new Error('헤더 행과 최소 1건 이상의 축의금 행이 포함된 CSV 파일을 선택해 주세요.');
+  const headers = rows[0].map(h => unescapeExcelCell(h).replace(/\s+/g, '').toLowerCase());
+  const findCol = patterns => headers.findIndex(h => patterns.some(p => h === p || h.includes(p)));
+  const colName = findCol(['성함', '이름', '성명', '입금자', '하객', '보낸분', 'name']);
+  const colAmount = findCol(['축의금', '금액', '입금액', '금액(원)', '축의금(원)', 'amount']);
+  if (colName === -1) throw new Error('CSV 첫 행에 ‘성함’ 또는 ‘이름’ 열이 필요합니다.');
+  if (colAmount === -1) throw new Error('CSV 첫 행에 ‘축의금’ 또는 ‘금액’ 열이 필요합니다.');
+  const colSide = findCol(['구분', '양가', '어느측', '신랑신부', 'side']);
+  const colGroup = findCol(['관계', '분류', '그룹', '소속', 'group']);
+  const colChannel = findCol(['전달방식', '수령방식', '방식', '경로', '입금방식', 'channel']);
+  const colTickets = findCol(['식권', '식권매수', '식권(매)', 'ticket']);
+  const colReturn = findCol(['답례품', 'return']);
+  const colThank = findCol(['감사인사', '감사', 'thank']);
+  const colNote = findCol(['메모', '비고', '특이사항', 'note']);
+
+  const records = [];
+  const warnings = [];
+  let skipped = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = unescapeExcelCell(r[colName]).slice(0, 80);
+    const amount = parseGiftAmountToken(r[colAmount]);
+    if (!name) {
+      skipped++;
+      warnings.push(`${i + 1}행: 성함이 비어 있어 건너뛰었습니다.`);
+      continue;
+    }
+    if (amount === null) {
+      skipped++;
+      warnings.push(`${i + 1}행(${name}): 축의금 금액을 인식하지 못해 건너뛰었습니다.`);
+      continue;
+    }
+    const channel = colChannel >= 0 ? normalizeGiftChannel(r[colChannel], '축의대(현금)') : '축의대(현금)';
+    let mealTickets = channel === '계좌이체' ? 0 : 1;
+    if (colTickets >= 0 && unescapeExcelCell(r[colTickets]) !== '') {
+      const m = unescapeExcelCell(r[colTickets]).match(/\d+/);
+      mealTickets = m ? Math.min(20, Math.max(0, Number.parseInt(m[0], 10))) : 0;
+    }
+    const note = colNote >= 0 ? unescapeExcelCell(r[colNote]).slice(0, 300) : '';
+    records.push({
+      name,
+      side: colSide >= 0 ? normalizeGuestSide(r[colSide]) : '공통',
+      group: colGroup >= 0 ? normalizeGuestGroup(r[colGroup]) : '지인·기타',
+      channel,
+      amount,
+      mealTickets,
+      returnGiftDone: colReturn >= 0 ? normalizeDoneFlag(r[colReturn]) : false,
+      thankYouDone: colThank >= 0 ? normalizeDoneFlag(r[colThank]) : false,
+      ...(note ? { note } : {})
+    });
+  }
+
+  if (!records.length) throw new Error('가져올 수 있는 유효한 축의금 행이 없습니다.');
+  return { records, skipped, warnings };
+}
+
+export function parseQuickGiftText(rawText, { defaultSide = '신랑 측', defaultGroup = '친구', defaultChannel = '축의대(현금)' } = {}) {
+  const cleanedRaw = String(rawText || '').replace(/^\uFEFF/, '').trim();
+  if (!cleanedRaw) throw new Error('축의금 내역을 입력하거나 붙여넣어 주세요.');
+
+  const rawLines = cleanedRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const firstLine = rawLines[0] || '';
+  if (rawLines.length >= 2 && /[\t,]/.test(firstLine) && /(성함|이름|입금자|name)/i.test(firstLine) && /(축의금|금액|입금액|amount)/i.test(firstLine)) {
+    const csvCandidate = firstLine.includes('\t')
+      ? rawLines.map(line => line.split('\t').map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n')
+      : cleanedRaw;
+    return parseGiftsCsv(csvCandidate);
+  }
+
+  const safeSide = ['신랑 측', '신부 측', '공통'].includes(defaultSide) ? defaultSide : '신랑 측';
+  const safeGroup = ['가족·친척', '친구', '직장·동료', '지인·기타'].includes(defaultGroup) ? defaultGroup : '친구';
+  const safeChannel = ['축의대(현금)', '계좌이체', '모바일·기타'].includes(defaultChannel) ? defaultChannel : '축의대(현금)';
+
+  const records = [];
+  const warnings = [];
+  let skipped = 0;
+
+  rawLines.forEach((rawLine, idx) => {
+    let working = rawLine.replace(/^\s*(?:\d+[.)\]]|[-•·*▪︎□☑✅])\s*/, '').trim();
+    if (!working) return;
+
+    let side = safeSide;
+    let group = safeGroup;
+    let channel = safeChannel;
+    let mealTickets = null;
+    let returnGiftDone = false;
+    let thankYouDone = false;
+    let amount = null;
+    const notes = [];
+
+    // Pull out parenthetical pieces
+    working = working.replace(/\(([^)]+)\)/g, (_, inside) => {
+      notes.push(inside.trim());
+      return ' ';
+    }).trim();
+
+    // Extract explicit ticket count first so it never collides with amount
+    const pullTicket = str => str.replace(/식권\s*(\d+)\s*매?/g, (_, n) => {
+      mealTickets = Math.min(20, Math.max(0, Number.parseInt(n, 10)));
+      return ' ';
+    }).replace(/(\d+)\s*매/g, (_, n) => {
+      if (mealTickets === null) mealTickets = Math.min(20, Math.max(0, Number.parseInt(n, 10)));
+      return ' ';
+    });
+
+    working = pullTicket(working);
+    const cleanedNotes = notes.map(n => pullTicket(n));
+
+    // Extract amount from working line or notes
+    const pullAmount = str => {
+      if (amount !== null) return str;
+      const man = str.match(/(\d+(?:\.\d+)?)\s*만(?:원)?/);
+      if (man) {
+        const val = Math.round(Number(man[1]) * 10000);
+        if (Number.isSafeInteger(val) && val >= 0 && val <= 1000000000) {
+          amount = val;
+          return str.replace(man[0], ' ');
+        }
+      }
+      const wonNum = str.match(/(?:^|[\s:/,-])(\d{1,3}(?:,\d{3})+|\d{4,10})\s*원?(?=$|[\s:/,-])/);
+      if (wonNum) {
+        const val = Number.parseInt(wonNum[1].replace(/,/g, ''), 10);
+        if (Number.isSafeInteger(val) && val >= 0 && val <= 1000000000) {
+          amount = val;
+          return str.replace(wonNum[0], ' ');
+        }
+      }
+      return str;
+    };
+
+    working = pullAmount(working);
+    const afterAmtNotes = cleanedNotes.map(n => pullAmount(n));
+
+    const pullMeta = str => {
+      let rest = String(str || '').trim();
+      if (!rest) return '';
+      if (/신랑\s*측?/.test(rest)) { side = '신랑 측'; rest = rest.replace(/신랑\s*측?/g, ' '); }
+      else if (/신부\s*측?/.test(rest)) { side = '신부 측'; rest = rest.replace(/신부\s*측?/g, ' '); }
+      else if (/(?:^|\s)공통(?:\s|$)/.test(rest)) { side = '공통'; rest = rest.replace(/(?:^|\s)공통(?:\s|$)/g, ' '); }
+
+      if (/가족|친척|친지/.test(rest)) { group = '가족·친척'; rest = rest.replace(/가족(?:·?친척)?|친척|친지/g, ' '); }
+      else if (/직장|동료|회사/.test(rest)) { group = '직장·동료'; rest = rest.replace(/직장(?:·?동료)?|동료|회사/g, ' '); }
+      else if (/친구|동창|대학/.test(rest)) { group = '친구'; rest = rest.replace(/친구|동창|대학/g, ' '); }
+      else if (/지인|기타/.test(rest)) { group = '지인·기타'; rest = rest.replace(/지인(?:·?기타)?|기타/g, ' '); }
+
+      if (/계좌\s*이체|계좌|이체|송금|토스|카카오페이|입금/.test(rest)) { channel = '계좌이체'; rest = rest.replace(/계좌\s*이체|계좌|이체|송금|토스|카카오페이|입금/g, ' '); }
+      else if (/축의대|현금|봉투/.test(rest)) { channel = '축의대(현금)'; rest = rest.replace(/축의대(?:\(현금\))?|현금|봉투/g, ' '); }
+      else if (/모바일|선물|화환/.test(rest)) { channel = '모바일·기타'; rest = rest.replace(/모바일(?:·?기타)?|선물|화환/g, ' '); }
+
+      if (/답례품\s*완료/.test(rest)) { returnGiftDone = true; rest = rest.replace(/답례품\s*완료/g, ' '); }
+      if (/감사\s*(?:인사\s*)?완료/.test(rest)) { thankYouDone = true; rest = rest.replace(/감사\s*(?:인사\s*)?완료/g, ' '); }
+      return rest.replace(/[,\s]+/g, ' ').trim();
+    };
+
+    const segments = working.split(/\s*(?:[-–—/|]|,|\t)\s*/).map(s => s.trim()).filter(Boolean);
+    const headRaw = segments.shift() || '';
+    const headTokens = headRaw.split(/\s+/).filter(Boolean);
+    const nameTokens = [];
+    const inlineMeta = [];
+    for (let ti = 0; ti < headTokens.length; ti++) {
+      const tok = headTokens[ti];
+      if (ti > 0 && /^(?:신랑\s*측?|신부\s*측?|공통|가족|친척|친지|친구|동창|직장|동료|회사|지인|기타|계좌|이체|송금|토스|현금|축의대|봉투|모바일|선물)$/.test(tok)) {
+        inlineMeta.push(tok);
+      } else {
+        nameTokens.push(tok);
+      }
+    }
+    const name = nameTokens.join(' ').trim().slice(0, 80);
+    if (!name || amount === null) {
+      skipped++;
+      warnings.push(`${idx + 1}번째 줄: ${!name ? '성함' : '금액'}을 인식하지 못해 건너뛰었습니다. (예: 홍길동 10만)`);
+      return;
+    }
+
+    const finalNotes = [];
+    for (const chunk of [...inlineMeta, ...segments, ...afterAmtNotes]) {
+      const leftover = pullMeta(chunk);
+      if (leftover) finalNotes.push(leftover);
+    }
+    const note = finalNotes.join(' · ').slice(0, 300);
+
+    records.push({
+      name,
+      side,
+      group,
+      channel,
+      amount,
+      mealTickets: mealTickets !== null ? mealTickets : (channel === '계좌이체' ? 0 : 1),
+      returnGiftDone,
+      thankYouDone,
+      ...(note ? { note } : {})
+    });
+  });
+
+  if (!records.length) throw new Error('인식된 축의금 내역이 없습니다. ‘홍길동 10만’ 형식으로 입력해 주세요.');
+  return { records, skipped, warnings };
+}
+
+export function syncGiftsFromImport(existingList = [], incomingRecords = [], mode = 'skip', createId = () => 'gift-' + crypto.randomUUID().slice(0, 8)) {
+  const list = existingList.map(item => ({ ...item }));
+  if (mode === 'all') {
+    const additions = incomingRecords.map(rec => ({ id: createId(), ...rec }));
+    const nextList = [...list, ...additions];
+    return { nextList, addedCount: additions.length, skippedCount: 0, addedRecords: additions, overCap: nextList.length > 500 };
+  }
+  const keyOf = g => `${g.side}|${String(g.name || '').trim().toLocaleLowerCase()}|${g.channel}|${Number(g.amount || 0)}`;
+  const seen = new Set(list.map(keyOf));
+  let addedCount = 0;
+  let skippedCount = 0;
+  const addedRecords = [];
+  for (const rec of incomingRecords) {
+    const k = keyOf(rec);
+    if (seen.has(k)) {
+      skippedCount++;
+      continue;
+    }
+    seen.add(k);
+    const entry = { id: createId(), ...rec };
+    list.push(entry);
+    addedRecords.push(entry);
+    addedCount++;
+  }
+  return { nextList: list, addedCount, skippedCount, addedRecords, overCap: list.length > 500 };
+}
+
 export function buildThankYouMessage(gift = {}, invitation = {}, variant = 'attended') {
   const recipient = (gift.name || '').trim() || '귀하';
   const p1 = (invitation.partner1 || '').replace(/^신랑\s*/, '').trim();

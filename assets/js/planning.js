@@ -9,11 +9,14 @@ import {
   parseGuestsCsv,
   parseQuickGuestText,
   syncGuestsFromCsv,
+  parseGiftsCsv,
+  parseQuickGiftText,
+  syncGiftsFromImport,
   buildThankYouMessage,
   computeCashDenominations,
   estimateBanquetTables,
   crossCheckGuestsAndGifts
-} from './ledger.js?v=wedding-features-72';
+} from './ledger.js?v=wedding-features-73';
 
 export {
   guestListSummary,
@@ -26,6 +29,9 @@ export {
   parseGuestsCsv,
   parseQuickGuestText,
   syncGuestsFromCsv,
+  parseGiftsCsv,
+  parseQuickGiftText,
+  syncGiftsFromImport,
   buildThankYouMessage,
   computeCashDenominations,
   estimateBanquetTables,

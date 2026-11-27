@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-72';
-import { safeUrl, formatDate } from './content.js?v=wedding-features-72';
-import { StorageConflict } from './storage.js?v=wedding-features-72';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-72';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-72';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-73';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-73';
+import { StorageConflict } from './storage.js?v=wedding-features-73';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-73';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-73';
 
 const fieldSpecs = {
   invitation: [
@@ -553,10 +553,10 @@ export function openEditor(ctx, type, item = null) {
           ctx.toast('앨범 사진 목록을 비웠습니다.');
         }, 'text-button small') : null);
       previews.replaceChildren(...albumImages.map((src, index) => {
-        const move = target => { [albumImages[index], albumImages[target]] = [albumImages[target], albumImages[index]]; draw(target, '앞으로'); };
-        const previous = button('앞으로', () => move(index - 1), 'button quiet');
+        const move = (target, label) => { [albumImages[index], albumImages[target]] = [albumImages[target], albumImages[index]]; draw(target, label); };
+        const previous = button('앞으로', () => move(index - 1, '앞으로'), 'button quiet');
         previous.disabled = index === 0;
-        const next = button('뒤로', () => move(index + 1), 'button quiet');
+        const next = button('뒤로', () => move(index + 1, '뒤로'), 'button quiet');
         next.disabled = index === albumImages.length - 1;
         return E('div', { class: 'photo-edit-card' },
           image(src, `사진 ${index + 1}`),

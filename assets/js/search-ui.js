@@ -1,17 +1,29 @@
-import { E, button } from './dom.js?v=wedding-features-72';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-72';
+import { E, button } from './dom.js?v=wedding-features-73';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-73';
+
+const BGM_SLOT_LABELS = {
+  'bgm-pre': '식전영상 · 하객 입장',
+  'bgm-candle': 'STEP 03 · 화촉점화',
+  'bgm-groom': 'STEP 04 · 신랑 입장',
+  'bgm-bride': 'STEP 05 · 신부 입장',
+  'bgm-vow': 'STEP 07 · 혼인서약서',
+  'bgm-speech': 'STEP 08 · 성혼선언·축사',
+  'bgm-parents': 'STEP 09 · 양가·내빈 인사',
+  'bgm-song': 'STEP 10 · 축가',
+  'bgm-march': 'STEP 11 · 신랑·신부 행진'
+};
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },
   { id: 'nav-invitation', category: '메뉴', icon: '💌', title: '모바일 청첩장', subtitle: '예식 일시·오시는 길·초대 문구·QR·이미지 저장', keywords: '청첩장 초대장 계좌 혼주 오시는길 지도 약도 qr 공유 rsvp 순천아모르', route: 'invitation' },
   { id: 'nav-story', category: '메뉴', icon: '📖', title: '우리의 일대기', subtitle: '첫 만남부터 결혼까지 타임라인 기록', keywords: '일대기 스토리 이야기 연애 기록', route: 'story' },
   { id: 'nav-albums', category: '메뉴', icon: '📷', title: '포토 앨범', subtitle: '웨딩 사진 앨범·대표 커버 지정', keywords: '포토 앨범 사진 갤러리 대표 커버 웨딩사진', route: 'albums' },
-  { id: 'nav-studios', category: '스튜디오', icon: '📸', title: '라크마 스튜디오 촬영 안내 (2027-02-03 12:00)', subtitle: '루나메이크업(천변좌로 432) → 중앙로 117 · 헬퍼비 현금 25만 원 · 위약금', keywords: '스튜디오 라크마 lacma 촬영 루나메이크업 헬퍼비 25만원 현금 위약금 야간촬영 누브라 준비물 062-714-1970', route: 'studios' },
-  { id: 'nav-honeymoon', category: '메뉴', icon: '✈️', title: '신혼여행 핵심 4곳 가이드 · 후보 비교 (세부·발리·하와이·괌 + 더보기)', subtitle: '세부·발리·하와이·괌 24곳 + 더보기(나트랑·다낭) 12곳 · 출국 짐', keywords: '신혼여행 허니문 세부 막탄 발리 하와이 괌 나트랑 다낭 호이안 하나투어 모두투어 노랑풍선 여행이지 짐 체크리스트 출국', route: 'honeymoon' },
-  { id: 'nav-ceremony-rundown', category: '본식', icon: '💍', title: '본식 식순 · 사회자 대본 · 서약서/선언문', subtitle: '순천아모르 12단계 주례 없는 식순 · 라이브 큐시트', keywords: '본식 식순 사회자 대본 혼인서약서 성혼선언문 큐시트 축가 연회홀 아모르', route: 'ceremony', subTab: 'rundown' },
-  { id: 'nav-ceremony-guests', category: '본식', icon: '👥', title: '하객 명단 · RSVP CSV 동기화', subtitle: '청첩장 발송·참석 확정·식권 집계·축의대 명부 인쇄', keywords: '하객 명단 rsvp csv 구글폼 청첩장 발송 식권 예상인원 인쇄', route: 'ceremony', subTab: 'guests' },
-  { id: 'nav-ceremony-gifts', category: '본식', icon: '⚡', title: '축의금 장부 · 축의대 빠른 연속 입력', subtitle: '현금/계좌 축의금·식권·답례품·감사문자 정산', keywords: '축의금 장부 축의대 빠른입력 정산 답례품 감사문자 감사인사 식권', route: 'ceremony', subTab: 'gifts' },
-  { id: 'nav-ceremony-dayops', category: '본식', icon: '💼', title: '본식 당일 역할 · 현금 봉투 · 원판 순서', subtitle: '축의대·가방순이·봉투 준비·현장용 A4 1장 인쇄', keywords: '당일 역할 분담 가방순이 현금 봉투 원판 촬영 순서표 운영표 a4', route: 'ceremony', subTab: 'dayops' },
+  { id: 'nav-studios', category: '스튜디오', icon: '📸', title: '라크마 스튜디오 촬영 안내 (2027-02-03 12:00)', subtitle: '루나메이크업(천변좌로 432) → 중앙로 117 · 헬퍼비 현금 25만 원 · 착장 시안 · A4 인쇄', keywords: '스튜디오 라크마 lacma 촬영 루나메이크업 헬퍼비 25만원 현금 위약금 야간촬영 누브라 준비물 착장 시안 a4 인쇄 062-714-1970', route: 'studios' },
+  { id: 'nav-honeymoon', category: '메뉴', icon: '✈️', title: '신혼여행 핵심 4곳 가이드 · 후보 비교 (세부·발리·하와이·괌 + 더보기)', subtitle: '세부·발리·하와이·괌 24곳 + 더보기(나트랑·다낭) 12곳 · 실견적 · 출국 짐', keywords: '신혼여행 허니문 세부 막탄 발리 하와이 괌 나트랑 다낭 호이안 하나투어 모두투어 노랑풍선 여행이지 실견적 짐 체크리스트 출국', route: 'honeymoon' },
+  { id: 'nav-ceremony-rundown', category: '본식', icon: '💍', title: '본식 식순 · 사회자 대본 · BGM 큐시트 · 서약서', subtitle: '순천아모르 12단계 주례 없는 식순 · 라이브 큐시트 · 9구간 BGM', keywords: '본식 식순 사회자 대본 혼인서약서 성혼선언문 큐시트 축가 연회홀 아모르 bgm 음향', route: 'ceremony', subTab: 'rundown' },
+  { id: 'nav-ceremony-guests', category: '본식', icon: '👥', title: '하객 명단 · 카톡 붙여넣기·CSV 일괄 등록', subtitle: '청첩장 연속 발송·참석 확정·식권 집계·축의대 명부 인쇄', keywords: '하객 명단 rsvp csv 구글폼 카톡 붙여넣기 일괄 등록 청첩장 발송 식권 예상인원 인쇄', route: 'ceremony', subTab: 'guests' },
+  { id: 'nav-ceremony-gifts', category: '본식', icon: '⚡', title: '축의금 장부 · 축의대 빠른 입력·내역 일괄 등록', subtitle: '현금/계좌 축의금·계좌내역 붙여넣기·CSV·식권·답례품·연속 감사문자', keywords: '축의금 장부 축의대 빠른입력 일괄 등록 계좌내역 붙여넣기 csv 정산 답례품 감사문자 감사인사 식권', route: 'ceremony', subTab: 'gifts' },
+  { id: 'nav-ceremony-dayops', category: '본식', icon: '💼', title: '본식 당일 역할 · 현금 봉투 · 원판 순서', subtitle: '축의대·가방순이·봉투 준비·현장용 A4 1장 인쇄', keywords: '당일 역할 분담 가방순이 현금 봉투 원판 촬영 순서표 운영표 a4 인쇄', route: 'ceremony', subTab: 'dayops' },
   { id: 'nav-prenatal-hospital', category: '산전검사', icon: '🏥', title: '순천 현대여성아동병원 안내', subtitle: '조례동 · 061-720-1111 · 진료시간·예약·보건소 연계', keywords: '산전검사 현대여성아동병원 순천 조례동 061-720-1111 산부인과 예약', route: 'prenatal', subTab: 'hospital' },
   { id: 'nav-prenatal-subsidy', category: '산전검사', icon: '💰', title: '산전검사 국가·순천시 지원금 & 마감일 계산기', subtitle: '여성 13만 · 남성 5만 · 순천시 각 4만 · 엽산제 · e보건소', keywords: '산전검사 지원금 e보건소 임신 사전건강관리 13만원 5만원 4만원 엽산제 마감일 청구', route: 'prenatal', subTab: 'subsidy' },
   { id: 'nav-prenatal-guide', category: '산전검사', icon: '🩺', title: '산전검사 항목 & 준비 체크리스트', subtitle: 'AMH·초음파·정액검사·준비물 체크', keywords: '산전검사 항목 amh 초음파 정액검사 체크리스트 준비물', route: 'prenatal', subTab: 'guide' },
@@ -23,7 +35,7 @@ const STATIC_COMMANDS = [
   { id: 'act-quick-gift', category: '빠른 실행', icon: '⚡', title: '축의대 현장 빠른 연속 입력 바로 열기', subtitle: '양가·방식 고정, 1-tap 금액·식권 연속 접수', keywords: '축의대 빠른 입력 연속 접수 현장 당일', route: 'ceremony', subTab: 'gifts', action: 'quick-gift' },
   { id: 'act-couple-sync', category: '빠른 실행', icon: '💑', title: '신랑·신부 3초 기록 동기화 (카톡 복붙 코드)', subtitle: '하객·축의금·예산·혼수·시안·BGM·실견적을 두 기기 간 즉시 병합', keywords: '동기화 신랑 신부 카톡 백업 합치기 코드 공유 sync', route: 'home', action: 'couple-sync' },
   { id: 'act-shoot-day', category: '빠른 실행', icon: '📸', title: '라크마 촬영 당일 현장 브리핑 모드', subtitle: '루나메이크업→중앙로 117 동선·현금 25만·착장별 시안 카드·타임테이블', keywords: '촬영 당일 현장 브리핑 라크마 루나메이크업 착장 시안 타임테이블', route: 'studios', action: 'shoot-day' },
-  { id: 'act-wedding-day', category: '빠른 실행', icon: '💍', title: '본식 당일 현장 통합 모드 (큐시트·축의대·봉투·원판)', subtitle: '화면 켜짐 유지 + 본식 핵심 현장 도구 1-tap 전환', keywords: '본식 당일 현장 통합 스위처 큐시트 봉투 원판 bgm 브리핑', route: 'ceremony', action: 'wedding-day' }
+  { id: 'act-wedding-day', category: '빠른 실행', icon: '💍', title: '본식 당일 현장 통합 모드 (큐시트·축의대·봉투·원판·BGM)', subtitle: '화면 켜짐 유지 + 본식 핵심 현장 도구 1-tap 전환', keywords: '본식 당일 현장 통합 스위처 큐시트 봉투 원판 bgm 음향 브리핑', route: 'ceremony', action: 'wedding-day' }
 ];
 
 export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio = null, studios = [] } = {}) {
@@ -94,13 +106,14 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
   // Private ceremony BGM cue sheet entries
   for (const [slotId, entry] of Object.entries(prefs?.ceremonyBgm || {})) {
     if (!entry?.song && !entry?.cue) continue;
-    const hay = `${entry.song || ''} ${entry.cue || ''} 본식 bgm 음향 큐시트 ${slotId}`;
+    const slotLabel = BGM_SLOT_LABELS[slotId] || slotId;
+    const hay = `${slotLabel} ${entry.song || ''} ${entry.cue || ''} 본식 bgm 음향 큐시트 ${slotId}`;
     if (matches(hay)) {
       push({
         id: `ceremony-bgm-${slotId}`,
         category: '본식 BGM',
         icon: '🎼',
-        title: entry.song || '선곡 메모',
+        title: entry.song ? `${slotLabel} — ${entry.song}` : slotLabel,
         subtitle: `${entry.ready ? '음원 준비 완료' : '음원 준비 중'}${entry.cue ? ` · ${entry.cue}` : ''}`,
         route: 'ceremony',
         subTab: 'rundown'

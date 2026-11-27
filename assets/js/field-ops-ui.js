@@ -1,8 +1,8 @@
-import { E, button, externalLink } from './dom.js?v=wedding-features-72';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-72';
-import { computeCashDenominations } from './planning.js?v=wedding-features-72';
-import { DEFAULT_PHOTO_ORDER, readPhotoCallChecked, writePhotoCallChecked } from './wedding-day-ui.js?v=wedding-features-72';
-import { CEREMONY_BGM_SLOTS, buildBgmCueSheetText } from './ceremony-ui.js?v=wedding-features-72';
+import { E, button, externalLink } from './dom.js?v=wedding-features-73';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-73';
+import { computeCashDenominations } from './planning.js?v=wedding-features-73';
+import { DEFAULT_PHOTO_ORDER, readPhotoCallChecked, writePhotoCallChecked } from './wedding-day-ui.js?v=wedding-features-73';
+import { CEREMONY_BGM_SLOTS, buildBgmCueSheetText } from './ceremony-ui.js?v=wedding-features-73';
 
 const DEFAULT_PHOTO_LINES = DEFAULT_PHOTO_ORDER.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 

@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-72';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-72';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-72';
-import { quoteReview } from './travel.js?v=wedding-features-72';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-72';
+import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-73';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-73';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-73';
+import { quoteReview } from './travel.js?v=wedding-features-73';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-73';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -16,10 +16,10 @@ import {
   buildBudgetSummaryText,
   cashFlowSettlementSummary,
   buildCashFlowSummaryText
-} from './planning.js?v=wedding-features-72';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-72';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-72';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-72';
+} from './planning.js?v=wedding-features-73';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-73';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-73';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-73';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, focusHomeSearch };
 
@@ -28,13 +28,30 @@ export function setTipsSubTab(tab) {
   if (['tips', 'budget', 'schedule', 'home', 'benefits'].includes(tab)) tipsSubTab = tab;
 }
 
+export const CASHFLOW_RATIO_KEY = 'wedding:v1:cashFlowRatio';
+export function readCashFlowRatio() {
+  try {
+    const raw = localStorage.getItem(CASHFLOW_RATIO_KEY);
+    if (raw === null) return 50;
+    const n = Number.parseInt(raw, 10);
+    return Number.isInteger(n) && n >= 0 && n <= 100 ? n : 50;
+  } catch {
+    return 50;
+  }
+}
+export function writeCashFlowRatio(ratio) {
+  const safe = Math.max(0, Math.min(100, Math.round(Number(ratio) || 0)));
+  try { localStorage.setItem(CASHFLOW_RATIO_KEY, String(safe)); } catch {}
+  return safe;
+}
+
 let tipFilter = '';
 let tipCategory = 'all';
 let tipFavoritesOnly = false;
 let withTipNoteOnly = false;
 let vendorCatFilter = 'all';
 let vendorPendingOnly = false;
-let cashFlowGroomRatio = 50;
+let cashFlowGroomRatio = readCashFlowRatio();
 let redrawTips = () => {};
 
 export function focusTipSearch(query = '') {
@@ -542,8 +559,8 @@ function renderCashFlowBoard(ctx) {
     'data-split-preset': String(val),
     'aria-pressed': String(cashFlowGroomRatio === val),
     onclick: () => {
-      cashFlowGroomRatio = val;
-      slider.value = String(val);
+      cashFlowGroomRatio = writeCashFlowRatio(val);
+      slider.value = String(cashFlowGroomRatio);
       updateSplitView();
     }
   }, `${val}:${100 - val}`));
@@ -576,7 +593,7 @@ function renderCashFlowBoard(ctx) {
   };
 
   slider.addEventListener('input', () => {
-    cashFlowGroomRatio = Number(slider.value);
+    cashFlowGroomRatio = writeCashFlowRatio(Number(slider.value));
     updateSplitView();
   });
   updateSplitView();

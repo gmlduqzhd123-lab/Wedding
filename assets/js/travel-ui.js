@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-72';
-import { safeUrl, validDate } from './content.js?v=wedding-features-72';
-import { pruneContentPreferences } from './preferences.js?v=wedding-features-72';
-import { scheduleCalendar } from './calendar.js?v=wedding-features-72';
+import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-73';
+import { safeUrl, validDate } from './content.js?v=wedding-features-73';
+import { pruneContentPreferences } from './preferences.js?v=wedding-features-73';
+import { scheduleCalendar } from './calendar.js?v=wedding-features-73';
 import {
   CORE_REGION_KEYS,
   MORE_DESTINATION_NOTES,
@@ -24,7 +24,7 @@ import {
   isSemiPackageTrip,
   buildTripComparisonText,
   buildSelectedTripSummaryText
-} from './travel.js?v=wedding-features-72';
+} from './travel.js?v=wedding-features-73';
 import {
   isPackingExpanded,
   setPackingExpanded,
@@ -34,7 +34,7 @@ import {
   renderTripRecommenderSection,
   renderLocalSpendingSimulator,
   renderHoneymoonPackingList
-} from './travel-tools-ui.js?v=wedding-features-72';
+} from './travel-tools-ui.js?v=wedding-features-73';
 
 export { tripFlightBadge };
 

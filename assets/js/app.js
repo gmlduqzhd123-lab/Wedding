@@ -1,5 +1,5 @@
-import { parseContent, validateContent, formatDate, weddingDday, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-72';
-import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-72';
+import { parseContent, validateContent, formatDate, weddingDday, MAX_IMPORT_BYTES } from './content.js?v=wedding-features-73';
+import { $, E, S, button, linkButton, externalLink, image, formatPartner } from './dom.js?v=wedding-features-73';
 import {
   readBackupMeta,
   writeBackupMeta,
@@ -11,13 +11,13 @@ import {
   flashCopiedButton,
   copyText,
   initPwaInstall
-} from './ui-shell.js?v=wedding-features-72';
-import { createShellEffects } from './shell-effects.js?v=wedding-features-72';
-import { stopInvitationBgm } from './bgm.js?v=wedding-features-72';
-import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-72';
-import { renderInvitationView } from './invitation-ui.js?v=wedding-features-72';
-import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView, focusStorySearch } from './story-album-ui.js?v=wedding-features-72';
-import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-72';
+} from './ui-shell.js?v=wedding-features-73';
+import { createShellEffects } from './shell-effects.js?v=wedding-features-73';
+import { stopInvitationBgm } from './bgm.js?v=wedding-features-73';
+import { renderBotanicalLeaf } from './invitation-card.js?v=wedding-features-73';
+import { renderInvitationView } from './invitation-ui.js?v=wedding-features-73';
+import { sortedStories as sortStoryRecords, renderStoriesView, renderAlbumsView, focusStorySearch } from './story-album-ui.js?v=wedding-features-73';
+import { openPhotoViewer } from './photo-viewer.js?v=wedding-features-73';
 
 const main = $('#main'), dialog = $('#editor-dialog'), editor = $('#editor-body');
 const DRAFT_KEY = 'wedding:v1:draft', PREF_KEY = 'wedding:v1:preferences';
@@ -44,20 +44,20 @@ const modulePromises = {};
 const moduleErrors = {};
 const pendingSubTabs = { ceremony: null, tips: null, prenatal: null };
 const MODULE_LOADERS = {
-  preferences: () => import('./preferences.js?v=wedding-features-72'),
-  storage: () => import('./storage.js?v=wedding-features-72'),
-  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-72'),
-  manager: () => import('./manager-ui.js?v=wedding-features-72'),
-  studios: () => import('./studio-ui.js?v=wedding-features-72'),
-  honeymoon: () => import('./travel-ui.js?v=wedding-features-72'),
-  ceremony: () => import('./ceremony-ui.js?v=wedding-features-72'),
-  prenatal: () => import('./prenatal-ui.js?v=wedding-features-72'),
-  tips: () => import('./planning-ui.js?v=wedding-features-72'),
-  editor: () => import('./editor-ui.js?v=wedding-features-72'),
-  search: () => import('./search-ui.js?v=wedding-features-72'),
-  qrcode: () => import('./qrcode.js?v=wedding-features-72'),
-  coupleSync: () => import('./couple-sync-ui.js?v=wedding-features-72'),
-  fieldOps: () => import('./field-ops-ui.js?v=wedding-features-72')
+  preferences: () => import('./preferences.js?v=wedding-features-73'),
+  storage: () => import('./storage.js?v=wedding-features-73'),
+  homeDashboard: () => import('./home-dashboard-ui.js?v=wedding-features-73'),
+  manager: () => import('./manager-ui.js?v=wedding-features-73'),
+  studios: () => import('./studio-ui.js?v=wedding-features-73'),
+  honeymoon: () => import('./travel-ui.js?v=wedding-features-73'),
+  ceremony: () => import('./ceremony-ui.js?v=wedding-features-73'),
+  prenatal: () => import('./prenatal-ui.js?v=wedding-features-73'),
+  tips: () => import('./planning-ui.js?v=wedding-features-73'),
+  editor: () => import('./editor-ui.js?v=wedding-features-73'),
+  search: () => import('./search-ui.js?v=wedding-features-73'),
+  qrcode: () => import('./qrcode.js?v=wedding-features-73'),
+  coupleSync: () => import('./couple-sync-ui.js?v=wedding-features-73'),
+  fieldOps: () => import('./field-ops-ui.js?v=wedding-features-73')
 };
 
 function loadModule(key) {
@@ -1238,7 +1238,7 @@ function registerAppServiceWorker() {
     reloading = true;
     location.reload();
   });
-  navigator.serviceWorker.register('./sw.js?v=wedding-features-72')
+  navigator.serviceWorker.register('./sw.js?v=wedding-features-73')
     .then(reg => {
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
       reg.addEventListener('updatefound', () => {

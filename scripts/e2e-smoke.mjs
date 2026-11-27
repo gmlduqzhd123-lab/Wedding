@@ -374,9 +374,11 @@ try {
   assert(donutCenter && donutCenter.includes('2,000만'), `Expected donut center 2,000만, got: ${donutCenter}`);
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.wedding-budget-calc button')].some(b => b.textContent.includes('예산 요약 복사'))`), true, 'Budget summary copy button must render');
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.wedding-budget-calc button')].some(b => b.textContent.includes('CSV 내보내기'))`), true, 'Budget CSV export button must render');
-  // Round 11: Cash-flow & couple split board
+  // Round 11 + v73: Cash-flow & couple split board + localStorage persistence across reload
   assert.equal(await cdp.eval(`Boolean(document.querySelector('.cashflow-board')) && document.querySelectorAll('.cashflow-table tbody tr').length === 6`), true, 'Cash-flow board must show all 6 categories');
   await cdp.eval(`document.querySelector('[data-split-preset="60"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.cashflow-split-result')?.innerText.includes('(60%)') && document.querySelector('.cashflow-split-result')?.innerText.includes('(40%)') && localStorage.getItem('wedding:v1:cashFlowRatio') === '60'`);
+  await reload();
   await cdp.waitFor(`() => document.querySelector('.cashflow-split-result')?.innerText.includes('(60%)') && document.querySelector('.cashflow-split-result')?.innerText.includes('(40%)')`);
 
   await cdp.eval(`location.hash = '#/tips/schedule'`);
@@ -525,13 +527,27 @@ try {
   await cdp.waitFor(`() => !document.querySelector('#toast').hidden && Boolean(document.querySelector('.toast-undo-btn')) && !document.querySelector('#main').innerText.includes('테스트하객')`);
   await cdp.eval(`document.querySelector('.toast-undo-btn').click()`);
   await cdp.waitFor(`() => document.querySelector('#main').innerText.includes('테스트하객')`);
-  console.log('E2E PASS 5/8: Live MC cue sheet, tablist keyboard nav, RSVP auto-sync, banquet tables & cross-check, Batch Thank-You, Undo OK');
+
+  // v73: Bulk gift paste import (KakaoTalk / bank transfer text) + guest RSVP auto-sync
+  await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('내역·CSV 일괄 등록')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#gift-bulk-text'))`);
+  await cdp.eval(`(() => {
+    const ta = document.querySelector('#gift-bulk-text');
+    ta.value = '김지훈 10만\\n최수진 50,000 계좌';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.csv-preview-table tbody tr').length === 2 && document.querySelector('#dialog-actions [type="submit"]')?.textContent.includes('150,000원')`);
+  await cdp.eval(`document.querySelector('#dialog-actions [type="submit"]').click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main').innerText.includes('김지훈') && document.querySelector('#main').innerText.includes('최수진')`);
+  const syncedBulkRsvp = await cdp.eval(`JSON.parse(localStorage.getItem('wedding:v1:preferences') || '{}').guestList?.find(g => g.name === '김지훈')?.rsvp`);
+  assert.equal(syncedBulkRsvp, '참석', `Expected bulk gift import to auto-sync 김지훈 RSVP to 참석, got: ${syncedBulkRsvp}`);
+  console.log('E2E PASS 5/8: Live MC cue sheet, tablist keyboard nav, bulk guest/gift paste, RSVP auto-sync, banquet tables, Batch Thank-You, Undo OK');
 
   // 6. Round 4 cross-links: Budget Net Cost Settlement, Day Ops Cash Denominations & Photo Call Mode, 30-Studio Archive
   await cdp.eval(`location.hash = '#/tips/budget'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.budget-net-settlement'))`);
   const netText = await cdp.eval(`document.querySelector('.budget-net-settlement')?.innerText || ''`);
-  assert(netText.includes('100,000원') && netText.includes('13,900,000원'), `Expected net cost settlement card to reflect 14M - 100k = 13.9M, got: ${netText}`);
+  assert(netText.includes('250,000원') && netText.includes('13,750,000원'), `Expected net cost settlement card to reflect 14M - 250k = 13.75M, got: ${netText}`);
 
   await cdp.eval(`location.hash = '#/ceremony/dayops'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#dayops-title'))`);

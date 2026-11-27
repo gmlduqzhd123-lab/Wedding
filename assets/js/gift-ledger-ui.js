@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-72';
-import { formatDate } from './content.js?v=wedding-features-72';
-import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-72';
-import { giftLedgerSummary, giftsToCsv, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-72';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-72';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-73';
+import { formatDate } from './content.js?v=wedding-features-73';
+import { GUEST_SIDES, GUEST_GROUPS, GIFT_CHANNELS } from './preferences.js?v=wedding-features-73';
+import { giftLedgerSummary, giftsToCsv, parseGiftsCsv, parseQuickGiftText, syncGiftsFromImport, buildThankYouMessage, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-73';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-73';
 
 let giftSideFilter = 'all';
 let giftChannelFilter = 'all';
@@ -570,6 +570,236 @@ export function openQuickGiftEntryModal(ctx) {
   }
 }
 
+export function openGiftImportModal(ctx) {
+  if (ctx.isGuestMode()) return;
+  const form = E('form', { class: 'editor-form' });
+  let importTab = 'paste';
+
+  const defaultSideSel = E('select', { id: 'gift-bulk-side' }, GUEST_SIDES.map(v => E('option', { value: v }, v)));
+  defaultSideSel.value = quickEntrySide;
+  const defaultGroupSel = E('select', { id: 'gift-bulk-group' }, GUEST_GROUPS.map(v => E('option', { value: v }, v)));
+  defaultGroupSel.value = '친구';
+  const defaultChannelSel = E('select', { id: 'gift-bulk-channel' }, GIFT_CHANNELS.map(v => E('option', { value: v }, v)));
+  defaultChannelSel.value = quickEntryChannel;
+
+  const bulkTextInput = E('textarea', {
+    id: 'gift-bulk-text',
+    rows: '6',
+    placeholder: '한 줄에 한 건씩 붙여넣어 주세요 (축의록 메모·계좌이체 내역·엑셀 표 복사 모두 가능)\n예:\n홍길동 10만\n김영희 50,000 계좌\n박민수 (신부측 직장, 20만원, 식권2)\n이철수 15만 - 부부 동반'
+  });
+  const fileInput = E('input', { type: 'file', accept: '.csv,text/csv', class: 'file-input', id: 'gift-csv-file', 'aria-label': '축의금 장부 CSV 파일 선택' });
+  const parseErrorEl = E('p', { class: 'small muted', role: 'status', 'aria-live': 'polite' });
+  const previewWrap = E('div', { class: 'csv-import-preview', 'aria-live': 'polite' });
+
+  const modeSkipRadio = E('input', { type: 'radio', name: 'gift-import-mode', value: 'skip', id: 'gift-mode-skip', checked: true });
+  const modeAllRadio = E('input', { type: 'radio', name: 'gift-import-mode', value: 'all', id: 'gift-mode-all' });
+  const syncRsvpCheck = E('input', { type: 'checkbox', id: 'gift-import-sync-rsvp' });
+  syncRsvpCheck.checked = true;
+
+  const modeWrap = E('div', { class: 'pref-restore-modes', hidden: true },
+    E('label', { class: 'check-label', for: modeSkipRadio.id }, modeSkipRadio, '같은 양가·성함·방식·금액 중복 건너뛰고 신규만 추가 (권장)'),
+    E('label', { class: 'check-label', for: modeAllRadio.id }, modeAllRadio, '중복 포함 전체 추가'),
+    E('label', { class: 'check-label', for: syncRsvpCheck.id }, syncRsvpCheck, '기존 하객 명단에 같은 이름이 있으면 참석(RSVP) 상태로 자동 반영'));
+
+  const submit = E('button', { class: 'button', type: 'submit', disabled: true }, '축의금 장부에 가져오기');
+  let parsed = null;
+  let saving = false;
+
+  const selectedMode = () => (modeAllRadio.checked ? 'all' : 'skip');
+  const computeSync = () => (parsed ? syncGiftsFromImport(ctx.getPrefs().giftLedger || [], parsed.records, selectedMode()) : null);
+
+  const renderPreview = () => {
+    if (!parsed) {
+      previewWrap.replaceChildren();
+      modeWrap.hidden = true;
+      submit.disabled = true;
+      submit.textContent = '축의금 장부에 가져오기';
+      return;
+    }
+    const plan = computeSync();
+    const totalAmt = plan.addedRecords.reduce((s, r) => s + Number(r.amount || 0), 0);
+    modeWrap.hidden = false;
+    submit.disabled = saving || plan.addedCount === 0 || plan.overCap;
+    submit.textContent = plan.addedCount > 0 ? `${plan.addedCount}건 (${won(totalAmt)}) 일괄 등록` : '추가할 신규 내역 없음';
+
+    const headRows = parsed.records.slice(0, 8);
+    previewWrap.replaceChildren(...[
+      E('p', { class: 'form-note' + (plan.overCap ? ' warning' : '') },
+        `총 ${parsed.records.length}건 인식${parsed.skipped ? ` (건너뜀 ${parsed.skipped}건)` : ''} → ` +
+        `신규 추가 ${plan.addedCount}건 (${won(totalAmt)})` +
+        `${plan.skippedCount ? ` · 중복 제외 ${plan.skippedCount}건` : ''} (반영 후 총 ${plan.nextList.length}/500건)` +
+        (plan.overCap ? '\n축의금 장부는 최대 500건까지 보관할 수 있습니다.' : '')),
+      parsed.warnings.length ? E('p', { class: 'small muted' }, `참고 안내: ${parsed.warnings.slice(0, 3).join(' / ')}${parsed.warnings.length > 3 ? ` 외 ${parsed.warnings.length - 3}건` : ''}`) : null,
+      E('div', { class: 'table-scroll' },
+        E('table', { class: 'csv-preview-table' },
+          E('thead', {}, E('tr', {}, ['구분', '관계', '성함', '방식', '금액', '식권'].map(h => E('th', { scope: 'col' }, h)))),
+          E('tbody', {}, headRows.map(r => E('tr', {},
+            E('td', {}, r.side),
+            E('td', {}, r.group),
+            E('td', {}, r.name),
+            E('td', {}, r.channel),
+            E('td', {}, won(r.amount)),
+            E('td', {}, `${r.mealTickets}매`)))))),
+      parsed.records.length > headRows.length ? E('p', { class: 'small muted' }, `… 외 ${parsed.records.length - headRows.length}건 더 있습니다.`) : null
+    ].filter(Boolean));
+  };
+
+  const reparsePaste = () => {
+    const raw = bulkTextInput.value.trim();
+    if (!raw) {
+      parsed = null;
+      parseErrorEl.textContent = '';
+      renderPreview();
+      return;
+    }
+    try {
+      parsed = parseQuickGiftText(raw, {
+        defaultSide: defaultSideSel.value,
+        defaultGroup: defaultGroupSel.value,
+        defaultChannel: defaultChannelSel.value
+      });
+      parseErrorEl.textContent = '';
+      renderPreview();
+    } catch (error) {
+      parsed = null;
+      parseErrorEl.textContent = error.message || '축의금 내역을 인식하지 못했습니다.';
+      renderPreview();
+    }
+  };
+
+  bulkTextInput.addEventListener('input', reparsePaste);
+  defaultSideSel.addEventListener('change', reparsePaste);
+  defaultGroupSel.addEventListener('change', reparsePaste);
+  defaultChannelSel.addEventListener('change', reparsePaste);
+  modeSkipRadio.addEventListener('change', renderPreview);
+  modeAllRadio.addEventListener('change', renderPreview);
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) { parsed = null; renderPreview(); return; }
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error('CSV 파일은 2MB 이하로 선택해 주세요.');
+      const text = await file.text();
+      parsed = parseGiftsCsv(text);
+      parseErrorEl.textContent = '';
+      renderPreview();
+    } catch (error) {
+      parsed = null;
+      parseErrorEl.textContent = error.message || 'CSV 파일을 읽지 못했습니다.';
+      renderPreview();
+      ctx.toast(error.message || 'CSV 파일을 읽지 못했습니다.', true);
+    }
+  });
+
+  const downloadSample = () => {
+    const sample = giftsToCsv([
+      { side: '신랑 측', group: '친구', name: '예시_홍길동', channel: '축의대(현금)', amount: 100000, mealTickets: 1, returnGiftDone: false, thankYouDone: false, note: '대학 동기' },
+      { side: '신부 측', group: '직장·동료', name: '예시_김영희', channel: '계좌이체', amount: 50000, mealTickets: 0, returnGiftDone: false, thankYouDone: false, note: '사전 송금' }
+    ]);
+    downloadText(sample, 'wedding-gift-sample.csv', 'text/csv;charset=utf-8');
+    ctx.toast('축의금 예시 CSV 양식(wedding-gift-sample.csv)을 내려받았습니다.');
+  };
+
+  const pasteSection = E('div', { class: 'editor-form' },
+    E('p', { class: 'form-note' }, '축의록 메모·계좌이체 내역·엑셀 표 복사본을 그대로 붙여넣으면 이름·금액(‘10만’, ‘50,000’)·전달 방식(‘계좌’)·식권(‘식권2’)을 자동 인식해 한 번에 등록합니다. (계좌번호 등 민감 정보는 제외하고 붙여넣어 주세요.)'),
+    E('div', { class: 'editor-grid-3' },
+      E('label', { class: 'field', for: defaultSideSel.id }, '기본 양가 구분', defaultSideSel),
+      E('label', { class: 'field', for: defaultGroupSel.id }, '기본 관계 분류', defaultGroupSel),
+      E('label', { class: 'field', for: defaultChannelSel.id }, '기본 전달 방식', defaultChannelSel)),
+    E('label', { class: 'field', for: bulkTextInput.id }, '축의금 내역 텍스트 붙여넣기', bulkTextInput));
+
+  const csvSection = E('div', { class: 'editor-form', hidden: true },
+    E('p', { class: 'form-note' }, '엑셀·구글 시트 또는 이 앱에서 내보낸 축의금 장부 CSV(UTF-8) 파일을 불러옵니다. ‘성함/이름’과 ‘축의금/금액’ 열을 자동 인식합니다.'),
+    E('div', { class: 'page-actions' }, button('📄 예시 CSV 양식 받기', downloadSample, 'button quiet')),
+    E('label', { class: 'field', for: fileInput.id }, '축의금 CSV 파일 선택', fileInput));
+
+  const tabBar = E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '축의금 일괄 가져오기 방식 선택' });
+  const syncTabs = () => {
+    pasteSection.hidden = importTab !== 'paste';
+    csvSection.hidden = importTab !== 'csv';
+    tabBar.replaceChildren(...[
+      ['paste', '📋 카톡·계좌내역 붙여넣기'],
+      ['csv', '📄 CSV 파일 업로드']
+    ].map(([key, label]) => E('button', {
+      type: 'button',
+      class: 'button quiet trip-filter-chip',
+      'data-gift-import-tab': key,
+      'aria-pressed': String(importTab === key),
+      onclick: () => {
+        if (importTab === key) return;
+        importTab = key;
+        parsed = null;
+        parseErrorEl.textContent = '';
+        if (key === 'paste') reparsePaste();
+        else renderPreview();
+        syncTabs();
+      }
+    }, label)));
+  };
+  syncTabs();
+
+  form.append(
+    tabBar,
+    pasteSection,
+    csvSection,
+    parseErrorEl,
+    modeWrap,
+    previewWrap,
+    E('div', { class: 'form-actions' }, button('취소', ctx.requestClose, 'button quiet'), submit)
+  );
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (saving || !parsed) return;
+    const plan = computeSync();
+    if (!plan || plan.addedCount === 0) { ctx.toast('추가할 신규 축의금 내역이 없습니다.', true); return; }
+    if (plan.overCap) { ctx.toast('축의금 장부는 최대 500건까지 보관할 수 있습니다.', true); return; }
+    saving = true;
+    submit.disabled = true;
+    try {
+      let syncedRsvpCount = 0;
+      const saved = await ctx.queuePreference(async () => {
+        const curPrefs = ctx.getPrefs();
+        const latestPlan = syncGiftsFromImport(curPrefs.giftLedger || [], parsed.records, selectedMode());
+        if (latestPlan.overCap) throw new Error('축의금 장부는 500건까지 보관할 수 있습니다.');
+        let nextGuestList = curPrefs.guestList;
+        if (syncRsvpCheck.checked && Array.isArray(curPrefs.guestList) && curPrefs.guestList.length) {
+          const addedNames = new Set(latestPlan.addedRecords.map(r => `${r.side}|${r.name.trim().toLocaleLowerCase()}`));
+          const addedNameOnly = new Set(latestPlan.addedRecords.map(r => r.name.trim().toLocaleLowerCase()));
+          nextGuestList = curPrefs.guestList.map(g => {
+            if (g.rsvp === '참석') return g;
+            const nk = g.name.trim().toLocaleLowerCase();
+            if (addedNames.has(`${g.side}|${nk}`) || addedNameOnly.has(nk)) {
+              syncedRsvpCount++;
+              return { ...g, rsvp: '참석' };
+            }
+            return g;
+          });
+        }
+        return ctx.savePrefs({
+          ...curPrefs,
+          giftLedger: latestPlan.nextList,
+          ...(syncedRsvpCount > 0 ? { guestList: nextGuestList } : {})
+        });
+      });
+      if (saved) {
+        ctx.closeDialog();
+        ctx.render();
+        ctx.toast(`축의금 ${plan.addedCount}건을 일괄 등록했습니다.${syncedRsvpCount ? ` (하객 명단 ${syncedRsvpCount}명 참석 자동 반영)` : ''}`);
+      }
+    } catch (error) {
+      ctx.toast(ctx.storageMessage(error), true);
+    } finally {
+      saving = false;
+      renderPreview();
+    }
+  });
+
+  if (ctx.showDialog('📤 축의금 내역 일괄 등록 (붙여넣기 · CSV)', form)) {
+    ctx.setEditorState({ isDirty: () => saving || Boolean(parsed) || Boolean(bulkTextInput.value.trim()), isSaving: () => saving });
+  }
+}
+
 export function renderGiftLedgerBoard(ctx) {
   if (ctx.isGuestMode()) return null;
   const prefs = ctx.getPrefs();
@@ -783,6 +1013,7 @@ export function renderGiftLedgerBoard(ctx) {
         E('p', {}, '본식 축의금, 식권 지급 매수, 답례품 전달과 감사 인사 완료 여부를 기록하고 엑셀(CSV)로 내려받을 수 있습니다. (이 기기 전용 · 계좌번호 등 민감 정보 입력 금지)')),
       E('div', { class: 'page-actions gift-ledger-toolbar' },
         button('⚡ 축의대 빠른 입력', () => openQuickGiftEntryModal(ctx)),
+        button('📤 내역·CSV 일괄 등록', () => openGiftImportModal(ctx), 'button quiet'),
         summary.thankYouPending > 0 ? button(`📨 미감사 ${summary.thankYouPending}명 연속 보내기`, () => openBatchThankYouModal(ctx), 'button quiet') : null,
         button('+ 상세 기록', () => openGiftEditor(ctx), 'button quiet'),
         list.length ? button('🖨️ 정산표 인쇄', () => printDedicatedSheet('print-gift-sheet', buildGiftPrintSheet(ctx, list)), 'button quiet') : null,
