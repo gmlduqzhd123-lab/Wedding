@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-70';
-import { formatDate } from './content.js?v=wedding-features-70';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-70';
-import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-70';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-70';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-71';
+import { formatDate } from './content.js?v=wedding-features-71';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-71';
+import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-71';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-71';
 import {
   printDedicatedSheet,
   openThankYouModal,
@@ -11,7 +11,7 @@ import {
   openQuickGiftEntryModal,
   renderGiftLedgerBoard,
   focusGiftSearch
-} from './gift-ledger-ui.js?v=wedding-features-70';
+} from './gift-ledger-ui.js?v=wedding-features-71';
 
 export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard, focusGiftSearch };
 

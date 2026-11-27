@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-70';
-import { safeUrl, validDate } from './content.js?v=wedding-features-70';
-import { pruneContentPreferences } from './preferences.js?v=wedding-features-70';
-import { scheduleCalendar } from './calendar.js?v=wedding-features-70';
+import { $, E, button, externalLink, searchBox, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-71';
+import { safeUrl, validDate } from './content.js?v=wedding-features-71';
+import { pruneContentPreferences } from './preferences.js?v=wedding-features-71';
+import { scheduleCalendar } from './calendar.js?v=wedding-features-71';
 import {
   CORE_REGION_KEYS,
   MORE_DESTINATION_NOTES,
@@ -24,7 +24,7 @@ import {
   isSemiPackageTrip,
   buildTripComparisonText,
   buildSelectedTripSummaryText
-} from './travel.js?v=wedding-features-70';
+} from './travel.js?v=wedding-features-71';
 import {
   isPackingExpanded,
   setPackingExpanded,
@@ -34,13 +34,14 @@ import {
   renderTripRecommenderSection,
   renderLocalSpendingSimulator,
   renderHoneymoonPackingList
-} from './travel-tools-ui.js?v=wedding-features-70';
+} from './travel-tools-ui.js?v=wedding-features-71';
 
 export { tripFlightBadge };
 
 let tripSort = 'recommended';
 let tripFavoritesOnly = false;
 let withTripNoteOnly = false;
+let withTripQuoteOnly = false;
 let tripQuickFilter = 'all';
 let tripRegionFilter = 'all';
 let tripAgencyFilter = 'all';
@@ -144,6 +145,7 @@ export function activeTripFilterCount(guestMode = false) {
   return [
     !guestMode && tripFavoritesOnly,
     !guestMode && withTripNoteOnly,
+    !guestMode && withTripQuoteOnly,
     tripQuickFilter !== 'all',
     tripRegionFilter !== 'all',
     tripAgencyFilter !== 'all',
@@ -158,6 +160,7 @@ export function hasActiveTripFilters(guestMode = false) {
 export function resetTripFilters() {
   tripFavoritesOnly = false;
   withTripNoteOnly = false;
+  withTripQuoteOnly = false;
   tripQuickFilter = 'all';
   tripRegionFilter = 'all';
   tripAgencyFilter = 'all';
@@ -171,6 +174,7 @@ function matchesTripPool(ctx, item, omitKey = '') {
   const prefs = ctx.getPrefs();
   if (!guestMode && omitKey !== 'favorites' && tripFavoritesOnly && !prefs.tripFavorites?.includes(item.id)) return false;
   if (!guestMode && omitKey !== 'notes' && withTripNoteOnly && !prefs.tripNotes?.[item.id]?.trim()) return false;
+  if (!guestMode && omitKey !== 'quotes' && withTripQuoteOnly && !prefs.tripQuotes?.[item.id]) return false;
   if (omitKey !== 'quick' && !matchesTripQuickFilter(item, tripQuickFilter)) return false;
   if (omitKey !== 'region' && tripRegionFilter !== 'all' && tripRegionKey(item) !== tripRegionFilter) return false;
   if (omitKey !== 'agency' && !matchesTripAgency(item, tripAgencyFilter)) return false;
@@ -418,7 +422,7 @@ function selectedTripSummary(ctx) {
         date: item.startDate,
         endDate: hasValidEnd ? item.endDate : '',
         location: item.country || '',
-        description: buildSelectedTripSummaryText(item, note)
+        description: buildSelectedTripSummaryText(item, note, pq)
       });
       downloadText(ics, 'wedding-honeymoon.ics', 'text/calendar;charset=utf-8');
       ctx.toast(`‘${item.title}’ 일정을 캘린더(.ics) 파일로 저장했습니다.`);
@@ -449,7 +453,7 @@ function selectedTripSummary(ctx) {
       }, 'button quiet'),
       button('💰 통합 예산(신혼여행)에 반영', syncTripToBudget, 'button quiet'),
       validDate(item.startDate) ? button('📅 캘린더(.ics) 저장', exportSelectedTripIcs, 'button quiet') : null,
-      button('📋 상담·공유 요약 복사', () => ctx.copyTextToClipboard(buildSelectedTripSummaryText(item, note), '최종 선택 신혼여행 요약을 복사했습니다.', '신혼여행 요약 복사'), 'button quiet'),
+      button('📋 상담·공유 요약 복사', () => ctx.copyTextToClipboard(buildSelectedTripSummaryText(item, note, pq), '최종 선택 신혼여행 요약을 복사했습니다.', '신혼여행 요약 복사'), 'button quiet'),
       button('💬 여행사 상담 질문집', () => openAgencyQuestionsModal(ctx, item), 'button quiet')));
 }
 
@@ -540,7 +544,7 @@ function renderCompareFloatingTray(ctx) {
 
 export function updateTripChoices(ctx) {
   if (ctx.currentRoute() !== 'honeymoon') return;
-  if (tripFavoritesOnly || withTripNoteOnly) { ctx.render(); return; }
+  if (tripFavoritesOnly || withTripNoteOnly || withTripQuoteOnly) { ctx.render(); return; }
   const main = ctx.getMain();
   const content = ctx.getContent();
   const prefs = ctx.getPrefs();
@@ -954,6 +958,17 @@ function tripSortControl(ctx) {
     target?.focus({ preventScroll: true });
     if (target) window.scrollBy(0, target.getBoundingClientRect().top - before);
   });
+  const quoteCheck = E('input', { type: 'checkbox', id: 'trip-quotes-only' });
+  quoteCheck.checked = withTripQuoteOnly;
+  quoteCheck.addEventListener('change', () => {
+    const before = quoteCheck.getBoundingClientRect().top;
+    withTripQuoteOnly = quoteCheck.checked;
+    tripVisibleLimit = TRIP_PAGE_STEP;
+    ctx.render();
+    const target = $('#trip-quotes-only');
+    target?.focus({ preventScroll: true });
+    if (target) window.scrollBy(0, target.getBoundingClientRect().top - before);
+  });
   const filterSource = coreTrips.length ? coreTrips : content.honeymoon;
   const hasSubset = key => {
     const matched = filterSource.filter(item => matchesTripQuickFilter(item, key)).length;
@@ -1047,6 +1062,7 @@ function tripSortControl(ctx) {
       select,
       guestMode ? null : E('label', { class: 'check-label', for: 'trip-favorites-only' }, favCheck, '관심만'),
       guestMode ? null : E('label', { class: 'check-label', for: 'trip-notes-only' }, noteCheck, '📝 메모 있음'),
+      guestMode ? null : E('label', { class: 'check-label', for: 'trip-quotes-only' }, quoteCheck, '🧾 실견적 있음'),
       densityToggle,
       resetBtn,
       E('span', { class: 'small muted trip-result-count', 'aria-live': 'polite' }, countLabel)),
@@ -1274,13 +1290,15 @@ export function renderHoneymoon(ctx) {
   const extraFilteredTrips = sortTripList(allExtraTrips.filter(item => matchesTripPool(ctx, item, 'region')));
   const shownTrips = coreVisibleTrips.slice(0, tripVisibleLimit);
   const remaining = coreVisibleTrips.length - shownTrips.length;
-  const emptyMsg = tripFavoritesOnly && !withTripNoteOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
+  const emptyMsg = tripFavoritesOnly && !withTripNoteOnly && !withTripQuoteOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
     ? '핵심 4곳 중 등록한 관심 여행지가 없습니다.'
-    : withTripNoteOnly && !tripFavoritesOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
+    : withTripNoteOnly && !tripFavoritesOnly && !withTripQuoteOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
       ? '핵심 4곳 중 메모를 남긴 여행 후보가 없습니다.'
-      : (extraFilteredTrips.length && tripSearchQuery.trim()
-        ? `핵심 4곳(세부·발리·하와이·괌)에는 없지만 아래 ‘나머지 여행지 더보기’에서 ${extraFilteredTrips.length}곳을 찾았어요.`
-        : '선택한 조건에 맞는 핵심 여행 후보가 없습니다.');
+      : withTripQuoteOnly && !tripFavoritesOnly && !withTripNoteOnly && tripQuickFilter === 'all' && tripRegionFilter === 'all' && tripAgencyFilter === 'all' && !tripSearchQuery.trim()
+        ? '핵심 4곳 중 실견적을 기록한 여행 후보가 없습니다.'
+        : (extraFilteredTrips.length && tripSearchQuery.trim()
+          ? `핵심 4곳(세부·발리·하와이·괌)에는 없지만 아래 ‘나머지 여행지 더보기’에서 ${extraFilteredTrips.length}곳을 찾았어요.`
+          : '선택한 조건에 맞는 핵심 여행 후보가 없습니다.');
 
   const focusTripFromTool = tripId => {
     const item = content.honeymoon.find(t => t.id === tripId);

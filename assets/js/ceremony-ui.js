@@ -1,8 +1,8 @@
-import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-70';
-import { formatDate } from './content.js?v=wedding-features-70';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-70';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-70';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-70';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-71';
+import { formatDate } from './content.js?v=wedding-features-71';
+import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-71';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-71';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-71';
 
 export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
 
@@ -215,10 +215,21 @@ export const CEREMONY_BGM_SLOTS = [
   ['bgm-bride', 'STEP 05 · 신부 입장', '신부 2단계 등장·입장 하이라이트 구간'],
   ['bgm-vow', 'STEP 07 · 혼인서약서', '잔잔한 피아노·현악 연주곡 (선택)'],
   ['bgm-speech', 'STEP 08 · 성혼선언·축사', '등단·퇴장 브릿지 또는 무음'],
-  ['bgm-song', 'STEP 09 · 축가', '아카펠라 라이브 마이크·MR 유무 체크'],
-  ['bgm-parents', 'STEP 10 · 양가·내빈 인사', '따뜻하고 감동적인 연주곡'],
+  ['bgm-parents', 'STEP 09 · 양가·내빈 인사', '따뜻하고 감동적인 연주곡 (신부→신랑→내빈 동선)'],
+  ['bgm-song', 'STEP 10 · 축가', '아카펠라 라이브 마이크·MR 유무 체크'],
   ['bgm-march', 'STEP 11 · 신랑·신부 행진', '경쾌한 피날레 행진곡 (박수 타이밍)']
 ];
+
+export const CEREMONY_STEP_BGM_MAP = {
+  '03': 'bgm-candle',
+  '04': 'bgm-groom',
+  '05': 'bgm-bride',
+  '07': 'bgm-vow',
+  '08': 'bgm-speech',
+  '09': 'bgm-parents',
+  '10': 'bgm-song',
+  '11': 'bgm-march'
+};
 
 export function estimateSpeechDuration(text = '') {
   const clean = String(text || '').replace(/\s+/g, '');
@@ -294,9 +305,9 @@ export function buildRoleBriefingPack(roleKey, inv = {}, cPlan = {}, bgmMap = {}
       `🎵 [${groom} ♥ ${bride} 결혼식 · 축가(${plan.song}) 현장 브리핑]`,
       `• 예식 일시: ${dateLabel} ${baseTime} (음향·마이크 체크 권장 도착: ${arriveTime})`,
       `• 예식 장소: ${venue} (${address})`,
-      `• 진행 순서: STEP 09 · 성혼선언문·축사(${plan.speech}) 및 양가 혼주·내빈 인사 직후 진행`,
+      `• 진행 순서: STEP 10 · 성혼선언문·축사(${plan.speech}) 및 양가 혼주·내빈 인사(STEP 09) 직후 진행`,
       `• 음향·마이크 메모: ${songBgm.song ? `곡명 ${songBgm.song}` : '곡명/선곡 최종 확인'}${songBgm.cue ? ` · ${songBgm.cue}` : ' · 아카펠라용 핸드/스탠드 마이크 수량·하울링 사전 체크'}`,
-      `• 사회자 연락·큐: ${plan.mc} 소개 멘트 후 무대 중앙 입장 → 축가 종료 후 바로 신랑·신부 행진 이어집니다.`
+      `• 사회자 연락·큐: ${plan.mc} 소개 멘트 후 무대 중앙 입장 → 축가 종료 후 바로 신랑·신부 행진(STEP 11) 이어집니다.`
     ].join('\n');
   }
 
@@ -310,7 +321,7 @@ export function buildRoleBriefingPack(roleKey, inv = {}, cPlan = {}, bgmMap = {}
     `• 예식 일시: ${dateLabel} ${baseTime} (리허설·음향 체크 권장 도착: ${arriveTime})`,
     `• 예식 장소: ${venue} (${address})${plan.banquetFloor ? ` · 피로연 ${plan.banquetFloor}` : ' · 연회홀 층수 당일 확인'}`,
     `• 핵심 포인트: 단상 쪽 = 신랑 측 / 반대쪽 = 신부 측 · 신부 입장 2단계(등장 콜 → 아버님 손잡고 입장)`,
-    `• 확정 순서: 07 혼인서약서 → 08 성혼선언·축사(${plan.speech}) → 09 축가(${plan.song}) → 10 양가·내빈 인사 → 11 행진`,
+    `• 확정 순서: 07 혼인서약서 → 08 성혼선언·축사(${plan.speech}) → 09 양가·내빈 인사 → 10 축가(${plan.song}) → 11 행진`,
     ...(bgmSummaryLines.length ? ['', '🎼 확정 BGM 메모', ...bgmSummaryLines] : []),
     '',
     '📋 12단계 핵심 멘트',
@@ -718,6 +729,20 @@ export function renderCeremony(ctx) {
         else { stopTimer(); ctx.toast('12단계 예식 큐시트를 모두 완료했습니다! 🎉'); draw(); }
       }, 'button');
 
+      const bgmSlotId = CEREMONY_STEP_BGM_MAP[no] || '';
+      const bgmSlotMeta = bgmSlotId ? CEREMONY_BGM_SLOTS.find(([sid]) => sid === bgmSlotId) : null;
+      const bgmEntry = bgmSlotId ? (ctx.getPrefs().ceremonyBgm || {})[bgmSlotId] : null;
+      const bgmCueNode = bgmSlotMeta
+        ? E('div', { class: 'live-cue-bgm-strip' + (bgmEntry?.ready ? ' is-ready' : bgmEntry?.song ? ' is-assigned' : '') },
+          E('strong', { class: 'small' }, '🎼 음향 · BGM 큐'),
+          bgmEntry?.song || bgmEntry?.cue
+            ? E('span', { class: 'small' },
+              `${bgmEntry.song || '선곡 미정'}${bgmEntry.cue ? ` · ${bgmEntry.cue}` : ''}`,
+              ' ',
+              E('span', { class: 'spec-chip' + (bgmEntry.ready ? ' direct' : ' highlight') }, bgmEntry.ready ? '✓ 음원 확보' : '⚠️ 음원 미확인'))
+            : E('span', { class: 'small muted' }, `미지정 (${bgmSlotMeta[2]})`))
+        : null;
+
       body.replaceChildren(
         E('div', { class: 'live-cue-topbar' },
           E('span', { class: 'spec-chip direct' }, `진행 ${stepIdx + 1} / ${mcSteps.length} (완료 ${completed.size})`),
@@ -734,6 +759,7 @@ export function renderCeremony(ctx) {
           E('span', { class: 'badge' }, `STEP ${no}`),
           E('h3', { class: 'live-cue-title' }, title),
           E('p', { class: 'live-cue-check' }, `📌 현장 체크: ${cue}`),
+          bgmCueNode,
           E('div', { class: 'live-cue-scripts' }, scripts.map(line => E('p', { class: 'live-cue-line' }, line)))),
         nextStep
           ? E('div', { class: 'live-cue-next' },

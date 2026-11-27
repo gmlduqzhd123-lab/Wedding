@@ -12,7 +12,7 @@ import {
   computeCashDenominations,
   estimateBanquetTables,
   crossCheckGuestsAndGifts
-} from './ledger.js?v=wedding-features-70';
+} from './ledger.js?v=wedding-features-71';
 
 export {
   guestListSummary,

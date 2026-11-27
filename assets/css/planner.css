@@ -3189,12 +3189,14 @@ body.is-dark-theme:not(.is-guest-mode) .yt-thumb-banner {
   }
   body.print-guest-sheet > *:not(.print-only-sheet),
   body.print-gift-sheet > *:not(.print-only-sheet),
-  body.print-dayops-sheet > *:not(.print-only-sheet) {
+  body.print-dayops-sheet > *:not(.print-only-sheet),
+  body.print-shoot-sheet > *:not(.print-only-sheet) {
     display: none !important;
   }
   body.print-guest-sheet .print-only-sheet,
   body.print-gift-sheet .print-only-sheet,
-  body.print-dayops-sheet .print-only-sheet {
+  body.print-dayops-sheet .print-only-sheet,
+  body.print-shoot-sheet .print-only-sheet {
     display: block !important;
     width: 100% !important;
     padding: 4px 0 !important;
@@ -4325,10 +4327,6 @@ body.has-compare-tray .scroll-top-btn {
   background: var(--surface-accent-soft);
   border-color: var(--border-accent);
 }
-.photo-call-list {
-  display: grid;
-  gap: 8px;
-}
 .photo-call-mark {
   width: 24px;
   height: 24px;
@@ -5217,6 +5215,29 @@ body.has-compare-tray .scroll-top-btn {
   margin: 0;
 }
 
+.live-cue-bgm-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  color: var(--ink);
+}
+.live-cue-bgm-strip.is-assigned {
+  border-style: solid;
+  border-color: var(--olive-line);
+  background: var(--paper);
+}
+.live-cue-bgm-strip.is-ready {
+  border-style: solid;
+  border-color: var(--border-accent);
+  background: var(--surface-accent-soft);
+}
+
 @media (max-width: 720px) {
   .cashflow-board {
     padding: 15px 14px;
@@ -5233,9 +5254,16 @@ body.has-compare-tray .scroll-top-btn {
   html.is-dark-theme:not(.is-guest-mode) .album-onboarding-card,
   body.is-dark-theme:not(.is-guest-mode) .album-onboarding-card,
   html.is-dark-theme:not(.is-guest-mode) .publish-preflight-box,
-  body.is-dark-theme:not(.is-guest-mode) .publish-preflight-box {
+  body.is-dark-theme:not(.is-guest-mode) .publish-preflight-box,
+  html.is-dark-theme:not(.is-guest-mode) .live-cue-bgm-strip,
+  body.is-dark-theme:not(.is-guest-mode) .live-cue-bgm-strip {
     background: #1c241f;
     border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .live-cue-bgm-strip.is-ready,
+  body.is-dark-theme:not(.is-guest-mode) .live-cue-bgm-strip.is-ready {
+    background: rgba(88, 138, 102, 0.2);
+    border-color: rgba(126, 178, 141, 0.36);
   }
   html.is-dark-theme:not(.is-guest-mode) .cashflow-split-box,
   body.is-dark-theme:not(.is-guest-mode) .cashflow-split-box,

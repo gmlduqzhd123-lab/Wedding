@@ -1,7 +1,7 @@
-import { E, button } from './dom.js?v=wedding-features-70';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-70';
-import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-70';
-import { weddingDaySummary, computeCashDenominations } from './planning.js?v=wedding-features-70';
+import { E, button } from './dom.js?v=wedding-features-71';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-71';
+import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-71';
+import { weddingDaySummary, computeCashDenominations } from './planning.js?v=wedding-features-71';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';

@@ -1,7 +1,7 @@
-import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-70';
-import { weddingDday } from './content.js?v=wedding-features-70';
-import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-70';
-import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-70';
+import { $, E, button, externalLink, image, downloadText, searchBox } from './dom.js?v=wedding-features-71';
+import { weddingDday } from './content.js?v=wedding-features-71';
+import { scheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-71';
+import { studioFeeInfo, shootDeadlineSummary } from './planning.js?v=wedding-features-71';
 
 function copyLachmaGuideSummary(ctx, studio) {
   const g = studio?.deepGuide;
@@ -290,6 +290,71 @@ function openShootOutfitModal(ctx, existing = null) {
   }
 }
 
+export function reorderOutfits(outfits = [], outfitId, delta) {
+  const list = [...(Array.isArray(outfits) ? outfits : [])];
+  const idx = list.findIndex(o => o.id === outfitId);
+  const target = idx + delta;
+  if (idx < 0 || target < 0 || target >= list.length) return list;
+  [list[idx], list[target]] = [list[target], list[idx]];
+  return list;
+}
+
+function printShootDaySheet(studio, prefs = {}) {
+  const g = studio?.deepGuide || {};
+  const brief = prefs.shootBrief || emptyShootBrief();
+  const outfits = brief.outfits || [];
+  const checkedSet = new Set(prefs.shootChecklist || []);
+  const visitLocations = (g.locations || []).filter(loc => !loc.isReference);
+  const pendingPrep = [];
+  (g.prepChecklist || []).forEach((grp, gi) => {
+    (grp.items || []).forEach((label, ii) => {
+      if (!checkedSet.has(`shoot-${gi}-${ii}`)) pendingPrep.push(`[${grp.category}] ${label}`);
+    });
+  });
+
+  const sheet = E('section', { class: 'print-only-sheet print-dayops-root', 'aria-hidden': 'true' },
+    E('h1', {}, `📸 ${studio?.name || '라크마'} 웨딩촬영 당일 운영표`),
+    E('p', { class: 'small' }, `${g.schedule?.label || '2027년 2월 3일 수요일 12:00'} · 대표번호 ${g.officialInfo?.phone || studio?.contact?.phone || '062-714-1970~1'} · 당일 현금 헬퍼비 25만 원 필수`),
+    visitLocations.length ? [
+      E('h2', {}, '1. 당일 방문 동선 · 주소 · 주차'),
+      E('ul', {}, visitLocations.map(loc => E('li', {}, `${loc.step} ${loc.name}: ${loc.address}${loc.subAddress ? ` (${loc.subAddress})` : ''} / 주차: ${loc.parking || '현장 확인'}`)))
+    ] : null,
+    (g.timetable || []).length ? [
+      E('h2', {}, '2. 당일 타임테이블'),
+      E('ul', {}, g.timetable.map(row => E('li', {}, `${row.time} — ${row.stage}: ${row.detail}`)))
+    ] : null,
+    E('h2', {}, `3. 착장별 시안 · 헤어 · 소품 · 포즈 (${outfits.length}벌)`),
+    brief.moodNote ? E('p', {}, `✨ 원하는 분위기 · 필수 컷: ${brief.moodNote}`) : null,
+    brief.avoidNote ? E('p', {}, `🚫 피하고 싶은 각도 · 요청: ${brief.avoidNote}`) : null,
+    outfits.length
+      ? E('ol', {}, outfits.map(o => E('li', {},
+        E('strong', {}, o.label),
+        E('div', { class: 'small' }, [
+          o.hair ? `헤어·메이크업: ${o.hair}` : '',
+          o.props ? `부케·소품: ${o.props}` : '',
+          o.poses ? `포즈·포인트: ${o.poses}` : ''
+        ].filter(Boolean).join(' / ') || '세부 메모 없음'))))
+      : E('p', { class: 'small' }, '등록된 착장 시안 없음'),
+    E('h2', {}, `4. 미챙김 촬영 준비물 (${pendingPrep.length}건)`),
+    pendingPrep.length
+      ? E('ul', {}, pendingPrep.map(item => E('li', {}, `□ ${item}`)))
+      : E('p', { class: 'small' }, '✅ 등록된 촬영 준비물을 모두 체크했습니다.'));
+
+  document.body.append(sheet);
+  document.body.classList.add('print-shoot-sheet');
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    document.body.classList.remove('print-shoot-sheet');
+    sheet.remove();
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
+  setTimeout(cleanup, 1500);
+}
+
 function renderShootBriefBoard(ctx, studio) {
   if (ctx.isGuestMode()) return null;
   const brief = ctx.getPrefs().shootBrief || emptyShootBrief();
@@ -311,6 +376,18 @@ function renderShootBriefBoard(ctx, studio) {
       const nextBrief = { ...baseBrief, outfits: [...(baseBrief.outfits || []), ...additions], milestones: baseBrief.milestones || emptyShootBrief().milestones };
       const saved = await ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief });
       if (saved) { ctx.render(); ctx.toast(`기본 착장 시안 ${additions.length}벌을 채웠습니다. 우리 일정에 맞게 다듬어 보세요.`); }
+      return saved;
+    });
+  };
+
+  const moveOutfit = (outfitId, delta) => {
+    ctx.queuePreference(async () => {
+      const latest = ctx.getPrefs();
+      const baseBrief = latest.shootBrief || emptyShootBrief();
+      const nextOutfits = reorderOutfits(baseBrief.outfits || [], outfitId, delta);
+      const nextBrief = { ...baseBrief, outfits: nextOutfits, milestones: baseBrief.milestones || emptyShootBrief().milestones };
+      const saved = await ctx.savePrefs({ ...ctx.getPrefs(), shootBrief: nextBrief });
+      if (saved) ctx.render();
       return saved;
     });
   };
@@ -360,20 +437,27 @@ function renderShootBriefBoard(ctx, studio) {
         hasAny ? button('📋 시안 브리핑 복사', () => {
           const text = buildShootBriefCopyText(brief, studio);
           if (text) ctx.copyTextToClipboard(text, '라크마 촬영 시안·착장 브리핑을 복사했습니다.', '촬영 시안 복사');
-        }, 'button quiet small-copy-btn') : null)),
+        }, 'button quiet small-copy-btn') : null,
+        button('🖨️ 촬영 당일 A4 인쇄', () => printShootDaySheet(studio, ctx.getPrefs()), 'button quiet small-copy-btn'))),
     (brief.moodNote || brief.avoidNote) ? E('div', { class: 'shoot-brief-notes-grid' },
       brief.moodNote ? E('div', { class: 'pros-box' }, E('strong', { class: 'pros-title' }, '✨ 원하는 분위기 · 필수 컷'), E('p', { class: 'small record-body' }, brief.moodNote)) : null,
       brief.avoidNote ? E('div', { class: 'cons-box' }, E('strong', { class: 'cons-title' }, '🚫 피하고 싶은 각도 · 요청'), E('p', { class: 'small record-body' }, brief.avoidNote)) : null) : null,
     outfits.length
-      ? E('div', { class: 'shoot-outfit-grid' }, outfits.map((o, idx) => E('article', { class: 'shoot-outfit-card', 'data-outfit-id': o.id },
-        E('div', { class: 'shoot-outfit-head' },
-          E('strong', {}, `${idx + 1}. ${o.label}`),
-          E('div', { class: 'shoot-outfit-actions' },
-            button('수정', () => openShootOutfitModal(ctx, o), 'text-button small'),
-            button('삭제', () => deleteOutfit(o), 'text-button small danger-link'))),
-        o.hair ? E('p', { class: 'small' }, E('strong', {}, '💇 헤어·메이크업: '), o.hair) : null,
-        o.props ? E('p', { class: 'small' }, E('strong', {}, '💐 부케·소품: '), o.props) : null,
-        o.poses ? E('p', { class: 'small' }, E('strong', {}, '📷 포즈·포인트: '), o.poses) : null)))
+      ? E('div', { class: 'shoot-outfit-grid' }, outfits.map((o, idx) => {
+        const upBtn = E('button', { type: 'button', class: 'text-button small', 'data-outfit-move': 'up', 'aria-label': `${o.label} 위로 이동`, disabled: idx === 0, onclick: () => moveOutfit(o.id, -1) }, '↑');
+        const downBtn = E('button', { type: 'button', class: 'text-button small', 'data-outfit-move': 'down', 'aria-label': `${o.label} 아래로 이동`, disabled: idx === outfits.length - 1, onclick: () => moveOutfit(o.id, 1) }, '↓');
+        return E('article', { class: 'shoot-outfit-card', 'data-outfit-id': o.id },
+          E('div', { class: 'shoot-outfit-head' },
+            E('strong', {}, `${idx + 1}. ${o.label}`),
+            E('div', { class: 'shoot-outfit-actions' },
+              outfits.length > 1 ? upBtn : null,
+              outfits.length > 1 ? downBtn : null,
+              button('수정', () => openShootOutfitModal(ctx, o), 'text-button small'),
+              button('삭제', () => deleteOutfit(o), 'text-button small danger-link'))),
+          o.hair ? E('p', { class: 'small' }, E('strong', {}, '💇 헤어·메이크업: '), o.hair) : null,
+          o.props ? E('p', { class: 'small' }, E('strong', {}, '💐 부케·소품: '), o.props) : null,
+          o.poses ? E('p', { class: 'small' }, E('strong', {}, '📷 포즈·포인트: '), o.poses) : null);
+      }))
       : E('div', { class: 'shoot-brief-empty' },
         E('p', { class: 'small muted' }, '아직 착장별 시안이 비어 있어요. 드레스·캐주얼·한복별 헤어변형과 소품을 적어 두면 ‘촬영 당일 현장 모드’에서 작가님께 바로 보여드릴 수 있어요.'),
         E('div', { class: 'page-actions' },

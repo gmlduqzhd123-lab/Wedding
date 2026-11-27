@@ -296,6 +296,11 @@ try {
     document.querySelector('#dialog-actions [type="submit"]').click();
   })()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('.trip-private-quote-box')?.innerText.includes('5,450,000원')`);
+  // v71: #trip-quotes-only filter isolates trips with recorded private quotes
+  await cdp.eval(`document.querySelector('#trip-quotes-only').click()`);
+  await cdp.waitFor(`() => document.querySelector('#trip-quotes-only')?.checked === true && document.querySelectorAll('.travel-grid:not(.more-travel-grid) .travel-card').length === 1`);
+  await cdp.eval(`document.querySelector('#trip-quotes-only').click()`);
+  await cdp.waitFor(`() => document.querySelector('#trip-quotes-only')?.checked === false && document.querySelectorAll('.travel-grid:not(.more-travel-grid) .travel-card').length === 12`);
 
   assert.equal(await cdp.eval(`document.querySelectorAll('.honeymoon-tools-strip > details').length`), 3, 'Honeymoon tools strip must group 3 top collapsible panels');
   // Smart quick filters hide redundant 100%-matching chips (direct, longstay) and expose budget/semi brackets
@@ -421,6 +426,13 @@ try {
   await cdp.waitFor(`() => document.querySelector('.live-cue-font-pct')?.textContent === '115%'`);
   await cdp.eval(`[...document.querySelectorAll('.live-cue-nav button')].find(b => b.textContent.includes('다음 단계')).click()`);
   await cdp.waitFor(`() => document.querySelector('.live-cue-stage')?.innerText.includes('STEP 02')`);
+  // v71: Live MC Cue Sheet surfaces assigned BGM strip on STEP 04 & matches STEP 09/10 order
+  await cdp.eval(`document.querySelectorAll('.live-cue-dot')[3].click()`);
+  await cdp.waitFor(`() => document.querySelector('.live-cue-stage')?.innerText.includes('STEP 04') && document.querySelector('.live-cue-bgm-strip')?.classList.contains('is-ready') && document.querySelector('.live-cue-bgm-strip')?.innerText.includes('Bruno Mars - Marry You') && document.querySelector('.live-cue-bgm-strip')?.innerText.includes('음원 확보')`);
+  await cdp.eval(`document.querySelectorAll('.live-cue-dot')[8].click()`);
+  await cdp.waitFor(`() => document.querySelector('.live-cue-stage')?.innerText.includes('STEP 09') && document.querySelector('.live-cue-bgm-strip')?.innerText.includes('신부→신랑→내빈')`);
+  await cdp.eval(`document.querySelectorAll('.live-cue-dot')[9].click()`);
+  await cdp.waitFor(`() => document.querySelector('.live-cue-stage')?.innerText.includes('STEP 10') && document.querySelector('.live-cue-bgm-strip')?.innerText.includes('아카펠라')`);
   await cdp.eval(`document.querySelector('#close-dialog').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
 
@@ -523,6 +535,14 @@ try {
   // Round 10: Lachma Shoot Brief Board 4-outfit starter template fill
   await cdp.eval(`[...document.querySelectorAll('.shoot-brief-board button')].find(b => b.textContent.includes('기본 착장 4종 템플릿 채우기')).click()`);
   await cdp.waitFor(`() => document.querySelectorAll('.shoot-outfit-card').length === 4`);
+  // v71: Outfit reorder (↓) swaps 1st & 2nd outfits and A4 print button renders
+  assert.equal(await cdp.eval(`[...document.querySelectorAll('.shoot-brief-board button')].some(b => b.textContent.includes('촬영 당일 A4 인쇄'))`), true, 'Shoot brief board must show A4 print button');
+  const firstOutfitIdBefore = await cdp.eval(`document.querySelectorAll('.shoot-outfit-card')[0]?.dataset.outfitId`);
+  const secondOutfitIdBefore = await cdp.eval(`document.querySelectorAll('.shoot-outfit-card')[1]?.dataset.outfitId`);
+  await cdp.eval(`document.querySelectorAll('.shoot-outfit-card')[0].querySelector('[data-outfit-move="down"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.shoot-outfit-card')[0]?.dataset.outfitId === ${JSON.stringify(secondOutfitIdBefore)} && document.querySelectorAll('.shoot-outfit-card')[1]?.dataset.outfitId === ${JSON.stringify(firstOutfitIdBefore)}`);
+  await cdp.eval(`document.querySelectorAll('.shoot-outfit-card')[1].querySelector('[data-outfit-move="up"]').click()`);
+  await cdp.waitFor(`() => document.querySelectorAll('.shoot-outfit-card')[0]?.dataset.outfitId === ${JSON.stringify(firstOutfitIdBefore)}`);
   // Round 9+10: Shoot Day Field Ops Briefing Mode (2 tabs: route & outfits brief)
   await cdp.eval(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('촬영 당일 현장 모드')).click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.field-ops-shell .field-ops-loc-row')) && document.querySelectorAll('[data-shoot-ops-tab]').length === 2`);

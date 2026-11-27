@@ -477,6 +477,28 @@ export function calculateLocalSpending({ nights = 6, dailyFood = 0, activities =
   return { stayNights, foodTotal, totalKrw, perDayKrw, perPersonKrw, foreignTotal };
 }
 
+function formatPrivateQuoteLine(item, pq) {
+  if (!pq || typeof pq !== 'object') return '';
+  const fmt = v => `${v.toLocaleString('ko-KR')}원`;
+  const eff = typeof pq.total === 'number'
+    ? pq.total
+    : ((typeof pq.airfare === 'number' || typeof pq.lodging === 'number') ? (pq.airfare || 0) + (pq.lodging || 0) : null);
+  let delta = '';
+  if (eff !== null && typeof item?.budget === 'number' && Number.isFinite(item.budget)) {
+    const diff = eff - item.budget;
+    const man = Math.round(Math.abs(diff) / 10000).toLocaleString('ko-KR');
+    delta = diff < 0 ? `계획 대비 -${man}만 절감` : diff > 0 ? `계획 대비 +${man}만 초과` : '계획예산 동일';
+  }
+  const parts = [
+    eff !== null ? fmt(eff) : '',
+    delta ? `(${delta})` : '',
+    pq.agency ? pq.agency : '',
+    pq.perks ? pq.perks : '',
+    pq.cancelUntil ? `무료취소 ~${pq.cancelUntil}` : ''
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
 export function buildTripComparisonText(items = [], prefs = {}) {
   const list = Array.isArray(items) ? items : [];
   if (!list.length) return '';
@@ -484,9 +506,11 @@ export function buildTripComparisonText(items = [], prefs = {}) {
   const lines = [`[신혼여행 후보 ${list.length}곳 비교 요약]`, ''];
   list.forEach((item, idx) => {
     const note = prefs?.tripNotes?.[item.id] ? ` | 메모: ${prefs.tripNotes[item.id]}` : '';
+    const pqLine = formatPrivateQuoteLine(item, prefs?.tripQuotes?.[item.id]);
     lines.push(`${idx + 1}. ${item.title}`);
     lines.push(`   • 일정: ${item.startDate || '미정'} ~ ${item.endDate || '미정'} (${staySummary(item)})`);
     lines.push(`   • 2인 계획예산: ${fmt(item.budget)} (${tripFlightBadge(item).short} · ${climateBadgeInfo(item).label})`);
+    if (pqLine) lines.push(`   • 내 실견적(개인): ${pqLine}`);
     if (item.pros) lines.push(`   • 장점: ${item.pros.split(/\r?\n/)[0]}`);
     if (item.cons) lines.push(`   • 고민: ${item.cons.split(/\r?\n/)[0]}${note}`);
   });
@@ -499,9 +523,10 @@ export function buildTripComparisonText(items = [], prefs = {}) {
   return lines.join('\n');
 }
 
-export function buildSelectedTripSummaryText(item, note = '') {
+export function buildSelectedTripSummaryText(item, note = '', privateQuote = null) {
   if (!item) return '';
   const fmt = v => (v === null || v === undefined ? '미정' : `${v.toLocaleString('ko-KR')}원`);
+  const pqLine = formatPrivateQuoteLine(item, privateQuote);
   const lines = [
     `[신혼여행 최종 선택 후보 요약 · ${item.title}]`,
     `• 여행지: ${item.country || '미정'}`,
@@ -510,6 +535,7 @@ export function buildSelectedTripSummaryText(item, note = '') {
     `• 항공·기후: ${tripFlightBadge(item).detail} · ${climateBadgeInfo(item).label}`,
     `• 2인 계획예산: ${fmt(item.budget)} (${currentBudgetText(item)})`
   ];
+  if (pqLine) lines.push(`• 내 실견적(개인 기록): ${pqLine}`);
   if (note?.trim()) lines.push(`• 상담 메모: ${note.trim()}`);
   return lines.join('\n');
 }
