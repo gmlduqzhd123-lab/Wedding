@@ -1,6 +1,6 @@
-import { E, button } from './dom.js?v=wedding-features-69';
-import { validatePreferences, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-69';
-import { encodeSyncCode, decodeSyncCode, summarizePreferenceCounts } from './sync-code.js?v=wedding-features-69';
+import { E, button } from './dom.js?v=wedding-features-70';
+import { validatePreferences, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-70';
+import { encodeSyncCode, decodeSyncCode, summarizePreferenceCounts } from './sync-code.js?v=wedding-features-70';
 
 const ROLLBACK_KEY = 'wedding:v1:prefRollback';
 
@@ -121,13 +121,16 @@ export function openCoupleSyncModal(ctx) {
     counts.guests ? `하객 ${counts.guests}건` : '',
     counts.gifts ? `축의금 ${counts.gifts}건` : '',
     counts.homeItems ? `혼수 ${counts.homeItems}건` : '',
+    counts.shootOutfits ? `착장 시안 ${counts.shootOutfits}벌` : '',
+    counts.bgmCount ? `본식 BGM ${counts.bgmCount}곡` : '',
+    counts.tripQuotes ? `여행 실견적 ${counts.tripQuotes}건` : '',
     counts.checks ? `체크 ${counts.checks}건` : '',
-    counts.notes ? `메모 ${counts.notes}건` : '',
+    counts.notes ? `메모·기록 ${counts.notes}건` : '',
     counts.hasBudget ? '예산 입력됨' : ''
   ].filter(Boolean);
 
   const body = E('div', { class: 'couple-sync-modal' },
-    E('p', { class: 'form-note' }, '서버 없이 신랑·신부 두 기기의 개인 기록(하객·축의금·예산·혼수·체크리스트·상담 메모)을 카톡 복붙만으로 안전하게 합칩니다. 병합 직전 현재 기기 상태는 자동 롤백 스냅샷에 보관됩니다.'),
+    E('p', { class: 'form-note' }, '서버 없이 신랑·신부 두 기기의 개인 기록(하객·축의금·예산·혼수·체크리스트·촬영 시안·본식 BGM·여행 실견적·상담 메모)을 카톡 복붙만으로 안전하게 합칩니다. 병합 직전 현재 기기 상태는 자동 롤백 스냅샷에 보관됩니다.'),
     E('section', { class: 'manager-section couple-sync-card' },
       E('h3', {}, '1. 내 기록 코드 복사해서 보내기'),
       E('div', { class: 'region-matrix-tags' },

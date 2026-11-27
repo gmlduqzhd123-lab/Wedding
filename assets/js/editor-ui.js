@@ -1,8 +1,8 @@
-import { E, button, externalLink, image } from './dom.js?v=wedding-features-69';
-import { safeUrl, formatDate } from './content.js?v=wedding-features-69';
-import { StorageConflict } from './storage.js?v=wedding-features-69';
-import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-69';
-import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-69';
+import { E, button, externalLink, image } from './dom.js?v=wedding-features-70';
+import { safeUrl, formatDate } from './content.js?v=wedding-features-70';
+import { StorageConflict } from './storage.js?v=wedding-features-70';
+import { COST_LABELS, stayReview, dateSpan, emptyQuote, quoteBasis, CLIMATE_CATEGORIES } from './travel.js?v=wedding-features-70';
+import { hasActiveTripFilters, matchesAllTripFilters, resetTripFilters } from './travel-ui.js?v=wedding-features-70';
 
 const fieldSpecs = {
   invitation: [
@@ -397,6 +397,24 @@ export function openEditor(ctx, type, item = null) {
           fields.notice.focus({ preventScroll: true });
           ctx.toast('기본 식사·예식 안내 예시 문구를 채웠습니다. 예식홀 조건에 맞게 수정해 주세요.');
         }, 'button quiet'))));
+
+    const guideFormatHint = E('p', { class: 'small muted', role: 'status', 'aria-live': 'polite' });
+    const countStructured = raw => {
+      const lines = String(raw || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (lines.length < 2) return 0;
+      return lines.every(l => /^([^:：]{2,20})\s*[:：]\s*(.+)$/.test(l.replace(/^[·•\-*▪︎]+\s*/, '').trim())) ? lines.length : 0;
+    };
+    const refreshGuideFormatHint = () => {
+      const tc = countStructured(fields.transit?.value);
+      const nc = countStructured(fields.notice?.value);
+      guideFormatHint.textContent = (tc || nc)
+        ? `✨ 아이콘 배지 구조화 미리보기: 교통 안내 ${tc ? `${tc}개 항목 자동 배지 적용` : '일반 문단'} · 예식 안내 ${nc ? `${nc}개 항목 자동 배지 적용` : '일반 문단'}`
+        : '💡 ‘· 항목명: 내용’ 형식으로 2줄 이상 입력하면 하객 청첩장에 🚗·🚆·🅿️·🍽️ 아이콘 배지 목록으로 자동 정리됩니다.';
+    };
+    fields.transit?.addEventListener('input', refreshGuideFormatHint);
+    fields.notice?.addEventListener('input', refreshGuideFormatHint);
+    refreshGuideFormatHint();
+    form.appendChild(guideFormatHint);
 
     const firstAlbumCover = safeUrl(ctx.getContent()?.albums?.[0]?.images?.[0], { image: true });
     const ogImgSrc = firstAlbumCover || './assets/share-card.png';

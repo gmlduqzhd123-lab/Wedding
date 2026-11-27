@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-69';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-69';
-import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-69';
-import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-69';
-import { multiScheduleCalendar } from './calendar.js?v=wedding-features-69';
+import { $, E, button, linkButton, downloadText, actionOverflowMenu } from './dom.js?v=wedding-features-70';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-70';
+import { CHECKLIST_STAGES } from './preferences.js?v=wedding-features-70';
+import { dateSpan, tripFlightBadge } from './travel.js?v=wedding-features-70';
+import { multiScheduleCalendar } from './calendar.js?v=wedding-features-70';
 import {
   weddingBudgetSummary,
   guestListSummary,
@@ -15,7 +15,7 @@ import {
   activeVendorSchedules,
   collectMasterTimeline,
   weddingPhaseInfo
-} from './planning.js?v=wedding-features-69';
+} from './planning.js?v=wedding-features-70';
 
 const won = value => (value === null ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 let checklistIncompleteOnly = false;
@@ -171,12 +171,16 @@ export async function copyPreparationSummary(ctx) {
   const vList = activeVendorSchedules(prefs).filter(v => !v.done).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
   const nextVendor = vList[0];
   const shootInfo = selectedStudio?.deepGuide?.schedule ? ` (${selectedStudio.deepGuide.schedule.label} 촬영 확정 · ${weddingDday(selectedStudio.deepGuide.schedule.date)})` : '';
+  const outfitCount = (prefs.shootBrief?.outfits || []).length;
+  const bgmReady = Object.values(prefs.ceremonyBgm || {}).filter(v => v?.ready).length;
+  const quoteCount = Object.keys(prefs.tripQuotes || {}).length;
   const lines = [
     `💍 [${names} 결혼 준비 현황 요약]`,
     `• 예식 일정: ${info.date ? formatDate(info.date) : '미정'}${info.time ? ` ${info.time}` : ''}${dday ? ` (${dday})` : ''}`,
     `• 예식 장소: ${info.venue || '미정'}`,
-    `• 스튜디오: ${selectedStudio ? `${selectedStudio.name}${shootInfo}` : `라크마 (2027-02-03 수요일 12:00 촬영 확정 · ${weddingDday('2027-02-03')})`}`,
-    `• 신혼여행: ${selectedTrip ? `${selectedTrip.title} (2인 계획예산 ${won(selectedTrip.budget)})` : `후보 검토 중 (관심 ${(prefs.tripFavorites || []).length}곳)`}`,
+    `• 스튜디오: ${selectedStudio ? `${selectedStudio.name}${shootInfo}` : `라크마 (2027-02-03 수요일 12:00 촬영 확정 · ${weddingDday('2027-02-03')})`}${outfitCount ? ` · 착장 시안 ${outfitCount}벌` : ''}`,
+    `• 신혼여행: ${selectedTrip ? `${selectedTrip.title} (2인 계획예산 ${won(selectedTrip.budget)})` : `후보 검토 중 (관심 ${(prefs.tripFavorites || []).length}곳)`}${quoteCount ? ` · 실견적 ${quoteCount}건` : ''}`,
+    ...(bgmReady ? [`• 본식 BGM: 9구간 중 ${bgmReady}곡 음원 준비 완료`] : []),
     `• 통합 예산: ${bHas ? `목표 ${budget.planned.known === null ? '미입력' : won(budget.planned.known)} / 실제·견적 ${budget.actual.known === null ? '미입력' : won(budget.actual.known)}` : '미입력'}`,
     ...(hSum.totalCount ? [`• 신혼집·혼수: ${hSum.totalCount}품목 (완료 ${hSum.doneCount} · 실제 ${hSum.actualTotal === null ? '미입력' : won(hSum.actualTotal)})`] : []),
     ...(pSched.status !== 'empty' ? [`• 산전검사 일정: ${pSched.statusLabel}${pSched.claimDeadline && !pSched.claimed ? ` (청구 마감 ${pSched.claimDeadline})` : pSched.examDeadline && !pSched.examDate ? ` (검사 마감 ${pSched.examDeadline})` : pSched.visitDate ? ` (예약 ${pSched.visitDate})` : ''}`] : []),

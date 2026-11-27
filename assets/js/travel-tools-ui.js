@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-69';
-import { PACKING_CATEGORIES } from './preferences.js?v=wedding-features-69';
+import { E, button } from './dom.js?v=wedding-features-70';
+import { PACKING_CATEGORIES } from './preferences.js?v=wedding-features-70';
 import {
   CORE_REGION_KEYS,
   CORE_DESTINATION_GUIDES,
@@ -15,7 +15,7 @@ import {
   recommendHoneymoonTrips,
   calculateLocalSpending,
   stayReview
-} from './travel.js?v=wedding-features-69';
+} from './travel.js?v=wedding-features-70';
 
 const won = value => (value === null || value === undefined ? '미확인' : `${value.toLocaleString('ko-KR')}원`);
 const man = value => (value === null || value === undefined ? '미정' : `${Math.round(value / 10000).toLocaleString('ko-KR')}만`);

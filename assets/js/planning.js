@@ -12,7 +12,7 @@ import {
   computeCashDenominations,
   estimateBanquetTables,
   crossCheckGuestsAndGifts
-} from './ledger.js?v=wedding-features-69';
+} from './ledger.js?v=wedding-features-70';
 
 export {
   guestListSummary,
@@ -581,6 +581,47 @@ export function collectMasterTimeline({ content = {}, prefs = {}, studio = null,
     }
   }
 
+  // 8. Lachma shoot follow-up milestones (original, select, retouch)
+  const shootMs = prefs?.shootBrief?.milestones || {};
+  const shootMsDefs = [
+    ['originalDate', 'originalDone', '라크마 촬영 원본 수령', '원본 파일 수령 후 백업 및 셀렉 준비'],
+    ['selectDate', 'selectDone', '라크마 수정본 사진 셀렉', '청첩장·액자용 베스트 컷 셀렉 확정'],
+    ['retouchDate', 'retouchDone', '라크마 최종 수정본 · 액자 수령', '수정본 수령 후 포토 앨범·청첩장 대표 사진 반영']
+  ];
+  for (const [dKey, doneKey, title, detail] of shootMsDefs) {
+    const msDate = shootMs[dKey];
+    if (!msDate || !VALID_YMD.test(msDate)) continue;
+    const isDone = Boolean(shootMs[doneKey]);
+    push({
+      id: `master-shoot-ms-${dKey}`,
+      date: msDate,
+      category: '📸 촬영 후속',
+      title,
+      detail,
+      route: 'studios',
+      done: isDone,
+      urgent: !isDone && kstDayDiff(msDate, now) <= 7
+    });
+  }
+
+  // 9. Honeymoon private quote free-cancellation deadlines
+  const tripsById = new Map((content?.honeymoon || []).map(t => [t.id, t]));
+  for (const [tripId, q] of Object.entries(prefs?.tripQuotes || {})) {
+    if (!q?.cancelUntil || !VALID_YMD.test(q.cancelUntil)) continue;
+    const trip = tripsById.get(tripId);
+    const label = trip?.title || tripId;
+    const effective = known(q.total) ? q.total : ((known(q.airfare) || known(q.lodging)) ? (q.airfare || 0) + (q.lodging || 0) : null);
+    push({
+      id: `master-trip-cancel-${tripId}`,
+      date: q.cancelUntil,
+      category: '✈️ 허니문 취소기한',
+      title: `${label} 무료 취소 마감`,
+      detail: [q.agency, effective !== null ? `실견적 ${effective.toLocaleString('ko-KR')}원` : '', q.perks].filter(Boolean).join(' · ') || '개인 실견적 기록의 무료 취소 마감일',
+      route: 'honeymoon',
+      urgent: kstDayDiff(q.cancelUntil, now) <= 7
+    });
+  }
+
   items.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '99:99').localeCompare(b.time || '99:99') || a.id.localeCompare(b.id));
   return items;
 }
@@ -602,6 +643,9 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
   const daySum = weddingDaySummary(prefs?.weddingDayRoles || [], prefs?.weddingDayEnvelopes || []);
   const shootTotal = (studio?.deepGuide?.prepChecklist || []).reduce((acc, grp) => acc + (grp.items?.length || 0), 0);
   const shootDone = (prefs?.shootChecklist || []).length;
+  const outfitCount = (prefs?.shootBrief?.outfits || []).length;
+  const bgmReady = Object.values(prefs?.ceremonyBgm || {}).filter(v => v?.ready).length;
+  const quoteCount = Object.keys(prefs?.tripQuotes || {}).length;
   const albumCount = (content?.albums || []).length;
   const invReadyCount = [
     Boolean(inv.partner1?.trim() && inv.partner2?.trim()),
@@ -623,7 +667,8 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
       metrics: [
         `당일 역할 배정 ${daySum.assignedRoles}/${daySum.roleCount || 6}`,
         `현금 봉투 준비 ${daySum.readyCount}/${daySum.envelopeCount}`,
-        `축의금 기록 ${giftSum.totalRecords}건 · 식권 ${giftSum.totalMealTickets}매`
+        `축의금 기록 ${giftSum.totalRecords}건 · 식권 ${giftSum.totalMealTickets}매`,
+        `본식 BGM ${bgmReady}/9 준비`
       ],
       actions: [
         { label: '⚡ 축의대 빠른 입력', route: 'ceremony', subTab: 'gifts', action: 'quick-gift', primary: true },
@@ -668,6 +713,7 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
       metrics: [
         `참석 확정 ${gSum.attendingHeadcount}명 (예상 ${gSum.possibleHeadcount}명)`,
         `당일 역할 ${daySum.assignedRoles}/${daySum.roleCount} · 봉투 ${daySum.readyCount}/${daySum.envelopeCount}`,
+        `본식 BGM ${bgmReady}/9 완료`,
         selectedTrip ? `신혼여행: ${selectedTrip.title}` : '신혼여행 최종 선택 확인'
       ],
       actions: [
@@ -686,6 +732,7 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
       subtitle: '당일 현금 헬퍼비 25만 원, 예약 5~10분 전 도착, 월·화 정기휴무 전 최종 문의를 꼭 점검하세요.',
       metrics: [
         `촬영 준비물 ${shootDone}/${shootTotal || 12} 완료`,
+        `착장 시안 ${outfitCount}벌 등록`,
         '헬퍼비 25만 원 (당일 현금 필수)',
         `본식까지 ${weddingDiff !== null ? `D-${weddingDiff}` : '일정 확인'}`
       ],
@@ -706,7 +753,8 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
       metrics: [
         `청첩장 발행 준비도 ${invReadyCount}/8`,
         `등록 앨범 ${albumCount}개`,
-        `하객 ${gSum.totalRecords}건 · 발송 ${gSum.sentCount}건`
+        `하객 ${gSum.totalRecords}건 · 발송 ${gSum.sentCount}건`,
+        `본식 BGM ${bgmReady}/9 완료`
       ],
       actions: [
         { label: '💌 청첩장 점검 · 발행', route: 'invitation', primary: true },
@@ -722,9 +770,10 @@ export function weddingPhaseInfo({ content = {}, prefs = {}, studio = null, now 
     title: '라크마 촬영 준비 · 산전검사 · 신혼여행 큰 틀을 차근차근 다져요',
     subtitle: '촬영 무료 변경 기한과 산전검사 지원금 신청, 신혼여행 후보 비교와 6대 예산을 먼저 정리해 두면 이후가 훨씬 편해집니다.',
     metrics: [
-      `라크마 촬영 ${shootDate} (${shootTotal ? `준비물 ${shootDone}/${shootTotal}` : '공식 가이드'})`,
-      selectedTrip ? `신혼여행 확정: ${selectedTrip.title}` : `신혼여행 후보 ${trips.length}곳 비교 중`,
-      `청첩장 발행 준비도 ${invReadyCount}/8`
+      `라크마 촬영 ${shootDate} (${shootTotal ? `준비물 ${shootDone}/${shootTotal}` : '공식 가이드'}${outfitCount ? ` · 착장 ${outfitCount}벌` : ''})`,
+      selectedTrip ? `신혼여행 확정: ${selectedTrip.title}` : `신혼여행 후보 ${trips.length}곳${quoteCount ? ` · 실견적 ${quoteCount}건` : ' 비교 중'}`,
+      `청첩장 발행 준비도 ${invReadyCount}/8`,
+      ...(bgmReady > 0 ? [`본식 BGM ${bgmReady}/9 완료`] : [])
     ],
     actions: [
       { label: '📸 라크마 촬영 가이드', route: 'studios', primary: true },
@@ -825,7 +874,119 @@ export function buildBudgetSummaryText(budgetPlan = {}, giftLedger = []) {
   return lines.join('\n');
 }
 
+export function cashFlowSettlementSummary({ prefs = {}, content = {}, now = new Date() } = {}) {
+  const plan = prefs?.budgetPlan || {};
+  const vEst = venueEstimate(prefs?.venueSim || {});
+  const sEst = sdmEstimate(prefs?.sdmSim || {});
+  const hSum = homeItemsSummary(prefs?.homeItems || []);
+  const daySum = weddingDaySummary(prefs?.weddingDayRoles || [], prefs?.weddingDayEnvelopes || []);
+  const trips = content?.honeymoon || [];
+  const selectedTrip = trips.find(t => t.id === prefs?.tripSelected) || null;
+  const selQuote = selectedTrip ? prefs?.tripQuotes?.[selectedTrip.id] : null;
+  const selQuoteTotal = selQuote
+    ? (known(selQuote.total) ? selQuote.total : ((known(selQuote.airfare) || known(selQuote.lodging)) ? (selQuote.airfare || 0) + (selQuote.lodging || 0) : null))
+    : null;
 
+  const pickPlanAmount = key => {
+    const entry = plan[key];
+    if (known(entry?.actual)) return { amount: entry.actual, basis: '실제·계약 입력' };
+    if (known(entry?.planned)) return { amount: entry.planned, basis: '목표 예산 기준' };
+    return { amount: null, basis: '미입력' };
+  };
 
+  const venueDeposit = known(prefs?.venueSim?.deposit) ? prefs.venueSim.deposit : 0;
+  const venuePlan = pickPlanAmount('venue');
+  const venueTotal = vEst.subtotal !== null ? vEst.subtotal : venuePlan.amount;
+  const venueBasis = vEst.subtotal !== null ? (vEst.complete ? '웨딩홀 시뮬레이터' : '웨딩홀 시뮬(부분)') : venuePlan.basis;
 
+  const sdmDeposit = known(prefs?.sdmSim?.deposit) ? prefs.sdmSim.deposit : 0;
+  const sdmPlan = pickPlanAmount('sdm');
+  const sdmTotal = sEst.subtotal !== null ? sEst.subtotal : sdmPlan.amount;
+  const sdmBasis = sEst.subtotal !== null ? (sEst.complete ? '스드메 시뮬레이터' : '스드메 시뮬(부분)') : sdmPlan.basis;
 
+  const livingDeposit = hSum.totalCount > 0 ? hSum.depositTotal : 0;
+  const livingPlan = pickPlanAmount('living');
+  const livingTotal = hSum.totalCount > 0 ? (hSum.actualTotal ?? hSum.plannedTotal) : livingPlan.amount;
+  const livingBasis = hSum.totalCount > 0 ? `혼수 품목 ${hSum.totalCount}건` : livingPlan.basis;
+
+  const honeyPlan = pickPlanAmount('honeymoon');
+  const honeyTotal = selQuoteTotal !== null
+    ? selQuoteTotal
+    : (honeyPlan.amount !== null ? honeyPlan.amount : (selectedTrip && known(selectedTrip.budget) ? selectedTrip.budget : null));
+  const honeyBasis = selQuoteTotal !== null
+    ? '최종 여행지 실견적'
+    : (honeyPlan.amount !== null ? honeyPlan.basis : (selectedTrip ? '최종 여행지 계획예산' : '미입력'));
+
+  const snapPlan = pickPlanAmount('snap');
+  const ringsPlan = pickPlanAmount('rings');
+
+  const rawRows = [
+    { key: 'venue', label: '🏛️ 웨딩홀 · 식대', total: venueTotal, deposit: venueDeposit, basis: venueBasis },
+    { key: 'sdm', label: '📸 스튜디오 · 드레스 · 메이크업', total: sdmTotal, deposit: sdmDeposit, basis: sdmBasis },
+    { key: 'honeymoon', label: '✈️ 신혼여행 (2인)', total: honeyTotal, deposit: 0, basis: honeyBasis },
+    { key: 'living', label: '🏠 혼수 · 가전 · 가구', total: livingTotal, deposit: livingDeposit, basis: livingBasis },
+    { key: 'snap', label: '🎥 본식 스냅 · 진행', total: snapPlan.amount, deposit: 0, basis: snapPlan.basis },
+    { key: 'rings', label: '💍 예물 · 예복 · 한복', total: ringsPlan.amount, deposit: 0, basis: ringsPlan.basis }
+  ];
+
+  const rows = rawRows.map(r => ({
+    ...r,
+    remaining: r.total !== null ? Math.max(0, r.total - r.deposit) : null
+  }));
+
+  const knownTotals = rows.filter(r => r.total !== null);
+  const totalCost = knownTotals.length ? knownTotals.reduce((acc, r) => acc + r.total, 0) : null;
+  const totalDeposit = rows.reduce((acc, r) => acc + (r.deposit || 0), 0);
+  const totalRemaining = totalCost !== null ? Math.max(0, totalCost - totalDeposit) : null;
+
+  const wedDate = VALID_YMD.test(content?.invitation?.date || '') ? content.invitation.date : '2027-06-05';
+  const daysUntilWedding = kstDayDiff(wedDate, now);
+  const monthsUntilWedding = daysUntilWedding !== null && daysUntilWedding > 0
+    ? Math.max(1, Math.ceil(daysUntilWedding / 30))
+    : 1;
+  const monthlySavingsNeeded = totalRemaining !== null ? Math.ceil(totalRemaining / monthsUntilWedding) : null;
+
+  return {
+    rows,
+    enteredCount: knownTotals.length,
+    totalCost,
+    totalDeposit,
+    totalRemaining,
+    dayCashTotal: daySum.totalEnvelopeAmount,
+    dayCashPending: daySum.pendingAmount,
+    shootOnSiteCash: sEst.onSiteCash ?? 250000,
+    weddingDate: wedDate,
+    daysUntilWedding,
+    monthsUntilWedding,
+    monthlySavingsNeeded,
+    hasData: knownTotals.length > 0 || totalDeposit > 0 || daySum.totalEnvelopeAmount > 0
+  };
+}
+
+export function buildCashFlowSummaryText(cf, { groomRatio = 50, inv = {} } = {}) {
+  const safeRatio = Math.min(100, Math.max(0, Math.round(Number(groomRatio) || 50)));
+  const brideRatio = 100 - safeRatio;
+  const fmt = v => (v === null || v === undefined ? '미입력' : `${v.toLocaleString('ko-KR')}원`);
+  const p1 = (inv?.partner1 || '신랑').replace(/^신랑\s*/, '').trim() || '신랑';
+  const p2 = (inv?.partner2 || '신부').replace(/^신부\s*/, '').trim() || '신부';
+  const lines = [
+    `💳 [${p1} ♥ ${p2} 결혼 자금 · 계약금/잔금 현금흐름 요약]`,
+    `• 본식 기준일: ${cf.weddingDate}${cf.daysUntilWedding !== null && cf.daysUntilWedding > 0 ? ` (D-${cf.daysUntilWedding} · 약 ${cf.monthsUntilWedding}개월)` : ''}`,
+    `• 총 예상 지출 (${cf.enteredCount}/6항목): ${fmt(cf.totalCost)}`,
+    `• 기납부 계약금 합계: ${fmt(cf.totalDeposit)}`,
+    `• 남은 잔금 총액: ${fmt(cf.totalRemaining)}`,
+    ...(cf.monthlySavingsNeeded !== null ? [`• 본식 전 월 적립 필요액 (${cf.monthsUntilWedding}개월): 월 ${fmt(cf.monthlySavingsNeeded)}`] : []),
+    ...(cf.totalRemaining !== null ? [
+      `• 분담 비율 (${safeRatio}:${brideRatio}) 기준 남은 잔금:`,
+      `  - ${p1} (${safeRatio}%): ${fmt(Math.round(cf.totalRemaining * safeRatio / 100))}${cf.monthlySavingsNeeded !== null ? ` (월 약 ${fmt(Math.ceil(cf.monthlySavingsNeeded * safeRatio / 100))})` : ''}`,
+      `  - ${p2} (${brideRatio}%): ${fmt(Math.round(cf.totalRemaining * brideRatio / 100))}${cf.monthlySavingsNeeded !== null ? ` (월 약 ${fmt(Math.ceil(cf.monthlySavingsNeeded * brideRatio / 100))})` : ''}`
+    ] : []),
+    `• 당일 현금 준비: 라크마 촬영 헬퍼비 ${fmt(cf.shootOnSiteCash)} / 본식 현금 봉투 총 ${fmt(cf.dayCashTotal)} (미준비 ${fmt(cf.dayCashPending)})`,
+    '',
+    '[항목별 계약금 · 잔금]'
+  ];
+  for (const r of cf.rows) {
+    lines.push(`· ${r.label}: 총 ${fmt(r.total)} / 계약금 ${fmt(r.deposit)} / 잔금 ${fmt(r.remaining)} (${r.basis})`);
+  }
+  return lines.join('\n');
+}

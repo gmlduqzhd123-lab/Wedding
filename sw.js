@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'wedding-features-69';
+const CACHE_VERSION = 'wedding-features-70';
 const CACHE_NAME = `wedding-pwa-${CACHE_VERSION}`;
 
 const CORE_PRECACHE_URLS = [
@@ -23,6 +23,8 @@ const CORE_PRECACHE_URLS = [
   './assets/icon-192.png',
   './assets/fonts/Paperlogy-7Bold.woff2',
   './assets/fonts/SUITE-Regular.woff2',
+  './assets/fonts/SUITE-SemiBold.woff2',
+  './assets/fonts/SUITE-Bold.woff2',
   './data/guest-site.json'
 ];
 

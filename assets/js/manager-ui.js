@@ -1,8 +1,8 @@
-import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-69';
-import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-69';
-import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-69';
-import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-69';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-69';
+import { $, E, button, linkButton, downloadJson } from './dom.js?v=wedding-features-70';
+import { parseContent, validateContent, MAX_IMPORT_BYTES, summarizeContentDiff } from './content.js?v=wedding-features-70';
+import { validatePreferences, parsePreferencesBackup, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-70';
+import { StorageConflict, mergeChanges } from './storage.js?v=wedding-features-70';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-70';
 
 function describeValue(value, path = '') {
   if (value === undefined) return '삭제됨';
@@ -253,6 +253,35 @@ export function analyzeStorageHealth(storage, {
     inlineImageCount,
     otherKeys,
     staleKeys
+  };
+}
+
+export function evaluatePublishPreflight(content = {}) {
+  const inv = content?.invitation || {};
+  const albums = Array.isArray(content?.albums) ? content.albums : [];
+  const stories = Array.isArray(content?.stories) ? content.stories : [];
+  const photoCount = albums.reduce((sum, a) => sum + ((a?.images || []).length), 0);
+  const checks = [
+    ['신랑·신부 이름', Boolean(inv.partner1?.trim() && inv.partner2?.trim())],
+    ['예식 일시·장소', Boolean(inv.date && inv.time && inv.venue?.trim())],
+    ['초대 인사말', Boolean(inv.message?.trim())],
+    ['양가 혼주 성함', Boolean(inv.groomParents?.trim() || inv.brideParents?.trim())],
+    ['교통·주차·예식 안내', Boolean(inv.transit?.trim() || inv.notice?.trim())],
+    ['연락처·축의 계좌', Boolean(inv.contacts?.trim() || inv.groomAccounts?.trim() || inv.brideAccounts?.trim())],
+    ['RSVP 참석 설문', Boolean(inv.rsvpUrl?.trim())],
+    ['웨딩 포토 앨범', photoCount > 0]
+  ];
+  const readinessCount = checks.filter(([, ok]) => ok).length;
+  const missingLabels = checks.filter(([, ok]) => !ok).map(([label]) => label);
+  return {
+    readinessCount,
+    readinessTotal: checks.length,
+    missingLabels,
+    storyCount: stories.length,
+    albumCount: albums.length,
+    photoCount,
+    hasCover: Boolean(albums[0]?.images?.[0]),
+    isReadyForGuests: readinessCount >= 6
   };
 }
 
@@ -550,10 +579,22 @@ export function openManager(ctx) {
       E('p', {}, '이름, 예식 일정과 장소, 청첩장 인사를 채워요.'),
       ctx.editButton('예식 정보 편집', () => ctx.openEditor('invitation'), 'button quiet')),
     renderDraftDiffSection(),
-    E('section', { class: 'manager-section' },
-      E('h3', {}, '공개할 내용 파일로 저장'),
-      E('p', {}, '저장한 site.json 파일은 자동 배포되지 않으며, 저장소의 data/site.json에 반영한 뒤 main 브랜치에 push하면 GitHub Pages에 공개됩니다. 파일에는 청첩장·일대기·앨범·신혼여행·결혼 정보가 담기며, 개인 메모·예산·체크리스트·혼수·신혼혜택·당일 운영표·산전검사 일정·하객 명단·축의금 장부는 포함되지 않습니다.'),
-      button('공개용 파일 저장', () => downloadSaved(ctx, ctx.DRAFT_KEY))),
+    (() => {
+      const pf = evaluatePublishPreflight(content);
+      return E('section', { class: 'manager-section' },
+        E('h3', {}, '공개할 내용 파일로 저장'),
+        E('p', {}, '저장한 site.json 파일은 자동 배포되지 않으며, 저장소의 data/site.json에 반영한 뒤 main 브랜치에 push하면 GitHub Pages에 공개됩니다. 파일에는 청첩장·일대기·앨범·신혼여행·결혼 정보가 담기며, 개인 메모·예산·체크리스트·혼수·신혼혜택·당일 운영표·산전검사 일정·하객 명단·축의금 장부·촬영 시안·BGM·여행 실견적은 포함되지 않습니다.'),
+        E('div', { class: 'publish-preflight-box', 'aria-label': '공개 배포 전 사전 점검' },
+          E('div', { class: 'storage-health-chips' },
+            E('span', { class: 'spec-chip' + (pf.readinessCount >= 6 ? ' direct' : ' highlight') }, `💌 청첩장 완성도 ${pf.readinessCount}/${pf.readinessTotal}`),
+            E('span', { class: 'spec-chip' }, `📷 앨범 ${pf.albumCount}개 (사진 ${pf.photoCount}장)`),
+            E('span', { class: 'spec-chip' }, `📖 일대기 ${pf.storyCount}편`),
+            E('span', { class: 'spec-chip direct' }, '🛡️ 개인 기록 자동 제외 ✓')),
+          pf.missingLabels.length
+            ? E('p', { class: 'small muted' }, `아직 비어 있는 공개 항목: ${pf.missingLabels.join(' · ')}`)
+            : E('p', { class: 'small' }, '✅ 모바일 청첩장 핵심 항목이 모두 채워져 바로 공개 배포할 준비가 되었습니다.')),
+        button('공개용 파일 저장', () => downloadSaved(ctx, ctx.DRAFT_KEY)));
+    })(),
     E('section', { class: 'manager-section' },
       E('h3', {}, '이전에 저장한 내용 불러오기'),
       E('p', {}, '이 앱에서 저장한 JSON 콘텐츠 파일을 선택해 주세요.'),

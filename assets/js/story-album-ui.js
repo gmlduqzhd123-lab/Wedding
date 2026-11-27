@@ -1,6 +1,6 @@
-import { formatDate } from './content.js?v=wedding-features-69';
-import { dateSpan } from './travel.js?v=wedding-features-69';
-import { $, E, button, image, searchBox } from './dom.js?v=wedding-features-69';
+import { formatDate } from './content.js?v=wedding-features-70';
+import { dateSpan } from './travel.js?v=wedding-features-70';
+import { $, E, button, image, searchBox } from './dom.js?v=wedding-features-70';
 
 let storySort = 'asc';
 let storyYearFilter = 'all';
@@ -167,12 +167,27 @@ export function openAlbumPhotos(ctx, album, startIndex = 0) {
   else ctx.showDialog(album.title, E('p', {}, '아직 등록된 사진이 없습니다.'));
 }
 
+export const ALBUM_ONBOARDING_STEPS = [
+  { step: 'STEP 01', icon: '📸', title: '라크마 원본·수정본 수령', detail: '2027-02-03 촬영 후 원본·수정본을 받아 마음에 드는 컷을 골라 두세요.' },
+  { step: 'STEP 02', icon: '⚡', title: '웹용 경량 사본으로 등록', detail: '앱에서 바로 선택해 자동 축소하거나, 사진이 많으면 저장소에서 npm run photos로 용량 부담 없이 연결하세요.' },
+  { step: 'STEP 03', icon: '💌', title: '청첩장 상단 아치·카톡 카드 자동 연동', detail: '첫 번째 앨범의 1번 사진이 모바일 청첩장 상단 아치와 카카오톡 공유 미리보기에 자동으로 쓰입니다.' }
+];
+
 export function renderAlbumsView(ctx) {
   const content = ctx.getContent();
   const guestMode = ctx.isGuestMode();
+  const emptyAlbumNodes = [
+    ctx.empty(guestMode ? '웨딩 포토 앨범을 준비하고 있습니다.' : '우리의 사진을 담을 첫 앨범', guestMode ? '두 사람의 소중한 웨딩 사진들이 곧 이곳에 채워질 예정입니다.' : '사진을 직접 선택하거나 npm run photos로 웹용 사본을 만들어 앨범을 등록할 수 있어요.', '첫 앨범 만들기', () => ctx.openEditor('albums')),
+    !guestMode ? E('section', { class: 'story-prompts-section album-onboarding-section', 'aria-label': '웨딩 포토 앨범 등록 3단계 안내' },
+      E('h3', { class: 'small' }, '📷 웨딩 촬영 사진 → 모바일 청첩장 연동 3단계'),
+      E('div', { class: 'album-onboarding-grid' }, ALBUM_ONBOARDING_STEPS.map(s => E('div', { class: 'album-onboarding-card' },
+        E('span', { class: 'badge' }, s.step),
+        E('strong', {}, `${s.icon} ${s.title}`),
+        E('p', { class: 'small muted' }, s.detail))))) : null
+  ];
   return [
     ctx.pageHeader('오래 간직할 우리의 순간', '사진을 앨범으로 모으고, 그날의 이야기를 함께 남겨요.', ctx.editButton('앨범 추가', () => ctx.openEditor('albums')), 'PHOTO ALBUM'),
-    content.albums.length ? E('section', { class: 'album-grid' }, content.albums.map((item, idx) => {
+    ...(content.albums.length ? [E('section', { class: 'album-grid' }, content.albums.map((item, idx) => {
       const extraThumbs = (item.images || []).slice(1, 5);
       const moreCount = Math.max(0, (item.images || []).length - 5);
       return E('article', { class: 'album-card', 'data-record-id': item.id },
@@ -200,7 +215,6 @@ export function renderAlbumsView(ctx) {
           E('p', { class: 'record-body' }, item.body),
           button('사진 보기', () => openAlbumPhotos(ctx, item, 0), 'text-button'),
           ctx.recordActions('albums', item)));
-    })) :
-      ctx.empty(guestMode ? '웨딩 포토 앨범을 준비하고 있습니다.' : '우리의 사진을 담을 첫 앨범', guestMode ? '두 사람의 소중한 웨딩 사진들이 곧 이곳에 채워질 예정입니다.' : '사진을 직접 선택하거나 npm run photos로 웹용 사본을 만들어 앨범을 등록할 수 있어요.', '첫 앨범 만들기', () => ctx.openEditor('albums'))
+    }))] : emptyAlbumNodes)
   ];
 }

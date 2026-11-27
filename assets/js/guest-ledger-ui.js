@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-69';
-import { formatDate } from './content.js?v=wedding-features-69';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-69';
-import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-69';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-69';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-70';
+import { formatDate } from './content.js?v=wedding-features-70';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-70';
+import { guestListSummary, guestsToCsv, parseGuestsCsv, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-70';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-70';
 import {
   printDedicatedSheet,
   openThankYouModal,
@@ -11,7 +11,7 @@ import {
   openQuickGiftEntryModal,
   renderGiftLedgerBoard,
   focusGiftSearch
-} from './gift-ledger-ui.js?v=wedding-features-69';
+} from './gift-ledger-ui.js?v=wedding-features-70';
 
 export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard, focusGiftSearch };
 
@@ -305,6 +305,170 @@ export function openGuestEditor(ctx, existing = null) {
   }
 }
 
+export function buildPersonalizedInviteMessage(guest = {}, inv = {}, publicUrl = '', tone = 'auto') {
+  const name = String(guest?.name || '').trim();
+  const group = guest?.group || '';
+  const resolvedTone = tone === 'auto'
+    ? (group === '친구' ? 'warm' : group === '가족·친척' ? 'family' : 'formal')
+    : tone;
+  const p1 = (inv?.partner1 || '신랑').replace(/^신랑\s*/, '').trim();
+  const p2 = (inv?.partner2 || '신부').replace(/^신부\s*/, '').trim();
+  const couple = [p1, p2].filter(Boolean).join(' · ') || '저희 두 사람';
+  const dateText = inv?.date ? formatDate(inv.date) : '예식일 추후 안내';
+  const timeText = inv?.time || '';
+  const venue = inv?.venue || '예식장 추후 안내';
+  const address = inv?.address || '';
+  const link = publicUrl || (typeof location !== 'undefined' ? new URL('./?view=guest#/invitation', location.href).href : '');
+  const whenLine = `• 일시: ${[dateText, timeText].filter(Boolean).join(' ')}`;
+  const whereLine = `• 장소: ${venue}${address ? ` (${address})` : ''}`;
+  const linkLine = link ? `💌 모바일 청첩장 보기: ${link}` : '';
+
+  if (resolvedTone === 'warm') {
+    const greet = name ? `${name}아(야) 안녕! / ${name}님 안녕하세요 😊` : '안녕! 반가운 소식 전해 😊';
+    return [
+      greet,
+      `${couple} 드디어 결혼하게 되었어!`,
+      '바쁘겠지만 시간 되시면 꼭 오셔서 함께 축하해 주고 맛있는 식사도 하고 가줘 💐',
+      '',
+      whenLine,
+      whereLine,
+      ...(linkLine ? ['', linkLine] : [])
+    ].join('\n');
+  }
+  if (resolvedTone === 'family') {
+    const greet = name ? `${name} 어르신(님), 안녕하세요.` : '안녕하세요.';
+    return [
+      greet,
+      `평소 아껴주신 따뜻한 마음 덕분에 ${couple}이 부부로서 새로운 출발을 하게 되었습니다.`,
+      '귀한 걸음으로 자리를 빛내어 축복해 주시면 큰 기쁨이 되겠습니다.',
+      '',
+      whenLine,
+      whereLine,
+      ...(linkLine ? ['', linkLine] : [])
+    ].join('\n');
+  }
+  const greet = name ? `${name}님, 안녕하세요.` : '안녕하세요.';
+  return [
+    greet,
+    `그동안 보내주신 관심과 응원 속에 ${couple}이 하나 되어 새로운 출발을 하게 되었습니다.`,
+    '직접 찾아뵙고 인사드리는 것이 도리이나 이렇게 먼저 소식 전하게 되어 송구합니다. 귀한 시간 내어 축복해 주시면 감사하겠습니다.',
+    '',
+    whenLine,
+    whereLine,
+    ...(linkLine ? ['', linkLine] : [])
+  ].join('\n');
+}
+
+export function openBatchInviteModal(ctx, initialList = null) {
+  if (ctx.isGuestMode()) return;
+  const source = Array.isArray(initialList) ? initialList : (ctx.getPrefs().guestList || []);
+  const queue = source.filter(g => g.inviteStatus === '미발송').map(g => g.id);
+  if (!queue.length) {
+    ctx.toast('미발송 상태인 하객이 없습니다.');
+    return;
+  }
+  const inv = ctx.getContent()?.invitation || {};
+  const publicUrl = new URL('./?view=guest#/invitation', location.href).href;
+  let index = 0;
+  let sentNow = 0;
+  let skipped = 0;
+  let currentTone = 'auto';
+  const root = E('div', { class: 'batch-thankyou-modal batch-invite-modal' });
+
+  const renderStep = () => {
+    const latestList = ctx.getPrefs().guestList || [];
+    while (index < queue.length) {
+      const candidate = latestList.find(g => g.id === queue[index]);
+      if (candidate && candidate.inviteStatus === '미발송') break;
+      index++;
+    }
+    const doneSteps = Math.min(index, queue.length);
+    const pct = Math.round((doneSteps / queue.length) * 100);
+
+    if (index >= queue.length) {
+      root.replaceChildren(
+        E('div', { class: 'batch-thankyou-done' },
+          E('strong', {}, `🎉 미발송 하객 ${queue.length}명 큐를 마쳤습니다!`),
+          E('p', { class: 'small muted' }, `이번 작업에서 모바일 발송 완료 ${sentNow}명${skipped ? ` · 건너뜀 ${skipped}명` : ''} 처리했습니다.`),
+          E('div', { class: 'page-actions' },
+            button('하객 명단으로 돌아가기', () => { ctx.closeDialog(); ctx.render(); }, 'button'))));
+      return;
+    }
+
+    const guest = latestList.find(g => g.id === queue[index]);
+    const textarea = E('textarea', { id: 'batch-invite-text', rows: '8' });
+    textarea.value = buildPersonalizedInviteMessage(guest, inv, publicUrl, currentTone);
+
+    const markSentAndNext = async (mode = 'copy') => {
+      const msg = textarea.value.trim();
+      if (mode === 'copy') {
+        await ctx.copyTextToClipboard(msg, `${guest.name}님 초대 문구를 복사하고 모바일 발송 완료로 표시했습니다.`, '맞춤 청첩장 문구 복사');
+      } else if (mode === 'share' && typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: '모바일 청첩장', text: msg, url: publicUrl });
+        } catch (err) {
+          if (err?.name === 'AbortError') return;
+        }
+      }
+      const saved = await ctx.queuePreference(async () => {
+        const cur = ctx.getPrefs().guestList || [];
+        const next = cur.map(item => (item.id === guest.id ? { ...item, inviteStatus: '모바일 발송' } : item));
+        return ctx.savePrefs({ ...ctx.getPrefs(), guestList: next });
+      });
+      if (saved) {
+        sentNow++;
+        index++;
+        ctx.render();
+        renderStep();
+        if (mode === 'mark') ctx.toast(`${guest.name}님을 ‘모바일 발송’으로 표시했습니다.`);
+      }
+    };
+
+    const tones = [
+      ['auto', '✨ 자동 맞춤'],
+      ['formal', '🙇 정중 (직장·어르신)'],
+      ['warm', '😊 친근 (친구)'],
+      ['family', '🏡 가족·친척']
+    ];
+
+    root.replaceChildren(
+      E('div', { class: 'thankyou-progress-bar' },
+        E('div', { class: 'thankyou-progress-head' },
+          E('strong', { class: 'small' }, `📨 청첩장 연속 발송 (${index + 1} / ${queue.length}명)`),
+          E('span', { class: 'small muted' }, `완료 ${sentNow}명${skipped ? ` · 건너뜀 ${skipped}명` : ''}`)),
+        E('div', { class: 'checklist-progress-track', 'aria-hidden': 'true' },
+          E('span', { class: 'checklist-progress-fill', style: `width:${pct}%` }))),
+      E('div', { class: 'batch-thankyou-target' },
+        E('div', { class: 'ledger-row-head' },
+          E('strong', {}, guest.name),
+          E('span', { class: 'spec-chip' }, `${guest.side} · ${guest.group}`),
+          E('span', { class: 'spec-chip' }, `${guest.partySize}명`)),
+        guest.note ? E('p', { class: 'small muted' }, `📝 ${guest.note}`) : null),
+      E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '초대 문구 어조 선택' },
+        tones.map(([key, label]) => E('button', {
+          type: 'button',
+          class: 'button quiet trip-filter-chip',
+          'data-invite-tone': key,
+          'aria-pressed': String(currentTone === key),
+          onclick: () => {
+            currentTone = key;
+            renderStep();
+          }
+        }, label))),
+      E('label', { class: 'field', for: textarea.id }, '맞춤 청첩장 발송 문구 (필요하면 바로 수정 가능)', textarea),
+      E('div', { class: 'batch-thankyou-actions' },
+        button('📋 복사 + 발송 완료 → 다음', () => markSentAndNext('copy'), 'button'),
+        typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+          ? button('📤 카톡 공유 + 완료', () => markSentAndNext('share'), 'button quiet')
+          : null,
+        button('✓ 발송 완료만 표시', () => markSentAndNext('mark'), 'button quiet'),
+        button('건너뛰기 →', () => { skipped++; index++; renderStep(); }, 'text-button small')));
+  };
+
+  renderStep();
+  ctx.showDialog('📨 미발송 하객 청첩장 연속 발송 큐', root);
+}
+
 export function renderGuestListBoard(ctx) {
   if (ctx.isGuestMode()) return null;
   const prefs = ctx.getPrefs();
@@ -381,8 +545,14 @@ export function renderGuestListBoard(ctx) {
 
     if (list.length) {
       const unsentActive = guestInviteFilter === '미발송';
+      const batchInviteBtn = summary.unsentCount > 0
+        ? button(`📨 미발송 ${summary.unsentCount}명 연속 발송`, () => {
+          const scope = guestSideFilter === 'all' ? list : list.filter(g => g.side === guestSideFilter);
+          openBatchInviteModal(ctx, scope.some(g => g.inviteStatus === '미발송') ? scope : list);
+        }, 'button small-copy-btn')
+        : null;
       const unsentBtn = summary.unsentCount > 0
-        ? button(unsentActive ? '미발송 필터 해제' : `📨 미발송만 보기 (${summary.unsentCount}건)`, () => {
+        ? button(unsentActive ? '미발송 필터 해제' : `미발송만 보기 (${summary.unsentCount}건)`, () => {
           guestInviteFilter = unsentActive ? 'all' : '미발송';
           inviteSelect.value = guestInviteFilter;
           draw();
@@ -404,7 +574,7 @@ export function renderGuestListBoard(ctx) {
           (prefs.giftLedger || []).length > 0
             ? E('span', { class: 'spec-chip' }, `축의금 일치 ${cross.matchedGuestCount}명`)
             : null),
-        E('div', { class: 'ledger-crosscheck-actions' }, unsentBtn, noGiftBtn)));
+        E('div', { class: 'ledger-crosscheck-actions' }, batchInviteBtn, unsentBtn, noGiftBtn)));
     } else {
       crossStripSlot.replaceChildren();
     }

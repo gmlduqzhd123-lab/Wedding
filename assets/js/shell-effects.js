@@ -1,5 +1,5 @@
-import { invitationLiveCountdown } from './content.js?v=wedding-features-69';
-import { $, E } from './dom.js?v=wedding-features-69';
+import { invitationLiveCountdown } from './content.js?v=wedding-features-70';
+import { $, E } from './dom.js?v=wedding-features-70';
 
 const LARGE_TEXT_KEY = 'wedding:v1:largeText';
 const THEME_KEY = 'wedding:v1:theme';

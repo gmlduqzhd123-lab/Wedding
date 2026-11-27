@@ -74,6 +74,12 @@ const combinedCss=appCss+'\n'+plannerCss;
 const definedCssVars=new Set([...combinedCss.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map(m=>m[1]));
 const undefinedCssVars=[...new Set([...combinedCss.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].map(m=>m[1]))].filter(v=>!definedCssVars.has(v));
 assert.deepEqual(undefinedCssVars,[],`Undefined CSS custom properties in stylesheets: ${undefinedCssVars.join(', ')}`);
+const declaredFonts=[...new Set([...appCss.matchAll(/url\(['"]\.\.\/fonts\/([^'"]+\.woff2)['"]\)/g)].map(m=>m[1]))].sort();
+const diskFonts=(await readdir(new URL('assets/fonts/',root))).filter(name=>name.endsWith('.woff2')).sort();
+assert.deepEqual(diskFonts,declaredFonts,`Font directory assets/fonts/ must match @font-face declarations in app.css (disk: ${diskFonts.join(', ')} vs css: ${declaredFonts.join(', ')})`);
+for(const font of declaredFonts){
+  assert(swSource.includes(`./assets/fonts/${font}`),`sw.js must precache active webfont ./assets/fonts/${font} for offline rendering.`);
+}
 const appSource=await readFile(new URL('assets/js/app.js',root),'utf8');
 assert(/\bfunction\s+copyTextToClipboard\s*\(/.test(appSource),'app.js must define copyTextToClipboard for studio and ceremony copy actions.');
 await access(new URL('404.html',root));
@@ -87,4 +93,4 @@ for(const sc of manifest.shortcuts||[]){
 for(const cli of ['scripts/bump-version.mjs','scripts/optimize-photos.mjs','scripts/e2e-smoke.mjs']){
   execFileSync(process.execPath,['--check',fileURLToPath(new URL(cli,root))]);
 }
-console.log('Content, guest projection, 50 wedding tips, all 30 studios, 60 photographs, contacts, manifest, sw.js, 404 fallback, split CSS tokens, CLI tools, asset versions and JavaScript syntax verified.');
+console.log('Content, guest projection, 50 wedding tips, all 30 studios, 60 photographs, contacts, manifest, sw.js, 404 fallback, split CSS tokens, fonts, CLI tools, asset versions and JavaScript syntax verified.');

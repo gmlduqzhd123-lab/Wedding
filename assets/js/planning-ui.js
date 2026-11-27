@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-69';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-69';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-69';
-import { quoteReview } from './travel.js?v=wedding-features-69';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-69';
+import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-70';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-70';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-70';
+import { quoteReview } from './travel.js?v=wedding-features-70';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-70';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -13,11 +13,13 @@ import {
   guestListSummary,
   netWeddingCostSummary,
   budgetPlanToCsv,
-  buildBudgetSummaryText
-} from './planning.js?v=wedding-features-69';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-69';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-69';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-69';
+  buildBudgetSummaryText,
+  cashFlowSettlementSummary,
+  buildCashFlowSummaryText
+} from './planning.js?v=wedding-features-70';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-70';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-70';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-70';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, focusHomeSearch };
 
@@ -32,6 +34,7 @@ let tipFavoritesOnly = false;
 let withTipNoteOnly = false;
 let vendorCatFilter = 'all';
 let vendorPendingOnly = false;
+let cashFlowGroomRatio = 50;
 let redrawTips = () => {};
 
 export function focusTipSearch(query = '') {
@@ -508,8 +511,123 @@ function renderBudgetCalculator(ctx) {
       : E('div', { class: 'budget-empty-prompt' },
         E('p', { class: 'small muted' }, '아직 입력한 결혼 예산 항목이 없습니다. 오른쪽 위의 ‘첫 예산표 작성하기’ 버튼을 눌러 신혼여행 계획예산과 웨딩홀·스드메 예산을 함께 정리해 보세요.'),
         netSettlementCard),
+    renderCashFlowBoard(ctx),
     renderVenueSimulator(ctx),
     renderSdmSimulator(ctx));
+}
+
+function renderCashFlowBoard(ctx) {
+  if (ctx.isGuestMode()) return null;
+  const prefs = ctx.getPrefs();
+  const content = ctx.getContent();
+  const inv = content?.invitation || {};
+  const cf = cashFlowSettlementSummary({ prefs, content });
+  const p1 = (inv.partner1 || '신랑').replace(/^신랑\s*/, '').trim() || '신랑';
+  const p2 = (inv.partner2 || '신부').replace(/^신부\s*/, '').trim() || '신부';
+
+  const splitBox = E('div', { class: 'cashflow-split-result', 'aria-live': 'polite' });
+  const ratioLabel = E('strong', { class: 'small' });
+  const slider = E('input', {
+    type: 'range',
+    id: 'cashflow-groom-ratio',
+    min: '0',
+    max: '100',
+    step: '5',
+    value: String(cashFlowGroomRatio),
+    'aria-label': `${p1} 분담 비율 (%)`
+  });
+  const presetBtns = [50, 60, 70, 40].map(val => E('button', {
+    type: 'button',
+    class: 'button quiet trip-filter-chip',
+    'data-split-preset': String(val),
+    'aria-pressed': String(cashFlowGroomRatio === val),
+    onclick: () => {
+      cashFlowGroomRatio = val;
+      slider.value = String(val);
+      updateSplitView();
+    }
+  }, `${val}:${100 - val}`));
+
+  const updateSplitView = () => {
+    const gr = cashFlowGroomRatio;
+    const br = 100 - gr;
+    ratioLabel.textContent = `${p1} ${gr}% : ${p2} ${br}%`;
+    for (const btn of presetBtns) {
+      btn.setAttribute('aria-pressed', String(Number(btn.dataset.splitPreset) === gr));
+    }
+    if (cf.totalRemaining === null) {
+      splitBox.replaceChildren(E('p', { class: 'small muted' }, '통합 예산·웨딩홀·스드메·혼수 중 1건 이상 입력되면 남은 잔금 기준 신랑·신부 분담액과 월 적립액이 자동 계산됩니다.'));
+      return;
+    }
+    const gRemain = Math.round(cf.totalRemaining * gr / 100);
+    const bRemain = cf.totalRemaining - gRemain;
+    const gMonthly = Math.ceil(gRemain / cf.monthsUntilWedding);
+    const bMonthly = Math.ceil(bRemain / cf.monthsUntilWedding);
+    splitBox.replaceChildren(
+      E('div', { class: 'cashflow-split-cards' },
+        E('div', { class: 'budget-net-stat' },
+          E('span', { class: 'small muted' }, `${p1} 부담 (${gr}%)`),
+          E('strong', {}, won(gRemain)),
+          E('span', { class: 'small muted' }, `월 약 ${won(gMonthly)} (${cf.monthsUntilWedding}개월)`)),
+        E('div', { class: 'budget-net-stat' },
+          E('span', { class: 'small muted' }, `${p2} 부담 (${br}%)`),
+          E('strong', {}, won(bRemain)),
+          E('span', { class: 'small muted' }, `월 약 ${won(bMonthly)} (${cf.monthsUntilWedding}개월)`))));
+  };
+
+  slider.addEventListener('input', () => {
+    cashFlowGroomRatio = Number(slider.value);
+    updateSplitView();
+  });
+  updateSplitView();
+
+  return E('section', { class: 'cashflow-board', 'aria-labelledby': 'cashflow-board-title' },
+    E('div', { class: 'cashflow-board-head' },
+      E('div', {},
+        E('h3', { id: 'cashflow-board-title' }, '💳 계약금 · 남은 잔금 · 월 적립 현금흐름 보드'),
+        E('p', { class: 'small muted' }, '별도 재입력 없이 통합 예산·웨딩홀/스드메 시뮬레이터·혼수 품목·최종 여행지·당일 현금 봉투를 자동 합산해 남은 자금 흐름을 계산합니다.')),
+      cf.hasData ? button('📋 현금흐름·분담 요약 복사', () => {
+        ctx.copyTextToClipboard(buildCashFlowSummaryText(cf, { groomRatio: cashFlowGroomRatio, inv }), '결혼 자금 현금흐름 및 분담 요약을 복사했습니다.', '현금흐름 요약 복사');
+      }, 'button quiet small-copy-btn') : null),
+    E('div', { class: 'ledger-kpi-grid cashflow-kpi-grid' },
+      E('div', { class: 'ledger-kpi-card' },
+        E('span', { class: 'small muted' }, `총 예상 지출 (${cf.enteredCount}/6)`),
+        E('strong', {}, cf.totalCost === null ? '미입력' : won(cf.totalCost))),
+      E('div', { class: 'ledger-kpi-card' },
+        E('span', { class: 'small muted' }, '기납부 계약금'),
+        E('strong', {}, won(cf.totalDeposit))),
+      E('div', { class: 'ledger-kpi-card is-accent' },
+        E('span', { class: 'small muted' }, '앞으로 남은 잔금'),
+        E('strong', {}, cf.totalRemaining === null ? '미입력' : won(cf.totalRemaining))),
+      E('div', { class: 'ledger-kpi-card' },
+        E('span', { class: 'small muted' }, `월 적립 필요 (${cf.monthsUntilWedding}개월)`),
+        E('strong', {}, cf.monthlySavingsNeeded === null ? '미입력' : `월 ${won(cf.monthlySavingsNeeded)}`))),
+    E('div', { class: 'table-scroll' },
+      E('table', { class: 'core-guide-table cashflow-table' },
+        E('thead', {},
+          E('tr', {},
+            E('th', { scope: 'col' }, '항목'),
+            E('th', { scope: 'col' }, '예상 총액'),
+            E('th', { scope: 'col' }, '기납부 계약금'),
+            E('th', { scope: 'col' }, '남은 잔금'),
+            E('th', { scope: 'col' }, '연동 출처'))),
+        E('tbody', {}, cf.rows.map(r => E('tr', {},
+          E('th', { scope: 'row' }, r.label),
+          E('td', {}, r.total === null ? '미입력' : won(r.total)),
+          E('td', {}, r.deposit > 0 ? won(r.deposit) : '—'),
+          E('td', {}, r.remaining === null ? '미입력' : E('strong', {}, won(r.remaining))),
+          E('td', { class: 'small muted' }, r.basis)))))),
+    E('div', { class: 'cashflow-daycash-strip' },
+      E('span', { class: 'spec-chip highlight' }, `📸 라크마 촬영 당일 현금: ${won(cf.shootOnSiteCash)}`),
+      E('span', { class: 'spec-chip' }, `✉️ 본식 당일 현금 봉투: 총 ${won(cf.dayCashTotal)} (미준비 ${won(cf.dayCashPending)})`)),
+    E('div', { class: 'cashflow-split-box' },
+      E('div', { class: 'cashflow-split-head' },
+        E('span', { class: 'small' }, '💑 남은 잔금 2인 분담 비율 시뮬레이터'),
+        ratioLabel),
+      E('div', { class: 'cashflow-split-controls' },
+        E('div', { class: 'trip-quick-filters', role: 'group', 'aria-label': '신랑 신부 분담 비율 프리셋' }, ...presetBtns),
+        slider),
+      splitBox));
 }
 
 export function openVendorScheduleEditor(ctx, existing = null) {

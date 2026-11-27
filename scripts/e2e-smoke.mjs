@@ -369,6 +369,10 @@ try {
   assert(donutCenter && donutCenter.includes('2,000만'), `Expected donut center 2,000만, got: ${donutCenter}`);
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.wedding-budget-calc button')].some(b => b.textContent.includes('예산 요약 복사'))`), true, 'Budget summary copy button must render');
   assert.equal(await cdp.eval(`[...document.querySelectorAll('.wedding-budget-calc button')].some(b => b.textContent.includes('CSV 내보내기'))`), true, 'Budget CSV export button must render');
+  // Round 11: Cash-flow & couple split board
+  assert.equal(await cdp.eval(`Boolean(document.querySelector('.cashflow-board')) && document.querySelectorAll('.cashflow-table tbody tr').length === 6`), true, 'Cash-flow board must show all 6 categories');
+  await cdp.eval(`document.querySelector('[data-split-preset="60"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('.cashflow-split-result')?.innerText.includes('(60%)') && document.querySelector('.cashflow-split-result')?.innerText.includes('(40%)')`);
 
   await cdp.eval(`location.hash = '#/tips/schedule'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('.vendor-filter-bar')) && document.querySelectorAll('.vendor-schedule-item').length >= 1`);
@@ -443,6 +447,15 @@ try {
     document.querySelector('#dialog-actions [type="submit"]').click();
   })()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('#main').innerText.includes('테스트하객') && Boolean(document.querySelector('.ledger-crosscheck-strip'))`);
+  // Round 11: Batch Invite Sending Queue for unsent guests
+  await cdp.eval(`[...document.querySelectorAll('.ledger-crosscheck-actions button')].find(b => b.textContent.includes('연속 발송')).click()`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('.batch-invite-modal #batch-invite-text'))`);
+  await cdp.eval(`document.querySelector('[data-invite-tone="warm"]').click()`);
+  await cdp.waitFor(`() => document.querySelector('#batch-invite-text')?.value.includes('테스트하객') && document.querySelector('#batch-invite-text')?.value.includes('결혼하게 되었어')`);
+  await cdp.eval(`[...document.querySelectorAll('.batch-thankyou-actions button')].find(b => b.textContent.includes('발송 완료만 표시')).click()`);
+  await cdp.waitFor(`() => Boolean(document.querySelector('.batch-thankyou-done'))`);
+  await cdp.eval(`[...document.querySelectorAll('.batch-thankyou-done button')].find(b => b.textContent.includes('하객 명단으로 돌아가기')).click()`);
+  await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open && document.querySelector('.ledger-row')?.innerText.includes('모바일 발송')`);
 
   await cdp.eval(`location.hash = '#/ceremony/gifts'`);
   await cdp.waitFor(`() => Boolean(document.querySelector('#gift-ledger-title'))`);
@@ -627,21 +640,23 @@ try {
   await cdp.waitFor(`() => document.querySelector('#draft-banner') && !document.querySelector('#draft-banner').hidden`);
   assert(await cdp.eval(`document.querySelector('#main').innerText.includes('브라우저 초안 검증 인사말')`), 'Draft must persist after reload');
   await cdp.eval(`document.querySelector('#manage-content').click()`);
-  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('#editor-body').innerText.includes('초대 인사') && document.querySelectorAll('.storage-health-chips .spec-chip').length >= 2`);
+  await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && document.querySelector('#editor-body').innerText.includes('초대 인사') && document.querySelectorAll('.storage-health-chips .spec-chip').length >= 2 && Boolean(document.querySelector('.publish-preflight-box'))`);
   await cdp.eval(`[...document.querySelectorAll('#editor-body button')].find(b => b.textContent === '공개본으로 돌아가기').click()`);
   await cdp.waitFor(`() => document.querySelector('#confirm-dialog').open`);
   await cdp.eval(`document.querySelector('#confirm-ok').click()`);
   await cdp.waitFor(`() => !document.querySelector('#confirm-dialog').open && !document.querySelector('#editor-dialog').open && document.querySelector('#draft-banner').hidden`);
   assert.equal(await cdp.eval(`localStorage.getItem('wedding:v1:draft')`), null, 'Draft cleared on revert to public');
 
-  // Round 10: Story 4-prompt onboarding cards on empty story screen
+  // Round 10+11: Story 4-prompt cards & Album 3-step onboarding cards
   await cdp.eval(`location.hash = '#/story'`);
   await cdp.waitFor(`() => document.querySelectorAll('.story-prompt-card').length === 4`);
   await cdp.eval(`document.querySelector('.story-prompt-card').click()`);
   await cdp.waitFor(`() => document.querySelector('#editor-dialog').open && Boolean(document.querySelector('#field-title')?.value)`);
   await cdp.eval(`document.querySelector('#close-dialog').click()`);
   await cdp.waitFor(`() => !document.querySelector('#editor-dialog').open`);
-  console.log('E2E PASS 7/8: Invitation dark contrast + print guard + 390px preview + BGM + OG preview + Storage diagnostics + Story prompts + Draft revert OK');
+  await cdp.eval(`location.hash = '#/albums'`);
+  await cdp.waitFor(`() => document.querySelectorAll('.album-onboarding-card').length === 3`);
+  console.log('E2E PASS 7/8: Invitation dark contrast + print guard + 390px preview + BGM + OG preview + Storage/Preflight + Story/Album onboarding + Draft revert OK');
 
   // 8. 18-view Dark Mode bright-box + WCAG AA contrast guard + Light Mode rose label guard + zero overflow in 1280px & 390px
   const darkAuditViews = [

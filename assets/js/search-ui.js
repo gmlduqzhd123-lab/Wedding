@@ -1,5 +1,5 @@
-import { E, button } from './dom.js?v=wedding-features-69';
-import { activeVendorSchedules } from './planning.js?v=wedding-features-69';
+import { E, button } from './dom.js?v=wedding-features-70';
+import { activeVendorSchedules } from './planning.js?v=wedding-features-70';
 
 const STATIC_COMMANDS = [
   { id: 'nav-home', category: '메뉴', icon: '🏡', title: '홈 · 웨딩 준비 대시보드', subtitle: '단계별 포커스·마스터 캘린더·체크리스트', keywords: '홈 대시보드 마스터 캘린더 체크리스트 일정 dday', route: 'home' },
@@ -16,14 +16,14 @@ const STATIC_COMMANDS = [
   { id: 'nav-prenatal-subsidy', category: '산전검사', icon: '💰', title: '산전검사 국가·순천시 지원금 & 마감일 계산기', subtitle: '여성 13만 · 남성 5만 · 순천시 각 4만 · 엽산제 · e보건소', keywords: '산전검사 지원금 e보건소 임신 사전건강관리 13만원 5만원 4만원 엽산제 마감일 청구', route: 'prenatal', subTab: 'subsidy' },
   { id: 'nav-prenatal-guide', category: '산전검사', icon: '🩺', title: '산전검사 항목 & 준비 체크리스트', subtitle: 'AMH·초음파·정액검사·준비물 체크', keywords: '산전검사 항목 amh 초음파 정액검사 체크리스트 준비물', route: 'prenatal', subTab: 'guide' },
   { id: 'nav-tips-tips', category: '결혼 정보', icon: '🎬', title: '결혼 준비 꿀팁 유튜브 50선', subtitle: '예산·스드메·웨딩홀·본식·신혼여행 영상 큐레이션', keywords: '꿀팁 유튜브 영상 50선 스드메 드레스 메이크업 본식스냅', route: 'tips', subTab: 'tips' },
-  { id: 'nav-tips-budget', category: '결혼 정보', icon: '📊', title: '통합 예산 계산기 · 웨딩홀/스드메 시뮬레이터', subtitle: '6대 항목 도넛 차트 · 식대/보증인원 · 헬퍼비 시뮬레이션', keywords: '예산 계산기 6대예산 웨딩홀 식대 보증인원 대관료 스드메 시뮬레이터', route: 'tips', subTab: 'budget' },
+  { id: 'nav-tips-budget', category: '결혼 정보', icon: '📊', title: '통합 예산 · 계약금/잔금 현금흐름 · 시뮬레이터', subtitle: '6대 항목 도넛 · 계약금/잔금·월 적립·2인 분담 · 웨딩홀/스드메 시뮬레이터', keywords: '예산 계산기 6대예산 계약금 잔금 현금흐름 월적립 분담 웨딩홀 식대 보증인원 대관료 스드메 시뮬레이터', route: 'tips', subTab: 'budget' },
   { id: 'nav-tips-schedule', category: '결혼 정보', icon: '🗓️', title: '주요 업체 일정 · 피팅 · 잔금 보드', subtitle: '촬영·가봉·시식·계약금/잔금 날짜 관리', keywords: '업체 일정 피팅 가봉 시식 잔금 계약금 보드', route: 'tips', subTab: 'schedule' },
   { id: 'nav-tips-home', category: '결혼 정보', icon: '🏠', title: '신혼집 · 혼수(가전·가구) 품목 관리', subtitle: '품목별 견적·계약금·잔금·배송일 캘린더', keywords: '신혼집 혼수 가전 가구 냉장고 세탁기 침대 tv 배송일', route: 'tips', subTab: 'home' },
   { id: 'nav-tips-benefits', category: '결혼 정보', icon: '🏛️', title: '혼인신고 · 순천/전남/정부 신혼부부 혜택', subtitle: '순천시청 장명로 30 · 청년부부 결혼축하금 200만 원 · 세액공제', keywords: '혼인신고 순천시청 장명로 30 결혼축하금 200만원 신혼부부 혜택 보금자리 세액공제 증여공제 전남아이톡', route: 'tips', subTab: 'benefits' },
   { id: 'act-quick-gift', category: '빠른 실행', icon: '⚡', title: '축의대 현장 빠른 연속 입력 바로 열기', subtitle: '양가·방식 고정, 1-tap 금액·식권 연속 접수', keywords: '축의대 빠른 입력 연속 접수 현장 당일', route: 'ceremony', subTab: 'gifts', action: 'quick-gift' },
-  { id: 'act-couple-sync', category: '빠른 실행', icon: '💑', title: '신랑·신부 3초 기록 동기화 (카톡 복붙 코드)', subtitle: '하객·축의금·예산·혼수·메모를 두 기기 간 즉시 병합', keywords: '동기화 신랑 신부 카톡 백업 합치기 코드 공유 sync', route: 'home', action: 'couple-sync' },
-  { id: 'act-shoot-day', category: '빠른 실행', icon: '📸', title: '라크마 촬영 당일 현장 브리핑 모드', subtitle: '루나메이크업→중앙로 117 동선·현금 25만·미챙김 준비물·타임테이블', keywords: '촬영 당일 현장 브리핑 라크마 루나메이크업 타임테이블', route: 'studios', action: 'shoot-day' },
-  { id: 'act-wedding-day', category: '빠른 실행', icon: '💍', title: '본식 당일 현장 통합 모드 (큐시트·축의대·봉투·원판)', subtitle: '화면 켜짐 유지 + 본식 핵심 현장 도구 1-tap 전환', keywords: '본식 당일 현장 통합 스위처 큐시트 봉투 원판', route: 'ceremony', action: 'wedding-day' }
+  { id: 'act-couple-sync', category: '빠른 실행', icon: '💑', title: '신랑·신부 3초 기록 동기화 (카톡 복붙 코드)', subtitle: '하객·축의금·예산·혼수·시안·BGM·실견적을 두 기기 간 즉시 병합', keywords: '동기화 신랑 신부 카톡 백업 합치기 코드 공유 sync', route: 'home', action: 'couple-sync' },
+  { id: 'act-shoot-day', category: '빠른 실행', icon: '📸', title: '라크마 촬영 당일 현장 브리핑 모드', subtitle: '루나메이크업→중앙로 117 동선·현금 25만·착장별 시안 카드·타임테이블', keywords: '촬영 당일 현장 브리핑 라크마 루나메이크업 착장 시안 타임테이블', route: 'studios', action: 'shoot-day' },
+  { id: 'act-wedding-day', category: '빠른 실행', icon: '💍', title: '본식 당일 현장 통합 모드 (큐시트·축의대·봉투·원판)', subtitle: '화면 켜짐 유지 + 본식 핵심 현장 도구 1-tap 전환', keywords: '본식 당일 현장 통합 스위처 큐시트 봉투 원판 bgm 브리핑', route: 'ceremony', action: 'wedding-day' }
 ];
 
 export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio = null, studios = [] } = {}) {
@@ -50,18 +50,60 @@ export function searchWeddingWorkspace(query, { content = {}, prefs = {}, studio
     return results.slice(0, 10);
   }
 
-  // Honeymoon trips (30)
+  // Honeymoon trips (36) + private real quotes
   for (const trip of content?.honeymoon || []) {
-    const hay = `${trip.title} ${trip.country} ${trip.pros || ''} ${trip.cons || ''} ${prefs?.tripNotes?.[trip.id] || ''}`;
+    const pq = prefs?.tripQuotes?.[trip.id];
+    const pqHay = pq ? `${pq.agency || ''} ${pq.perks || ''} ${pq.cancelUntil || ''} 실견적` : '';
+    const hay = `${trip.title} ${trip.country} ${trip.pros || ''} ${trip.cons || ''} ${prefs?.tripNotes?.[trip.id] || ''} ${pqHay}`;
     if (matches(hay)) {
+      const qAmt = pq && (pq.total != null || pq.airfare != null || pq.lodging != null)
+        ? (pq.total ?? ((pq.airfare || 0) + (pq.lodging || 0)))
+        : null;
       push({
         id: `trip-${trip.id}`,
-        category: '신혼여행',
+        category: pq ? '신혼여행 · 실견적' : '신혼여행',
         icon: '✈️',
         title: trip.title,
-        subtitle: `${trip.country || ''} · ${trip.budget ? `${Math.round(trip.budget / 10000).toLocaleString('ko-KR')}만 원` : '예산 미정'}`,
+        subtitle: [
+          trip.country || '',
+          trip.budget ? `계획 ${Math.round(trip.budget / 10000).toLocaleString('ko-KR')}만` : '예산 미정',
+          qAmt != null ? `실견적 ${Math.round(qAmt / 10000).toLocaleString('ko-KR')}만` : '',
+          pq?.agency || ''
+        ].filter(Boolean).join(' · '),
         route: 'honeymoon',
         focusTripId: trip.id
+      });
+    }
+  }
+
+  // Private shoot brief outfits
+  for (const o of prefs?.shootBrief?.outfits || []) {
+    const hay = `${o.label || ''} ${o.hair || ''} ${o.props || ''} ${o.poses || ''} 라크마 촬영 착장 시안`;
+    if (matches(hay)) {
+      push({
+        id: `shoot-outfit-${o.id}`,
+        category: '라크마 착장 시안',
+        icon: '🎨',
+        title: o.label,
+        subtitle: [o.hair, o.props, o.poses].filter(Boolean).join(' · ') || '라크마 촬영 시안 카드',
+        route: 'studios'
+      });
+    }
+  }
+
+  // Private ceremony BGM cue sheet entries
+  for (const [slotId, entry] of Object.entries(prefs?.ceremonyBgm || {})) {
+    if (!entry?.song && !entry?.cue) continue;
+    const hay = `${entry.song || ''} ${entry.cue || ''} 본식 bgm 음향 큐시트 ${slotId}`;
+    if (matches(hay)) {
+      push({
+        id: `ceremony-bgm-${slotId}`,
+        category: '본식 BGM',
+        icon: '🎼',
+        title: entry.song || '선곡 메모',
+        subtitle: `${entry.ready ? '음원 준비 완료' : '음원 준비 중'}${entry.cue ? ` · ${entry.cue}` : ''}`,
+        route: 'ceremony',
+        subTab: 'rundown'
       });
     }
   }

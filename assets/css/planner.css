@@ -5105,3 +5105,143 @@ body.has-compare-tray .scroll-top-btn {
     color: #9ad4ab;
   }
 }
+
+/* ===== Round 11: Cash-Flow & Couple Split Board, Album Onboarding & Publish Preflight ===== */
+.cashflow-board {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.cashflow-board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+.cashflow-board-head h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: var(--ink);
+}
+.cashflow-board-head p {
+  margin: 0;
+}
+.cashflow-table {
+  min-width: 540px;
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.cashflow-daycash-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.cashflow-split-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--olive-line);
+}
+.cashflow-split-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cashflow-split-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.cashflow-split-controls input[type="range"] {
+  flex: 1 1 180px;
+  min-width: 140px;
+  accent-color: var(--green-solid);
+}
+.cashflow-split-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cashflow-split-result p {
+  margin: 0;
+}
+
+.album-onboarding-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.album-onboarding-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--line);
+}
+.album-onboarding-card .badge {
+  justify-self: start;
+}
+.album-onboarding-card p {
+  margin: 0;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.publish-preflight-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--surface-tint);
+  border: 1px solid var(--olive-line);
+}
+.publish-preflight-box .storage-health-chips {
+  margin-top: 0;
+}
+.publish-preflight-box p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .cashflow-board {
+    padding: 15px 14px;
+  }
+  .cashflow-split-cards,
+  .album-onboarding-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media screen {
+  html.is-dark-theme:not(.is-guest-mode) .cashflow-board,
+  body.is-dark-theme:not(.is-guest-mode) .cashflow-board,
+  html.is-dark-theme:not(.is-guest-mode) .album-onboarding-card,
+  body.is-dark-theme:not(.is-guest-mode) .album-onboarding-card,
+  html.is-dark-theme:not(.is-guest-mode) .publish-preflight-box,
+  body.is-dark-theme:not(.is-guest-mode) .publish-preflight-box {
+    background: #1c241f;
+    border-color: #2c3830;
+  }
+  html.is-dark-theme:not(.is-guest-mode) .cashflow-split-box,
+  body.is-dark-theme:not(.is-guest-mode) .cashflow-split-box,
+  html.is-dark-theme:not(.is-guest-mode) .cashflow-table,
+  body.is-dark-theme:not(.is-guest-mode) .cashflow-table {
+    background: #18201b;
+    border-color: #2c3830;
+  }
+}
