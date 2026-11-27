@@ -1,8 +1,8 @@
-import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-74';
-import { formatDate, weddingDday } from './content.js?v=wedding-features-74';
-import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-74';
-import { quoteReview } from './travel.js?v=wedding-features-74';
-import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-74';
+import { E, button, externalLink, downloadText, searchBox, enhanceTablistKeyboard } from './dom.js?v=wedding-features-75';
+import { formatDate, weddingDday } from './content.js?v=wedding-features-75';
+import { VENDOR_CATEGORIES } from './preferences.js?v=wedding-features-75';
+import { quoteReview } from './travel.js?v=wedding-features-75';
+import { scheduleCalendar, multiScheduleCalendar, scheduleGoogleCalendarUrl } from './calendar.js?v=wedding-features-75';
 import {
   DEFAULT_VENDOR_SCHEDULES,
   WEDDING_BUDGET_CATEGORIES,
@@ -16,10 +16,10 @@ import {
   buildBudgetSummaryText,
   cashFlowSettlementSummary,
   buildCashFlowSummaryText
-} from './planning.js?v=wedding-features-74';
-import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-74';
-import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-74';
-import { renderBudgetDonutChart } from './charts.js?v=wedding-features-74';
+} from './planning.js?v=wedding-features-75';
+import { youtubeVideoId, isYoutubeUrl, openYoutubeModal, youtubeThumbBanner } from './travel-ui.js?v=wedding-features-75';
+import { BENEFIT_CHECK_ITEMS, renderHomeItemsBoard, renderBenefitsGuideBoard, focusHomeSearch } from './life-planning-ui.js?v=wedding-features-75';
+import { renderBudgetDonutChart } from './charts.js?v=wedding-features-75';
 
 export { DEFAULT_VENDOR_SCHEDULES, WEDDING_BUDGET_CATEGORIES, activeVendorSchedules, focusHomeSearch };
 
@@ -484,6 +484,17 @@ function renderBudgetCalculator(ctx) {
           E('strong', {}, net.netActual === null ? '지출 입력 필요' : (net.netActual < 0 ? `+${won(-net.netActual)}` : won(net.netActual))),
           net.coveragePct !== null ? E('span', { class: 'small muted' }, `축의금 충당률 ${net.coveragePct}%`) : null)))
     : null;
+  const prefs = ctx.getPrefs();
+  const content = ctx.getContent();
+  const inv = content?.invitation || {};
+  const cashFlowSummary = cashFlowSettlementSummary({ prefs, content });
+  const exportBudgetOptions = () => ({
+    cashFlow: cashFlowSummary,
+    groomRatio: cashFlowGroomRatio,
+    partner1: inv.partner1,
+    partner2: inv.partner2
+  });
+  const canExportBudget = hasAny || net.giftCount > 0 || cashFlowSummary.totalRemaining !== null;
   return E('section', { class: 'wedding-budget-calc', 'aria-labelledby': 'wedding-budget-title' },
     E('div', { class: 'section-heading' },
       E('div', {},
@@ -491,11 +502,11 @@ function renderBudgetCalculator(ctx) {
         E('h2', { id: 'wedding-budget-title' }, '결혼 준비 통합 예산 계산기'),
         E('p', {}, '웨딩홀·스드메·본식·예물·신혼여행·혼수 6대 항목의 목표 예산과 실제 지출을 이 기기에서 한눈에 관리하세요.')),
       E('div', { class: 'page-actions' },
-        hasAny || net.giftCount > 0 ? button('📋 예산 요약 복사', () => {
-          ctx.copyTextToClipboard(buildBudgetSummaryText(plan, ctx.getPrefs().giftLedger || []), '결혼 준비 통합 예산 요약을 복사했습니다.', '통합 예산 요약 복사');
+        canExportBudget ? button('📋 예산 요약 복사', () => {
+          ctx.copyTextToClipboard(buildBudgetSummaryText(plan, prefs.giftLedger || [], exportBudgetOptions()), '결혼 준비 통합 예산 요약(현금흐름·분담 포함)을 복사했습니다.', '통합 예산 요약 복사');
         }, 'button quiet') : null,
-        hasAny || net.giftCount > 0 ? button('📥 CSV 내보내기', () => {
-          downloadText(budgetPlanToCsv(plan, ctx.getPrefs().giftLedger || []), 'wedding-budget-plan.csv', 'text/csv;charset=utf-8');
+        canExportBudget ? button('📥 CSV 내보내기', () => {
+          downloadText(budgetPlanToCsv(plan, prefs.giftLedger || [], exportBudgetOptions()), 'wedding-budget-plan.csv', 'text/csv;charset=utf-8');
           ctx.toast('결혼 준비 통합 예산표 CSV(wedding-budget-plan.csv)를 다운로드했습니다.');
         }, 'button quiet') : null,
         button(hasAny ? '예산 입력·수정' : '첫 예산표 작성하기', () => openBudgetEditor(ctx), 'button quiet'))),

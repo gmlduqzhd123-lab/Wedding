@@ -1,10 +1,10 @@
-import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-74';
-import { formatDate } from './content.js?v=wedding-features-74';
-import { CEREMONY_PREP_ITEMS } from './planning.js?v=wedding-features-74';
-import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-74';
-import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-74';
+import { E, button, enhanceTablistKeyboard } from './dom.js?v=wedding-features-75';
+import { formatDate } from './content.js?v=wedding-features-75';
+import { CEREMONY_PREP_ITEMS, CEREMONY_BGM_SLOTS, CEREMONY_STEP_BGM_MAP } from './planning.js?v=wedding-features-75';
+import { renderGuestListBoard, renderGiftLedgerBoard, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch } from './guest-ledger-ui.js?v=wedding-features-75';
+import { renderWeddingDayOpsBoard } from './wedding-day-ui.js?v=wedding-features-75';
 
-export { CEREMONY_PREP_ITEMS, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
+export { CEREMONY_PREP_ITEMS, CEREMONY_BGM_SLOTS, CEREMONY_STEP_BGM_MAP, openQuickGiftEntryModal, focusGuestSearch, focusGiftSearch };
 
 let ceremonySubTab = 'rundown';
 export function setCeremonySubTab(tab) {
@@ -207,29 +207,6 @@ export function buildAmorMcSteps(inv = {}, cPlan = {}) {
     ]]
   ];
 }
-
-export const CEREMONY_BGM_SLOTS = [
-  ['bgm-pre', '식전영상 · 하객 입장', '예식 20분 전 ~ 개식 전 잔잔한 배경음'],
-  ['bgm-candle', 'STEP 03 · 화촉점화', '양가 어머님 입장 및 점화'],
-  ['bgm-groom', 'STEP 04 · 신랑 입장', '활기차고 밝은 신랑 입장곡'],
-  ['bgm-bride', 'STEP 05 · 신부 입장', '신부 2단계 등장·입장 하이라이트 구간'],
-  ['bgm-vow', 'STEP 07 · 혼인서약서', '잔잔한 피아노·현악 연주곡 (선택)'],
-  ['bgm-speech', 'STEP 08 · 성혼선언·축사', '등단·퇴장 브릿지 또는 무음'],
-  ['bgm-parents', 'STEP 09 · 양가·내빈 인사', '따뜻하고 감동적인 연주곡 (신부→신랑→내빈 동선)'],
-  ['bgm-song', 'STEP 10 · 축가', '아카펠라 라이브 마이크·MR 유무 체크'],
-  ['bgm-march', 'STEP 11 · 신랑·신부 행진', '경쾌한 피날레 행진곡 (박수 타이밍)']
-];
-
-export const CEREMONY_STEP_BGM_MAP = {
-  '03': 'bgm-candle',
-  '04': 'bgm-groom',
-  '05': 'bgm-bride',
-  '07': 'bgm-vow',
-  '08': 'bgm-speech',
-  '09': 'bgm-parents',
-  '10': 'bgm-song',
-  '11': 'bgm-march'
-};
 
 export function estimateSpeechDuration(text = '') {
   const clean = String(text || '').replace(/\s+/g, '');
@@ -485,8 +462,30 @@ function printCeremonyPapersOnly() {
   setTimeout(cleanup, 1500);
 }
 
-function copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant) {
+function formatStepBgmLine(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  const song = (entry.song || '').trim();
+  const cue = (entry.cue || '').trim();
+  if (!song && !cue) return '';
+  return `${song || '곡 미정'}${cue ? ` [${cue}]` : ''} (${entry.ready ? '음원 확보 ✅' : '준비 중'})`;
+}
+
+export function buildCeremonyPlanSummaryText(timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant, bgmMap = {}) {
   const plan = resolveCeremonyPlan(cPlan);
+  const map = bgmMap && typeof bgmMap === 'object' ? bgmMap : {};
+  const annotatedSteps = orderSteps.map(step => {
+    if (!isNoOfficiant) return step;
+    const match = /^(\d{2})\./.exec(step);
+    const slotId = match ? CEREMONY_STEP_BGM_MAP[match[1]] : null;
+    const bgmLabel = slotId ? formatStepBgmLine(map[slotId]) : '';
+    return bgmLabel ? `${step} — 🎼 ${bgmLabel}` : step;
+  });
+  const bgmLines = CEREMONY_BGM_SLOTS
+    .map(([id, title]) => {
+      const label = formatStepBgmLine(map[id]);
+      return label ? `- ${title}: ${label}` : null;
+    })
+    .filter(Boolean);
   const lines = [
     `🔔 [본식 당일 타임테이블 & 식순 요약] ${inv.partner1 || '신랑'} ♥ ${inv.partner2 || '신부'}`,
     `· 일시: ${inv.date ? formatDate(inv.date) : '예식일'} ${baseTime}`,
@@ -499,34 +498,57 @@ function copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, i
     ...timeline.map(([t, title, desc]) => `- ${t} ${title}: ${desc}`),
     '',
     `📋 [${isNoOfficiant ? '주례 없는 예식 12단계' : '일반 예식'} 식순]`,
-    ...orderSteps
+    ...annotatedSteps
   ];
+  if (bgmLines.length) {
+    const stats = ceremonyBgmSummary(map);
+    lines.push('', `🎼 [선곡된 본식 BGM · 선곡 ${stats.assigned}/${stats.total} · 확보 ${stats.ready}/${stats.total}]`, ...bgmLines);
+  }
   if (plan.note) lines.push('', `🎼 [BGM·진행 메모]\n${plan.note}`);
-  ctx.copyTextToClipboard(lines.join('\n'), '본식 타임테이블·식순 요약을 클립보드에 복사했습니다.');
+  return lines.join('\n');
 }
 
-function copyAmorMcScript(ctx, inv, cPlan) {
+function copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant, bgmMap = {}) {
+  ctx.copyTextToClipboard(
+    buildCeremonyPlanSummaryText(timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant, bgmMap),
+    '본식 타임테이블·식순 요약을 클립보드에 복사했습니다.'
+  );
+}
+
+export function buildAmorMcScriptText(inv = {}, cPlan = {}, bgmMap = {}) {
   const plan = resolveCeremonyPlan(cPlan);
+  const map = bgmMap && typeof bgmMap === 'object' ? bgmMap : {};
   const isOfficiant = plan.style === 'officiant';
   const mcSteps = buildAmorMcSteps(inv, plan);
   const declText = plan.declaration || defaultAmorDeclarationText(inv, plan);
   const speechMeta = isOfficiant ? ` / 주례: ${plan.speech}` : (plan.speech ? ` / 성혼선언·축사: ${plan.speech} 진행` : '');
+  const preBgm = formatStepBgmLine(map['bgm-pre']);
   const lines = [
     `🎤 [사회자 진행 대본 · 큐시트] ${inv.partner1 || '신랑'} ♥ ${inv.partner2 || '신부'} ${isOfficiant ? '일반 예식 (주례사 중심)' : '주례 없는 결혼식'}`,
     `· 일시: ${inv.date ? formatDate(inv.date) : '예식일'} ${inv.time || '15:00'}`,
     `· 장소: ${inv.venue || '순천아모르웨딩컨벤션'}`,
     `· 사회자: ${plan.mc} / 축가: ${plan.song}${speechMeta} / 연회홀: ${plan.banquetFloor || '층수 확인 필요'}`,
+    ...(preBgm ? [`· 식전 BGM: ${preBgm}`] : []),
     '',
-    ...mcSteps.flatMap(([no, title, cue, scripts]) => [
-      `[${no}. ${title}]`,
-      `  * 현장 체크: ${cue}`,
-      ...scripts.map(s => `  "${s}"`),
-      ...(no === '08' ? ['', `  --- [${isOfficiant ? '성혼선언문 낭독문 (주례·사회 참고)' : `성혼선언문 낭독문 (${plan.speech || '사회자'} 진행${plan.declaration ? '' : ' · 수정 예정'})`}] ---`, ...declText.split('\n').map(l => `  ${l}`), '  ---------------------------'] : []),
-      ''
-    ]),
+    ...mcSteps.flatMap(([no, title, cue, scripts]) => {
+      const slotId = CEREMONY_STEP_BGM_MAP[no];
+      const bgmLine = slotId ? formatStepBgmLine(map[slotId]) : '';
+      return [
+        `[${no}. ${title}]`,
+        `  * 현장 체크: ${cue}`,
+        ...(bgmLine ? [`  * 🎼 BGM: ${bgmLine}`] : []),
+        ...scripts.map(s => `  "${s}"`),
+        ...(no === '08' ? ['', `  --- [${isOfficiant ? '성혼선언문 낭독문 (주례·사회 참고)' : `성혼선언문 낭독문 (${plan.speech || '사회자'} 진행${plan.declaration ? '' : ' · 수정 예정'})`}] ---`, ...declText.split('\n').map(l => `  ${l}`), '  ---------------------------'] : []),
+        ''
+      ];
+    }),
     '※ 본 대본은 두 사람의 예식 진행을 위해 정리한 개인 준비본입니다.'
   ];
-  ctx.copyTextToClipboard(lines.join('\n'), '사회자 진행 전체 대본(성혼선언문 포함)을 복사했습니다.');
+  return lines.join('\n');
+}
+
+function copyAmorMcScript(ctx, inv, cPlan, bgmMap = {}) {
+  ctx.copyTextToClipboard(buildAmorMcScriptText(inv, cPlan, bgmMap), '사회자 진행 전체 대본(성혼선언문·BGM 포함)을 복사했습니다.');
 }
 
 export function renderCeremony(ctx) {
@@ -906,8 +928,8 @@ export function renderCeremony(ctx) {
       E('div', { class: 'page-actions ceremony-action-bar' },
         button('🎙️ 라이브 큐시트 모드', openLiveCueSheetModal, 'button'),
         button('📤 역할별 브리핑 팩', openRoleBriefingModal, 'button quiet'),
-        button('📋 타임테이블·식순 복사', () => copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant), 'button quiet'),
-        button('🎤 사회자 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan), 'button quiet'),
+        button('📋 타임테이블·식순 복사', () => copyCeremonyPlanText(ctx, timeline, orderSteps, cPlan, inv, baseTime, isNoOfficiant, bgmMap), 'button quiet'),
+        button('🎤 사회자 대본 복사', () => copyAmorMcScript(ctx, inv, cPlan, bgmMap), 'button quiet'),
         button('🖨️ 서약서·선언문 인쇄', printCeremonyPapersOnly, 'button quiet'),
         button('🖨️ 전체 인쇄 / PDF', () => window.print(), 'button quiet'))),
     E('div', { class: 'amor-cue-grid', 'aria-label': '순천아모르웨딩컨벤션 현장 진행 핵심 포인트' },

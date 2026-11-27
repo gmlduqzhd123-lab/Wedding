@@ -1,8 +1,8 @@
-import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-74';
-import { formatDate } from './content.js?v=wedding-features-74';
-import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-74';
-import { guestListSummary, guestsToCsv, parseGuestsCsv, parseQuickGuestText, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-74';
-import { renderSideRatioBar } from './charts.js?v=wedding-features-74';
+import { E, button, downloadText, searchBox } from './dom.js?v=wedding-features-75';
+import { formatDate } from './content.js?v=wedding-features-75';
+import { GUEST_SIDES, GUEST_GROUPS, INVITE_STATUSES, RSVP_STATUSES } from './preferences.js?v=wedding-features-75';
+import { guestListSummary, guestsToCsv, parseGuestsCsv, parseQuickGuestText, syncGuestsFromCsv, RSVP_FORM_GUIDE_TEXT, estimateBanquetTables, crossCheckGuestsAndGifts } from './planning.js?v=wedding-features-75';
+import { renderSideRatioBar } from './charts.js?v=wedding-features-75';
 import {
   printDedicatedSheet,
   openThankYouModal,
@@ -11,7 +11,7 @@ import {
   openQuickGiftEntryModal,
   renderGiftLedgerBoard,
   focusGiftSearch
-} from './gift-ledger-ui.js?v=wedding-features-74';
+} from './gift-ledger-ui.js?v=wedding-features-75';
 
 export { openThankYouModal, openBatchThankYouModal, openGiftEditor, openQuickGiftEntryModal, renderGiftLedgerBoard, focusGiftSearch };
 
@@ -29,11 +29,12 @@ export function focusGuestSearch(query = '') {
   guestQuery = String(query || '');
 }
 
-function buildGuestPrintSheet(ctx, list) {
+export function buildGuestPrintSheet(ctx, list) {
   const info = ctx.getContent()?.invitation || {};
   const couple = [info.partner1, info.partner2].filter(Boolean).join(' · ') || '웨딩 축의대';
   const when = [info.date ? formatDate(info.date) : '', info.time || '', info.venue || ''].filter(Boolean).join(' · ');
   const summary = guestListSummary(list);
+  const tables = estimateBanquetTables(summary.mealHeadcount);
   const sideOrder = { '신랑 측': 0, '신부 측': 1, '공통': 2 };
   const sorted = [...list].sort((a, b) =>
     (sideOrder[a.side] ?? 9) - (sideOrder[b.side] ?? 9) ||
@@ -54,7 +55,8 @@ function buildGuestPrintSheet(ctx, list) {
         E('span', {}, `등록 ${summary.totalRecords}건`),
         E('span', {}, `참석 확정 ${summary.attendingHeadcount}명`),
         E('span', {}, `불참 제외 예상 ${summary.possibleHeadcount}명`),
-        E('span', {}, `식사 예정 ${summary.mealHeadcount}명`))),
+        E('span', {}, `식사 예정 ${summary.mealHeadcount}명`),
+        tables.headcount > 0 ? E('span', {}, `연회 8인 ${tables.tables8} / 10인 ${tables.tables10}테이블`) : null)),
     E('table', { class: 'print-sheet-table' },
       E('thead', {},
         E('tr', {},

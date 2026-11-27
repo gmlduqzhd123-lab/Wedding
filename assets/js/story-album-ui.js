@@ -1,6 +1,6 @@
-import { formatDate } from './content.js?v=wedding-features-74';
-import { dateSpan } from './travel.js?v=wedding-features-74';
-import { $, E, button, image, searchBox } from './dom.js?v=wedding-features-74';
+import { formatDate } from './content.js?v=wedding-features-75';
+import { dateSpan } from './travel.js?v=wedding-features-75';
+import { $, E, button, image, searchBox } from './dom.js?v=wedding-features-75';
 
 let storySort = 'asc';
 let storyYearFilter = 'all';

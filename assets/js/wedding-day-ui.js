@@ -1,7 +1,7 @@
-import { E, button } from './dom.js?v=wedding-features-74';
-import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-74';
-import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-74';
-import { weddingDaySummary, computeCashDenominations } from './planning.js?v=wedding-features-74';
+import { E, button } from './dom.js?v=wedding-features-75';
+import { formatDate, extractPhoneNumber } from './content.js?v=wedding-features-75';
+import { DAY_ROLE_GROUPS, ENVELOPE_PAYEES } from './preferences.js?v=wedding-features-75';
+import { weddingDaySummary, computeCashDenominations, CEREMONY_BGM_SLOTS } from './planning.js?v=wedding-features-75';
 
 const won = value => (value === null || value === undefined ? '미입력' : `${value.toLocaleString('ko-KR')}원`);
 export const PHOTO_CALL_KEY = 'wedding:v1:photoCallChecked';
@@ -186,8 +186,23 @@ function openEnvelopeEditor(ctx, existing = null) {
   }
 }
 
-function buildDayOpsSummaryText(inv, roles, envelopes, photoOrder, sum) {
+function activeBgmRows(bgmMap = {}) {
+  const map = bgmMap && typeof bgmMap === 'object' ? bgmMap : {};
+  return CEREMONY_BGM_SLOTS
+    .map(([id, title]) => {
+      const entry = map[id] || {};
+      const song = (entry.song || '').trim();
+      const cue = (entry.cue || '').trim();
+      const ready = Boolean(entry.ready);
+      if (!song && !cue && !ready) return null;
+      return { id, title, song, cue, ready };
+    })
+    .filter(Boolean);
+}
+
+export function buildDayOpsSummaryText(inv, roles, envelopes, photoOrder, sum, bgmMap = {}) {
   const couple = [inv?.partner1, inv?.partner2].filter(Boolean).join(' & ') || '우리 결혼식';
+  const bgmRows = activeBgmRows(bgmMap);
   const lines = [
     `💼 [${couple} 본식 당일 역할 · 봉투 · 원판 촬영 운영표]`,
     `• 일시/장소: ${inv?.date ? formatDate(inv.date) : '예식일'} ${inv?.time || ''} · ${inv?.venue || '순천아모르웨딩컨벤션'}`,
@@ -212,12 +227,22 @@ function buildDayOpsSummaryText(inv, roles, envelopes, photoOrder, sum) {
   if (photoOrder.trim()) {
     lines.push('', '[3] 원판 가족·친구 촬영 순서', photoOrder.trim());
   }
+  if (bgmRows.length) {
+    const readyCount = bgmRows.filter(row => row.ready).length;
+    lines.push('', `[4] 본식 BGM · 음향 큐시트 (선곡 ${bgmRows.length}/${CEREMONY_BGM_SLOTS.length} · 음원 확보 ${readyCount}/${bgmRows.length})`);
+    for (const row of bgmRows) {
+      lines.push(`• ${row.title}: ${row.song || '곡 미정'}${row.cue ? ` [${row.cue}]` : ''} (${row.ready ? '음원 확보 ✅' : '준비 중'})`);
+    }
+  }
   return lines.join('\n');
 }
 
-function printDayOpsSheet(inv, roles, envelopes, photoOrder, sum) {
+function printDayOpsSheet(inv, roles, envelopes, photoOrder, sum, bgmMap = {}) {
   document.querySelectorAll('.print-only-sheet').forEach(el => el.remove());
+  document.body.classList.remove('print-guest-sheet', 'print-gift-sheet', 'print-dayops-sheet', 'print-shoot-sheet');
   const couple = [inv?.partner1, inv?.partner2].filter(Boolean).join(' & ') || '우리의 결혼식';
+  const bgmRows = activeBgmRows(bgmMap);
+  const bgmReady = bgmRows.filter(row => row.ready).length;
   const sheet = E('section', { class: 'print-only-sheet', 'aria-label': '본식 당일 운영표 A4 인쇄본' },
     E('header', { class: 'print-sheet-header' },
       E('div', {},
@@ -227,7 +252,8 @@ function printDayOpsSheet(inv, roles, envelopes, photoOrder, sum) {
       E('div', { class: 'print-sheet-kpis' },
         E('span', {}, `역할 ${sum.assignedRoles}/${sum.roleCount}`),
         E('span', {}, `봉투 ${sum.readyCount}/${sum.envelopeCount}`),
-        E('span', {}, `현금 총 ${sum.totalEnvelopeAmount.toLocaleString('ko-KR')}원`))),
+        E('span', {}, `현금 총 ${sum.totalEnvelopeAmount.toLocaleString('ko-KR')}원`),
+        bgmRows.length ? E('span', {}, `BGM ${bgmReady}/${bgmRows.length} 확보`) : null)),
     E('h2', { style: 'font-size:14px;margin:10px 0 6px;' }, '1. 본식 당일 역할 분담표'),
     E('table', { class: 'print-sheet-table' },
       E('thead', {}, E('tr', {}, E('th', {}, '구역'), E('th', {}, '담당 역할'), E('th', {}, '담당자'), E('th', {}, '연락처'), E('th', {}, '전달 메모'))),
@@ -253,17 +279,31 @@ function printDayOpsSheet(inv, roles, envelopes, photoOrder, sum) {
         E('td', {}, `미준비 ${sum.pendingAmount.toLocaleString('ko-KR')}원`)))),
     E('h2', { style: 'font-size:14px;margin:14px 0 6px;' }, '3. 본식 원판 사진 호명 순서표'),
     E('pre', { style: 'white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.75;padding:10px 12px;border:1px solid #bfc6c0;border-radius:8px;margin:0;' }, photoOrder.trim() || DEFAULT_PHOTO_ORDER),
+    ...(bgmRows.length ? [
+      E('h2', { style: 'font-size:14px;margin:14px 0 6px;' }, '4. 본식 BGM · 음향 큐시트'),
+      E('table', { class: 'print-sheet-table' },
+        E('thead', {}, E('tr', {}, E('th', {}, '구간'), E('th', {}, '선곡 · 아티스트'), E('th', {}, '재생 큐 메모'), E('th', {}, '음원 확보'))),
+        E('tbody', {}, ...bgmRows.map(row => E('tr', {},
+          E('td', { class: 'strong' }, row.title),
+          E('td', {}, row.song || '곡 미정'),
+          E('td', {}, row.cue || ''),
+          E('td', { class: 'num' }, row.ready ? '☑ 완료' : '☐ 확인 필요')))))
+    ] : []),
     E('p', { class: 'print-sheet-foot' }, '※ 신랑·신부 및 본식 현장 도우미 전용 운영표입니다. 예식 종료 후 분실에 유의해 주세요.'));
 
   document.body.appendChild(sheet);
   document.body.classList.add('print-dayops-sheet');
+  let cleaned = false;
   const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
     document.body.classList.remove('print-dayops-sheet');
     sheet.remove();
     window.removeEventListener('afterprint', cleanup);
   };
-  window.addEventListener('afterprint', cleanup);
+  window.addEventListener('afterprint', cleanup, { once: true });
   window.print();
+  setTimeout(cleanup, 1500);
 }
 
 export function renderWeddingDayOpsBoard(ctx) {
@@ -327,8 +367,8 @@ export function renderWeddingDayOpsBoard(ctx) {
           E('h2', { id: 'dayops-title' }, '💼 본식 당일 역할 분담 · 현금 봉투 · 원판 순서표'),
           E('p', { class: 'small muted' }, '당일 아침 가족·도우미에게 바로 공유하거나 A4 1장으로 인쇄해 쓸 수 있는 현장 운영표입니다.')),
         E('div', { class: 'prenatal-quick-actions' },
-          button('📋 당일 운영표 요약 복사', () => ctx.copyTextToClipboard(buildDayOpsSummaryText(inv, roles, envelopes, photoOrder || DEFAULT_PHOTO_ORDER, sum), '본식 당일 운영표 요약을 복사했습니다.', '당일 운영표 복사'), 'button quiet'),
-          button('🖨️ 현장용 A4 인쇄', () => printDayOpsSheet(inv, roles, envelopes, photoOrder || DEFAULT_PHOTO_ORDER, sum), 'button'))),
+          button('📋 당일 운영표 요약 복사', () => ctx.copyTextToClipboard(buildDayOpsSummaryText(inv, roles, envelopes, photoOrder || DEFAULT_PHOTO_ORDER, sum, prefs.ceremonyBgm || {}), '본식 당일 운영표 요약을 복사했습니다.', '당일 운영표 복사'), 'button quiet'),
+          button('🖨️ 현장용 A4 인쇄', () => printDayOpsSheet(inv, roles, envelopes, photoOrder || DEFAULT_PHOTO_ORDER, sum, prefs.ceremonyBgm || {}), 'button'))),
       E('div', { class: 'ledger-kpi-grid' },
         E('div', { class: 'ledger-kpi-card' }, E('span', { class: 'small muted' }, '역할 배정 현황'), E('strong', {}, `${sum.assignedRoles} / ${sum.roleCount}명 배정`)),
         E('div', { class: 'ledger-kpi-card' }, E('span', { class: 'small muted' }, '현금 봉투 준비'), E('strong', {}, `${sum.readyCount} / ${sum.envelopeCount}건 완료`)),

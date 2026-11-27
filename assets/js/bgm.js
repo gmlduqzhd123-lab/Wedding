@@ -1,4 +1,4 @@
-import { E } from './dom.js?v=wedding-features-74';
+import { E } from './dom.js?v=wedding-features-75';
 
 export const BGM_PRESETS = [
   {

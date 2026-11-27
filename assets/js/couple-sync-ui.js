@@ -1,6 +1,6 @@
-import { E, button } from './dom.js?v=wedding-features-74';
-import { validatePreferences, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-74';
-import { encodeSyncCode, decodeSyncCode, summarizePreferenceCounts } from './sync-code.js?v=wedding-features-74';
+import { E, button } from './dom.js?v=wedding-features-75';
+import { validatePreferences, mergePreferences, summarizePreferencesMerge } from './preferences.js?v=wedding-features-75';
+import { encodeSyncCode, decodeSyncCode, summarizePreferenceCounts } from './sync-code.js?v=wedding-features-75';
 
 const ROLLBACK_KEY = 'wedding:v1:prefRollback';
 

@@ -16,7 +16,7 @@ import {
   computeCashDenominations,
   estimateBanquetTables,
   crossCheckGuestsAndGifts
-} from './ledger.js?v=wedding-features-74';
+} from './ledger.js?v=wedding-features-75';
 
 export {
   guestListSummary,
@@ -333,6 +333,29 @@ export const CEREMONY_PREP_ITEMS = [
   ['cchk-song', '축가(아카펠라) 곡명·타이밍(혼주·내빈 인사 직후) 및 마이크 인원수·음향 점검'],
   ['cchk-floor', '순천아모르웨딩컨벤션 피로연 연회홀 층수 확인 및 폐회식 안내 멘트 반영']
 ];
+
+export const CEREMONY_BGM_SLOTS = [
+  ['bgm-pre', '식전영상 · 하객 입장', '예식 20분 전 ~ 개식 전 잔잔한 배경음'],
+  ['bgm-candle', 'STEP 03 · 화촉점화', '양가 어머님 입장 및 점화'],
+  ['bgm-groom', 'STEP 04 · 신랑 입장', '활기차고 밝은 신랑 입장곡'],
+  ['bgm-bride', 'STEP 05 · 신부 입장', '신부 2단계 등장·입장 하이라이트 구간'],
+  ['bgm-vow', 'STEP 07 · 혼인서약서', '잔잔한 피아노·현악 연주곡 (선택)'],
+  ['bgm-speech', 'STEP 08 · 성혼선언·축사', '등단·퇴장 브릿지 또는 무음'],
+  ['bgm-parents', 'STEP 09 · 양가·내빈 인사', '따뜻하고 감동적인 연주곡 (신부→신랑→내빈 동선)'],
+  ['bgm-song', 'STEP 10 · 축가', '아카펠라 라이브 마이크·MR 유무 체크'],
+  ['bgm-march', 'STEP 11 · 신랑·신부 행진', '경쾌한 피날레 행진곡 (박수 타이밍)']
+];
+
+export const CEREMONY_STEP_BGM_MAP = {
+  '03': 'bgm-candle',
+  '04': 'bgm-groom',
+  '05': 'bgm-bride',
+  '07': 'bgm-vow',
+  '08': 'bgm-speech',
+  '09': 'bgm-parents',
+  '10': 'bgm-song',
+  '11': 'bgm-march'
+};
 
 export const PRENATAL_CHECK_ITEMS = [
   ['pchk-budget', '순천시 보건소(061-749-6916~9) 또는 e보건소에서 당해 연도 지원사업 접수 가능 여부 확인'],
@@ -815,7 +838,23 @@ export function netWeddingCostSummary(budgetPlan = {}, giftLedger = [], categori
   };
 }
 
-export function budgetPlanToCsv(budgetPlan = {}, giftLedger = []) {
+function resolveCashFlowExport(options) {
+  const cf = options?.cashFlow;
+  if (!cf || cf.totalRemaining === null || cf.totalRemaining === undefined) return null;
+  const rawRatio = Number(options?.groomRatio);
+  const groomRatio = Number.isFinite(rawRatio) ? Math.max(0, Math.min(100, Math.round(rawRatio))) : 50;
+  const brideRatio = 100 - groomRatio;
+  const p1 = String(options?.partner1 || '신랑').replace(/^신랑\s*/, '').trim() || '신랑';
+  const p2 = String(options?.partner2 || '신부').replace(/^신부\s*/, '').trim() || '신부';
+  const months = Math.max(1, Number(cf.monthsUntilWedding) || 1);
+  const gRemain = Math.round(cf.totalRemaining * groomRatio / 100);
+  const bRemain = cf.totalRemaining - gRemain;
+  const gMonthly = Math.ceil(gRemain / months);
+  const bMonthly = Math.ceil(bRemain / months);
+  return { cf, groomRatio, brideRatio, p1, p2, months, gRemain, bRemain, gMonthly, bMonthly };
+}
+
+export function budgetPlanToCsv(budgetPlan = {}, giftLedger = [], options = null) {
   const keys = WEDDING_BUDGET_CATEGORIES.map(([key]) => key);
   const budget = weddingBudgetSummary(budgetPlan, keys);
   const net = netWeddingCostSummary(budgetPlan, giftLedger, keys);
@@ -850,10 +889,29 @@ export function budgetPlanToCsv(budgetPlan = {}, giftLedger = []) {
       net.coveragePct !== null ? `축의금 충당률 ${net.coveragePct}%` : '실제 지출 입력 필요'
     ]);
   }
+  const cfInfo = resolveCashFlowExport(options);
+  if (cfInfo) {
+    const { cf, groomRatio, brideRatio, p1, p2, months, gRemain, bRemain, gMonthly, bMonthly } = cfInfo;
+    rows.push(['기납부 계약금 합계', '', cf.totalDeposit ?? 0, '', '웨딩홀·스드메·혼수 계약금 합산']);
+    rows.push([
+      '남은 잔금 합계',
+      '',
+      cf.totalRemaining,
+      '',
+      `예식까지 약 ${months}개월 · 월 목표 적립 ${(cf.monthlySavingsNeeded ?? Math.ceil(cf.totalRemaining / months)).toLocaleString('ko-KR')}원`
+    ]);
+    rows.push([
+      `2인 분담 (${p1} ${groomRatio}% : ${p2} ${brideRatio}%)`,
+      gRemain,
+      bRemain,
+      '',
+      `${p1} 월 ${gMonthly.toLocaleString('ko-KR')}원 / ${p2} 월 ${bMonthly.toLocaleString('ko-KR')}원`
+    ]);
+  }
   return '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
 }
 
-export function buildBudgetSummaryText(budgetPlan = {}, giftLedger = []) {
+export function buildBudgetSummaryText(budgetPlan = {}, giftLedger = [], options = null) {
   const keys = WEDDING_BUDGET_CATEGORIES.map(([key]) => key);
   const budget = weddingBudgetSummary(budgetPlan, keys);
   const net = netWeddingCostSummary(budgetPlan, giftLedger, keys);
@@ -878,6 +936,16 @@ export function buildBudgetSummaryText(budgetPlan = {}, giftLedger = []) {
       const label = net.netActual < 0 ? `잉여 +${fmt(-net.netActual)}` : fmt(net.netActual);
       lines.push(`▶ 축의금 반영 실부담액: ${label}${net.coveragePct !== null ? ` (충당률 ${net.coveragePct}%)` : ''}`);
     }
+  }
+  const cfInfo = resolveCashFlowExport(options);
+  if (cfInfo) {
+    const { cf, groomRatio, brideRatio, p1, p2, months, gRemain, bRemain, gMonthly, bMonthly } = cfInfo;
+    const monthly = cf.monthlySavingsNeeded ?? Math.ceil(cf.totalRemaining / months);
+    lines.push('');
+    lines.push('[계약금·잔금 & 2인 분담 현금흐름]');
+    lines.push(`▶ 기납부 계약금: ${fmt(cf.totalDeposit ?? 0)} / 남은 잔금: ${fmt(cf.totalRemaining)}`);
+    lines.push(`▶ 예식까지 약 ${months}개월 · 합산 월 목표 적립: ${fmt(monthly)}`);
+    lines.push(`▶ 2인 분담 (${p1} ${groomRatio}% : ${p2} ${brideRatio}%): ${p1} ${fmt(gRemain)} (월 ${fmt(gMonthly)}) / ${p2} ${fmt(bRemain)} (월 ${fmt(bMonthly)})`);
   }
   return lines.join('\n');
 }
